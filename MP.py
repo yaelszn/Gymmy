@@ -29,9 +29,11 @@ class MP(threading.Thread):
 
         # Set configuration parameters
         init = sl.InitParameters()
-        init.camera_resolution = sl.RESOLUTION.HD1080
+        init.camera_resolution = sl.RESOLUTION.HD720
+        init.coordinate_system= sl.COORDINATE_SYSTEM.IMAGE
         init.depth_mode = sl.DEPTH_MODE.ULTRA
         init.coordinate_units = sl.UNIT.MILLIMETER
+        init.camera_fps=60
         if len(sys.argv) >= 2:
             init.svo_input_filename = sys.argv[1]
 
@@ -88,8 +90,8 @@ class MP(threading.Thread):
         image = sl.Mat()
 
         with mp_pose.Pose(
-                min_detection_confidence=0.9,
-                min_tracking_confidence=0.7) as pose:
+                min_detection_confidence=0.8,
+                min_tracking_confidence=0.5) as pose:
 
             # Create a UDP socket
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -100,7 +102,7 @@ class MP(threading.Thread):
                 if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
 
                     self.zed.retrieve_image(image, sl.VIEW.LEFT)
-
+                    self.zed.retrieve_image(image, sl.VIEW.RIGHT)
                     frame = image.get_data()
                     # Convert the frame to RGB format (MediaPipe requires RGB input)
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -153,11 +155,10 @@ class MP(threading.Thread):
          return self.zed
 
 
-if __name__ == '__main__':
+
+
+if __name__ == ('__main__'):
     s.stop = False
     s.finish_workout = False
     mediap = MP()
     mediap.start()
-
-
-
