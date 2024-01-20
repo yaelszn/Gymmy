@@ -12,6 +12,8 @@ class Screen(tk.Tk):
         tk.Tk.__init__(self, className='Gymmy')
         self._frame = None
         self["bg"]="#F3FCFB"
+        self.user_id_entry = tk.Entry(self, font=('Arial', 14), width=20)
+        self.user_id_entry.pack(pady=10)
 
     def switch_frame(self, frame_class):
         """Destroys current frame and replaces it with a new one."""

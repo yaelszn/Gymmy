@@ -24,6 +24,7 @@ def __init__():
     global exercises_start
     global waved_has_tool #the participant has the tool in his hand and is ready to start
     global demo_finish #the first demo of the exercise is done
+    global ex_in_training
 
     # audio variables
     global audio_path
