@@ -104,6 +104,7 @@ def text_to_speech(text, lang='iw', slow=False):
     # Clean up
     pygame.mixer.quit()
     print()
+    print()
 
 
 def text_to_speech2(language='iw'):
