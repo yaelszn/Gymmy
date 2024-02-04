@@ -9,6 +9,8 @@ def __init__():
     global participant_code
     global excel_workbook
     global ex_list
+    global Last_workbook #the workbook of the last time the patient did every exercise
+    global success_sheet
 
     # training variables
     global exercise_amount
@@ -32,5 +34,9 @@ def __init__():
     # screen variables
     global picture_path
     global camera_num
+
+    global chosen_patient_ID #the id of the patient the therpist chose to enter
+    global excel_file_path_Patient
+
 
 

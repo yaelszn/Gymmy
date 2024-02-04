@@ -4,8 +4,8 @@ import Excel
 from Camera import Camera
 from Gymmy import Gymmy
 from Audio import Audio
-from Training import Training
-from Screen import Screen, FullScreenApp, Well_done, HelloPage
+from TrainingNew import Training
+from ScreenNew import Screen, FullScreenApp, EntrancePage
 from PIL import Image, ImageTk
 import pickle
 import datetime
@@ -46,11 +46,11 @@ if __name__ == '__main__':
     s.camera_done = False
     s.robot_count = False
     s.demo_finish= False
+    s.ex_in_training=[]
     #s.exercises_start=False
     s.waved_has_tool= True # True just in order to go through the loop in Gymmy
     # Excel variable
     ############################# להוריד את הסולמיות
-    Excel.create_workbook()
     s.ex_list = []
 
     # Create all components
@@ -71,6 +71,7 @@ if __name__ == '__main__':
     #s.screen.tk.call('wm', 'iconphoto', s.screen._w, ImageTk.PhotoImage(image1))
     #app = FullScreenApp(s.screen)
     #s.screen.mainloop()
+    s.screen.switch_frame(EntrancePage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
 

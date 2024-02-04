@@ -6,15 +6,14 @@ import threading
 import socket
 
 from Audio import say
+from Joint import Joint
 from MP import MP
 import Settings as s
 import time
 import json
 import math
 import Excel
-from Screen import Screen, OnePage, TwoPage, ThreePage, FourPage, FivePage, SixPage, SevenPage, EightPage, \
-    NinePage, TenPage, AlmostExcellent, Fail, Excellent, Very_good, Well_done, FullScreenApp
-from Joint import Joint
+from ScreenNew import Screen, FullScreenApp
 from statistics import mean,stdev
 import numpy as np
 
@@ -48,6 +47,25 @@ class Camera(threading.Thread):
         self.server_address = ('localhost', 7000)
         self.sock.bind(self.server_address)
         print("CAMERA INITIALIZATION")
+
+
+    def run(self):
+        print("CAMERA START")
+        medaip = MP()
+        medaip.start()
+        self.zed = MP.get_zed(medaip)
+
+        while not s.finish_workout:
+            time.sleep(0.00000001)  # Prevents the MP to stuck
+            if (s.req_exercise != "" and s.demo_finish) or (s.req_exercise=="hello_waving"):
+                ex = s.req_exercise
+                print("CAMERA: Exercise ", ex, " start")
+                time.sleep(1)
+                getattr(self, ex)()
+                print("CAMERA: Exercise ", ex, " done")
+                s.req_exercise = ""
+                s.camera_done = True
+        print("Camera Done")
 
 
     def get_skeleton_data(self):
@@ -118,50 +136,13 @@ class Camera(threading.Thread):
 
 
 
-    def change_count_screen(self, count):
-        if count == 1:
-            s.screen.switch_frame(OnePage)
 
-        if count == 2:
-            s.screen.switch_frame(TwoPage)
-
-        if count == 3:
-            s.screen.switch_frame(ThreePage)
-
-        if count == 4:
-            s.screen.switch_frame(FourPage)
-
-        if count == 5:
-            s.screen.switch_frame(FivePage)
-
-        if count == 6:
-            s.screen.switch_frame(SixPage)
-
-        if count == 7:
-            s.screen.switch_frame(SevenPage)
-
-        if count == 8:
-            s.screen.switch_frame(EightPage)
-
-        if count == 9:
-            s.screen.switch_frame(NinePage)
-
-        if count == 10:
-            s.screen.switch_frame(TenPage)
 
     # Close the camera when done
 ##############self.zed.disable_body_tracking()
 ##############self.zed.close()
 
-    def end_exercise(self, counter):
-        if s.rep-2 > counter:
-            s.screen.switch_frame(Fail)
 
-        if (s.rep - 2) <= counter <= (s.rep - 1):
-            s.screen.switch_frame(AlmostExcellent)
-
-        if counter == s.rep:
-            self.random_encouragement()
 
     def random_encouragement(self):
         enco = ["Well_done", "Very_good", "Excellent"]
@@ -174,25 +155,6 @@ class Camera(threading.Thread):
         #random_instance = random_class()
         #return random.choice(enco)
 
-
-
-    def run(self):
-        print("CAMERA START")
-        medaip = MP()
-        medaip.start()
-        self.zed = MP.get_zed(medaip)
-
-        while not s.finish_workout:
-            time.sleep(0.00000001)  # Prevents the MP to stuck
-            if s.req_exercise != "" and s.demo_finish:
-                ex = s.req_exercise
-                print("CAMERA: Exercise ", ex, " start")
-                time.sleep(1)
-                getattr(self, ex)()
-                print("CAMERA: Exercise ", ex, " done")
-                s.req_exercise = ""
-                s.camera_done = True
-        print("Camera Done")
 
 
     def exercise_one_angle_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
@@ -609,8 +571,7 @@ class Camera(threading.Thread):
                 right_shoulder = joints[str("R_shoulder")]
                 right_wrist = joints[str("R_wrist")]
                 if right_shoulder.y > right_wrist.y != 0:
-                    if s.waved:
-                        s.waved_has_tool = True
+                    s.waved_has_tool = True
                     # print(right_shoulder.y)
                     # print(right_wrist.y)
                     s.waved = True
@@ -690,7 +651,7 @@ class Camera(threading.Thread):
 
     ################################################# Set of exercises without accessories ############################################################################
 
-    def hands_behind_and_lean(self): # EX13
+    def hands_behind_and_lean_notool(self): # EX13
         self.exercise_two_angles_3d("hands_behind_and_lean", "shoulder", "elbow", "wrist", 15,60,15,60,
                                     "elbow", "shoulder", "hip", 80, 110, 120, 170,False, True)
 
@@ -698,14 +659,14 @@ class Camera(threading.Thread):
      #   self.exercise_two_angles_3d("hands_behind_and_turn_both_sides", "elbow", "shoulder", "hip", 140,180,15,100,
       #                              "elbow", "hip", "knee", 130, 115, 80, 105, False, True)
 
-    def right_hand_up_and_bend(self):  # EX15
+    def right_hand_up_and_bend_notool(self):  # EX15
         self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 145, 0, 40, "right")
 
-    def left_hand_up_and_bend(self): #EX16
+    def left_hand_up_and_bend_notool(self): #EX16
         self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 145, 0, 40, "left")
 
 ################################בעייתי כי אפשר לעשות גם תנועה לא מלאה
-    def raising_right_and_left_hand_alternately(self): # EX17
+    def raising_right_and_left_hand_alternately_notool(self): # EX17
         self.exercise_two_angles_3d_with_axis_check("raising_right_and_left_hand_alternately", "wrist", "shoulder", "hip", 0, 100, 105, 135,
                                     "elbow", "shoulder", "shoulder", 0, 180, 40, 75, True, True)
 

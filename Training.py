@@ -17,41 +17,42 @@ class Training(threading.Thread):
 
     def run(self):
         print("TRAINING START")
-        print("start waving")
-        name="hello_waving"
-        s.req_exercise = name
-        s.screen.switch_frame(HelloPage)
-        time.sleep(3)  # Delay the robot movement after the audio is played
+        #print("start waving")
+        #name="hello_waving"
+        #s.req_exercise = name
+        #s.screen.switch_frame(HelloPage)
+        #time.sleep(3)  # Delay the robot movement after the audio is played
         #time.sleep(1)
 
-        while not s.waved:
-            time.sleep(0.00000001)  # Prevents the MP to stuck
-            continue
-        s.demo_finish = False
-        print("Training: finish waving")
-        print("Training: Calibration")
-        s.screen.switch_frame(CalibrationPage)
-        s.camera.init_position()
-        while not s.calibration:
-            time.sleep(0.00000001)
-            continue
+        #while not s.waved:
+        #    time.sleep(0.00000001)  # Prevents the MP to stuck
+        #    continue
+        #s.demo_finish = False
+        #print("Training: finish waving")
+        #print("Training: Calibration")
+        #s.screen.switch_frame(CalibrationPage)
+        #s.camera.init_position()
+        #while not s.calibration:
+        #    time.sleep(0.00000001)
+        #    continue
 
-        s.demo_finish = False
+        #s.demo_finish = False
         #time.sleep(3)
-        say('finish_calibration')
-        time.sleep(2)
-        say('start')
-        time.sleep(4)
-        s.gymmy_done = False # AFTER HELLO
-        s.camera_done = False # AFTER HELLO
+        #say('finish_calibration')
+        #time.sleep(2)
+        #say('start')
+        #time.sleep(4)
+        #s.gymmy_done = False # AFTER HELLO
+        #s.camera_done = False # AFTER HELLO
         self.training_session()
         self.finish_workout()
 
     def training_session(self):
         print("Training: start exercises")
+        categories=["ball", "stick","notool", "rubber_band"]
+
         s.ex_in_training=""
-        # TODO - adding choosing session options
-        s.screen.switch_frame(ChooseExercise)
+        #s.screen.switch_frame(ChooseExercise)
 
         while s.ex_in_training=="" or not s.waved_has_tool:
             time.sleep(0.00000001)

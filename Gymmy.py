@@ -23,8 +23,8 @@ class Gymmy(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
-        self.gymmy = PoppyTorso(camera="dummy", port= "COM3")  # for real robot
-        #self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
+        #self.gymmy = PoppyTorso(camera="dummy", port= "COM3")  # for real robot
+        self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
         print("ROBOT INITIALIZATION")
         for m in self.gymmy.motors:  # motors need to be initialized, False=stiff, True=loose
             m.compliant = False
@@ -87,13 +87,13 @@ class Gymmy(threading.Thread):
             print("ROBOT START")
             while not s.finish_workout:
                 time.sleep(0.00000001)  # Prevents the MP to stuck
-                if s.req_exercise != "":
+                if s.req_exercise != "" and not s.req_exercise=="hello_waving":
                     ex = s.req_exercise
                     time.sleep(1)
                     print("ROBOT: Exercise ", ex, " start")
                     self.exercise_demo(ex)
                     print("ROBOT: Exercise ", ex, " done")
-                    while not s.waved or not s.waved_has_tool:
+                    while not s.waved_has_tool:
                         time.sleep(0.01)  # for hello_waiting exercise, wait until user wave
 
                     s.req_exercise = ""
@@ -543,7 +543,7 @@ class Gymmy(threading.Thread):
 # -------------------------------------- No equipment exercises ------------------------------------------------------------------
 
     # EX13 - Hands behind the head and bend to each side
-    def hands_behind_and_lean(self, i):
+    def hands_behind_and_lean_notool(self, i):
         if i == 0:
             self.gymmy.head_z.goto_position(20, 1, wait=True)
             self.gymmy.r_shoulder_x.goto_position(-40, 1.5, wait=False)
@@ -579,7 +579,7 @@ class Gymmy(threading.Thread):
 
 
     # EX14 - Hands behind the head and turn to each side
-    def hands_behind_and_turn_both_sides(self, i):
+    def hands_behind_and_turn_both_sides_notool(self, i):
         if i==0:
             self.gymmy.r_shoulder_x.goto_position(-40, 1.5, wait=False)
             self.gymmy.l_shoulder_x.goto_position(40, 1.5, wait=True)
@@ -614,7 +614,7 @@ class Gymmy(threading.Thread):
 
 
     # EX15 - Right Hand up and bend to the left
-    def right_hand_up_and_bend(self, i):
+    def right_hand_up_and_bend_notool(self, i):
         if i==0:
             self.gymmy.bust_x.goto_position(0, 1.5, wait=False)
             self.gymmy.l_shoulder_x.goto_position(5, 1.5, wait=False)
@@ -648,7 +648,7 @@ class Gymmy(threading.Thread):
             self.gymmy.r_arm_z.goto_position(0, 1.5, wait=False)
 
     # EX16 - Left Hand up and bend to the right
-    def left_hand_up_and_bend(self, i):
+    def left_hand_up_and_bend_notool(self, i):
         if i==0:
             self.gymmy.l_arm_z.goto_position(-80, 1.5, wait=False)
             self.gymmy.l_shoulder_x.goto_position(25, 1.5, wait=False)
@@ -742,7 +742,7 @@ if __name__ == "__main__":
     ###########################################################
     s.waved=True
     s.finish_workout=False
-    s.req_exercise="raising_right_and_left_hand_alternately"
+    s.req_exercise="bend_elbows_ball"
     robot = Gymmy()
     #mp=MP()
     #mp.start()
