@@ -1,7 +1,8 @@
 import threading
 import time
 from Camera import Camera
-from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartingOfTraining
+from Gymmy import Gymmy
+from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartingOfTraining, GoodbyePage
 import Settings as s
 import Excel
 import random
@@ -34,13 +35,12 @@ class Training(threading.Thread):
 
         Excel.create_workbook() #create workbook in excel for this session
         s.screen.switch_frame(StartingOfTraining)
-        time.sleep(9)
+        time.sleep(7)
 
         for i in categories:
             exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
             random.shuffle(exercises_in_category)
-            s.waved_has_tool= False
-            s.req_exercise= "hello_waving"
+            s.waved_has_tool=False
             if exercises_in_category!=[]:
                 self.show_screen_category(i)
 
@@ -51,6 +51,7 @@ class Training(threading.Thread):
                     s.gymmy_done= False
                     s.camera_done= False
                     s.demo_finish = False
+                    s.patient_repititions_counting=0
                     self.run_exercise(e)
                     while (not s.gymmy_done) or (not s.camera_done):
                         # print("not done")
@@ -82,19 +83,17 @@ class Training(threading.Thread):
         print("TRAINING DONE")
 
     def run_exercise(self, name):
-        time.sleep(2)  # wait between exercises
+        time.sleep(0.1)  # wait between exercises
         s.success_exercise = False
         s.req_exercise = name
-
         print("TRAINING: Exercise ", name, " start")
-        while not s.demo_finish:
-            time.sleep(0.00000001)
-        # time.sleep(2) # wait between exercises
 
-        # s.screen.switch_frame(ExercisePage)
-        while s.req_exercise == name:
-            time.sleep(0.001)  # Prevents the MP to stuck
+        while not s.demo_finish or s.req_exercise == name:
+            time.sleep(0.00000001)
+
+
         print("TRAINING: Exercise ", name, " done")
+        time.sleep(3)
         # time.sleep(1)
 
 
@@ -108,14 +107,17 @@ if __name__ == "__main__":
     s.waved = False
     s.finish_workout = False
     s.exercise_amount = 6
-    s.rep = 8
-    s.ex_in_training=["bend_elbows_ball"]
+    s.rep = 10
+    s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.chosen_patient_ID="314808981"
+    s.req_exercise=""
     s.demo_finish = False
     s.screen = Screen()
     s.camera = Camera()
     s.training = Training()
+    s.robot= Gymmy()
     s.camera.start()
     s.training.start()
+    s.robot.start()
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

@@ -38,5 +38,7 @@ def __init__():
     global chosen_patient_ID #the id of the patient the therpist chose to enter
     global excel_file_path_Patient
 
+    global patient_repititions_counting #number of times that the user did the current exercise correctly
+
 
 

@@ -13,7 +13,8 @@ import time
 import json
 import math
 import Excel
-from ScreenNew import Screen, FullScreenApp
+from ScreenNew import Screen, FullScreenApp, OnePage, TwoPage, ThreePage, FourPage, FivePage, SixPage, SevenPage, \
+    EightPage, NinePage, TenPage, Fail, Very_good, Excellent, Well_done, AlmostExcellent
 from statistics import mean,stdev
 import numpy as np
 
@@ -142,7 +143,36 @@ class Camera(threading.Thread):
 ##############self.zed.disable_body_tracking()
 ##############self.zed.close()
 
+    def change_count_screen(self, count):
+        if count == 1:
+            s.screen.switch_frame(OnePage)
 
+        if count == 2:
+            s.screen.switch_frame(TwoPage)
+
+        if count == 3:
+            s.screen.switch_frame(ThreePage)
+
+        if count == 4:
+            s.screen.switch_frame(FourPage)
+
+        if count == 5:
+            s.screen.switch_frame(FivePage)
+
+        if count == 6:
+            s.screen.switch_frame(SixPage)
+
+        if count == 7:
+            s.screen.switch_frame(SevenPage)
+
+        if count == 8:
+            s.screen.switch_frame(EightPage)
+
+        if count == 9:
+            s.screen.switch_frame(NinePage)
+
+        if count == 10:
+            s.screen.switch_frame(TenPage)
 
     def random_encouragement(self):
         enco = ["Well_done", "Very_good", "Excellent"]
@@ -155,7 +185,15 @@ class Camera(threading.Thread):
         #random_instance = random_class()
         #return random.choice(enco)
 
+    def end_exercise(self, counter):
+        if s.rep - 2 > counter:
+            s.screen.switch_frame(Fail)
 
+        if (s.rep - 2) <= counter <= (s.rep - 1):
+            s.screen.switch_frame(AlmostExcellent)
+
+        if counter == s.rep:
+            self.random_encouragement()
 
     def exercise_one_angle_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                               use_alternate_angles=False, left_right_differ=False):
@@ -289,6 +327,7 @@ class Camera(threading.Thread):
                                     (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & (not flag):
                                 flag = True
                                 counter += 1
+                                s.patient_repititions_counting+=1
                                 self.change_count_screen(counter)
                                 print("counter:"+ str(counter))
                               #  if not s.robot_count:
@@ -303,6 +342,7 @@ class Camera(threading.Thread):
                                     (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
                                 flag = True
                                 counter += 1
+                                s.patient_repititions_counting+=1
                                 self.change_count_screen(counter)
                                 print("counter:" + str(counter))
                                 #  if not s.robot_count:
@@ -389,6 +429,7 @@ class Camera(threading.Thread):
                                 (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < 150) & (not flag):
                             flag = True
                             counter += 1
+                            s.patient_repititions_counting += 1
                             self.change_count_screen(counter)
                             print("counter:" + str(counter))
                             #  if not s.robot_count:
@@ -404,6 +445,7 @@ class Camera(threading.Thread):
                                 (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
                             flag = True
                             counter += 1
+                            s.patient_repititions_counting += 1
                             self.change_count_screen(counter)
                             print("counter:" + str(counter))
                             #  if not s.robot_count:
@@ -482,6 +524,7 @@ class Camera(threading.Thread):
                             (up_lb3 < right_angle3 < up_ub3) & (up_lb3 < left_angle3 < up_ub3) & (not flag):
                         flag = True
                         counter += 1
+                        s.patient_repititions_counting += 1
                         print("counter:" + str(counter))
                         self.change_count_screen(counter)
                        # if not s.robot_count:
@@ -532,6 +575,7 @@ class Camera(threading.Thread):
                         if (one_lb < right_angle < one_ub) & (joints[str("R_wrist")].x>joints[str("L_wrist")].x) & (not flag):
                             flag = True
                             counter += 1
+                            s.patient_repititions_counting += 1
                             print("counter:" + str(counter))
                             self.change_count_screen(counter)
                             # if not s.robot_count:
@@ -544,6 +588,7 @@ class Camera(threading.Thread):
                         if (one_lb < left_angle < one_ub) & (joints[str("R_wrist")].x>joints[str("L_wrist")].x)& (not flag):
                             flag = True
                             counter += 1
+                            s.patient_repititions_counting += 1
                             print("counter:" + str(counter))
                             self.change_count_screen(counter)
                             #if not s.robot_count:
@@ -574,7 +619,6 @@ class Camera(threading.Thread):
                     s.waved_has_tool = True
                     # print(right_shoulder.y)
                     # print(right_wrist.y)
-                    s.waved = True
                     s.req_exercise = ""
 ######################################################### First set of ball exercises
 

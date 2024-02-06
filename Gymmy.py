@@ -1,6 +1,7 @@
 import atexit
 import threading
 import signal
+import random
 
 import serial
 from pypot.creatures import PoppyTorso
@@ -14,7 +15,7 @@ import pypot.dynamixel.io
 import logging, sys
 
 from MP import MP
-from Screen import DemoPage, ExercisePage
+from ScreenNew import DemoPage, ExercisePage
 
 
 class Gymmy(threading.Thread):
@@ -90,11 +91,11 @@ class Gymmy(threading.Thread):
                 if s.req_exercise != "" and not s.req_exercise=="hello_waving":
                     ex = s.req_exercise
                     time.sleep(1)
+
                     print("ROBOT: Exercise ", ex, " start")
                     self.exercise_demo(ex)
                     print("ROBOT: Exercise ", ex, " done")
-                    while not s.waved_has_tool:
-                        time.sleep(0.01)  # for hello_waiting exercise, wait until user wave
+
 
                     s.req_exercise = ""
                     s.gymmy_done = True
@@ -125,19 +126,31 @@ class Gymmy(threading.Thread):
             say(audio)
             time.sleep(get_wav_duration(audio))
             s.screen.switch_frame(DemoPage)
-            say('robot_demo')
             time.sleep(get_wav_duration('robot_demo'))
             getattr(self, ex)(0)
             time.sleep(1)
             s.screen.switch_frame(ExercisePage)
             say('start_ex')
             s.demo_finish = True
+            self.faster_sayings = ['pick_up_pace', 'faster']
+            said_faster= 0 #how many times the robot said faster encouragement
             for i in range(s.rep):
                 getattr(self, ex)(i)
-                if s.robot_count:
-                    say(str(i + 1))
+                print("robot count: "+str(i+1))
+                if i-3>= s.patient_repititions_counting and said_faster==0:
+                    self.random_faster()
+                    said_faster+=1
+                if i-6>=s.patient_repititions_counting and said_faster==1:
+                    self.random_faster()
+                    said_faster+=1
                 if s.success_exercise:
                     break
+
+    def random_faster(self):
+        random_faster_name = random.choice(self.faster_sayings)
+        self.faster_sayings.remove(random_faster_name)
+        say(random_faster_name)
+
 
 ################################################################ WAVING EXERCISES ###############################33
     def hello_waving(self):

@@ -56,6 +56,7 @@ class Screen(tk.Tk):
         self._frame.pack()
 
     def wait_until_waving(self):
+        s.waved_has_tool = False
         s.req_exercise = "hello_waving"
         while not s.waved_has_tool:
             time.sleep(0.00000001)
@@ -103,8 +104,7 @@ def text_to_speech(text, lang='iw', slow=False):
 
     # Clean up
     pygame.mixer.quit()
-    print()
-    print()
+
 
 
 def text_to_speech2(language='iw'):
@@ -1184,6 +1184,69 @@ class GraphPage(tk.Frame):
         label.image = image
         label.place(x=x_location, y=y_location)
 
+############################################### Exercises Pages ########################################################
+class DemoPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//demo.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+        say('robot_demo')
+
+
+class ExercisePage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//exercise.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+        say("start_ex")
+
+
+
+########################################### Encouragemennts Pages ######################################################
+
+class Very_good(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//verygood.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+        say('very_good')
+
+class Excellent(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//excellent.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+        say('excellent')
+
+class Well_done(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//welldone.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+        say('well_done')
+
+
+class AlmostExcellent(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//almostexcellent.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+        say('almostexcellent')
+
+
+class Fail(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//fail.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+        say('fail')
 
 
 ################################################# Categories Screens ##############################################
@@ -1193,7 +1256,7 @@ class StartingOfTraining(tk.Frame):
         image = Image.open('Pictures//hello.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        say("hello_waving")
+        say("welcome")
 
 class Ball(tk.Frame):
     def __init__(self, master):
@@ -1201,8 +1264,8 @@ class Ball(tk.Frame):
         image = Image.open('Pictures//ball.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        say("Ball1")
-        self.after(9000,lambda: master.wait_until_waving())
+        say("Ball")
+        self.after(6000,lambda: master.wait_until_waving())
 
 
 class Stick(tk.Frame):
@@ -1233,6 +1296,96 @@ class NoTool(tk.Frame):
         tk.Label(self, image = self.photo_image).pack()
         say("NoTool")
         self.after(9000,lambda: master.wait_until_waving())
+
+
+######################################### Counting Pages #############################################################
+class OnePage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//1.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class TwoPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//2.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class ThreePage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//3.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class FourPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//4.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class FivePage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//5.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class SixPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//6.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class SevenPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//7.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class EightPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//8.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class NinePage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//9.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+class TenPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//10.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+
+######################################################## Goodbbye Page #################################################
+class GoodbyePage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//goodbye.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
 
 
 class FullScreenApp(object):
