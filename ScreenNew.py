@@ -42,16 +42,15 @@ class Screen(tk.Tk):
         self._frame = None
         self["bg"]="#F3FCFB"
 
-
-
-
     def switch_frame(self, frame_class, **kwargs):
-        """Destroys current frame and replaces it with a new one."""
+        """Destroys all existing frames and creates a new one."""
+
+        # Destroy all existing frames
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        # Create a new frame
         new_frame = frame_class(self, **kwargs)
-        if self._frame is not None:
-            if hasattr(self._frame, 'background_label'):
-                self._frame.background_label.destroy()
-            self._frame.destroy()
         self._frame = new_frame
         self._frame.pack()
 
@@ -438,7 +437,7 @@ class PatientRegistration(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
         to_choose_action_button = tk.Button(self, text="חזרה לתפריט", command= lambda: self.on_click_to_physio_menu(),font=('Thaoma', 14))
-        to_choose_action_button.place(x=50, y=50)  # Adjust x and y coordinates as needed
+        to_choose_action_button.place(x=50, y=50)
 
         self.first_name_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
         self.first_name_entry.place(x=370, y=260)
@@ -607,9 +606,16 @@ def show_graph(exercise, previous):
 
 
 def play_video(cap, label, exercise, previous, scale_factor=0.35, slow_factor=1):
-    def on_click(event):
-        # Call the Graph function with the exercise name
-        show_graph(exercise, previous)
+
+    if previous is not None:
+        def on_click(event):
+            # Call the Graph function with the exercise name
+            show_graph(exercise, previous)
+            print("video clicked!")
+
+    else:
+        def on_click(event):
+            print()
 
     ret, frame = cap.read()
 
@@ -678,7 +684,7 @@ class ChooseBallExercisesPage(tk.Frame):
         arrow_button = tk.Button(self, text=" ⬅ ", command= lambda: self.on_arrow_click(), font=("Thaoma", 22))
         arrow_button.place(x=50, y=480)  # Adjust x and y coordinates as needed
 
-        to_main_page_button = tk.Button(self, text="בחזרה לעמוד\nהראשי", command=lambda: self.on_main_page_button_click(), font=("Thaoma", 14))
+        to_main_page_button = tk.Button(self, text="בחזרה לרשימת\nהמטופלים", command=lambda: self.on_main_page_button_click(), font=("Thaoma", 14))
         to_main_page_button.place(x=20, y=20)  # Adjust x and y coordinates as needed
 
         row_of_patient = get_row_of_patient()
@@ -715,7 +721,7 @@ class ChooseBallExercisesPage(tk.Frame):
         self.checkbox5.place(x=910, y=430)
 
         # Video paths
-        video_file1 = 'Videos//ben_elbows_ball_vid.mp4'
+        video_file1 = 'Videos//bend_elbows_ball_vid.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
 
@@ -740,12 +746,13 @@ class ChooseBallExercisesPage(tk.Frame):
         if not (self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened() and self.cap5.isOpened()):
             print("Error opening video streams or files")
 
-        # Play videos
-        play_video(self.cap1, self.label1,"bend_elbows_ball", "ball")
-        play_video(self.cap2, self.label2, "raise_arms_above_head_ball", "ball")  # Change "Page2" to the name of the page you want to switch to
-        play_video(self.cap3, self.label3, "raise_arms_forward_turn_ball", "ball")  # Change "Page3" to the name of the page you want to switch to
-        play_video(self.cap4, self.label4, "open_arms_and_forward_ball", "ball")  # Change "Page4" to the name of the page you want to switch to
-        play_video(self.cap5, self.label5, "open_arms_above_head_ball", "ball")  # Change "Page5" to the name of the page you want to switch to
+        else:
+            # Play videos
+            play_video(self.cap1, self.label1,"bend_elbows_ball", "ball")
+            play_video(self.cap2, self.label2, "raise_arms_above_head_ball", "ball")  # Change "Page2" to the name of the page you want to switch to
+            play_video(self.cap3, self.label3, "raise_arms_forward_turn_ball", "ball")  # Change "Page3" to the name of the page you want to switch to
+            play_video(self.cap4, self.label4, "open_arms_and_forward_ball", "ball")  # Change "Page4" to the name of the page you want to switch to
+            play_video(self.cap5, self.label5, "open_arms_above_head_ball", "ball")  # Change "Page5" to the name of the page you want to switch to
 
 
     def save_changes(self):
@@ -790,33 +797,33 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         # Create labels for videos
         self.label1 = tk.Label(self)
         self.label1.place(x=230, y=100)  # Adjust x and y coordinates for the first video
-        self.checkbox_var1 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "open_arms_with_rubber_band"))
+        self.checkbox_var1 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "open_arms_with_band"))
         self.checkbox1 = ttk.Checkbutton(self, variable=self.checkbox_var1)
         self.checkbox1.place(x=310, y=430)
 
         self.label2 = tk.Label(self)
         self.label2.place(x=430, y=100)  # Adjust x and y coordinates for the second video
-        self.checkbox_var2 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "open_arms_and_up_with_rubber_band"))
+        self.checkbox_var2 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "open_arms_and_up_with_band"))
         self.checkbox2 = ttk.Checkbutton(self, variable=self.checkbox_var2)
         self.checkbox2.place(x=510, y=430)
 
         self.label3 = tk.Label(self)
         self.label3.place(x=630, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var3 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "up_with_rubber_band_and_lean_both_sides"))
+        self.checkbox_var3 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "up_with_band_and_lean"))
         self.checkbox3 = ttk.Checkbutton(self, variable=self.checkbox_var3)
         self.checkbox3.place(x=710, y=430)
 
 
         # Video paths
-        video_file1 = 'Videos//open_arms_with_rubber_band_vid.mp4'
+        video_file1 = 'Videos//open_arms_with_band_vid.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
 
-        video_file2 = 'Videos//open_arms_and_up_with_rubber_band_vid.mp4'
+        video_file2 = 'Videos//open_arms_and_up_with_band_vid.mp4'
         video_path2 = os.path.join(os.getcwd(), video_file2)
         self.cap2 = cv2.VideoCapture(video_path2)
 
-        video_file3 = 'Videos//up_with_rubber_band_and_lean_both_sides_vid.mp4'
+        video_file3 = 'Videos//up_with_band_and_lean_vid.mp4'
         video_path3 = os.path.join(os.getcwd(), video_file3)
         self.cap3 = cv2.VideoCapture(video_path3)
 
@@ -827,10 +834,11 @@ class ChooseRubberBandExercisesPage(tk.Frame):
                 self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened()):
             print("Error opening video streams or files")
 
-        # Play videos
-        play_video(self.cap1, self.label1, "open_arms_with_rubber_band", "rubber_band")
-        play_video(self.cap2, self.label2,"open_arms_and_up_with_rubber_band", "rubber_band")  # Change "Page2" to the name of the page you want to switch to
-        play_video(self.cap3, self.label3,"up_with_rubber_band_and_lean_both_sides", "rubber_band")  # Change "Page3" to the name of the page you want to switch to
+        else:
+            # Play videos
+            play_video(self.cap1, self.label1, "open_arms_with_band", "band")
+            play_video(self.cap2, self.label2,"open_arms_and_up_with_band", "band")  # Change "Page2" to the name of the page you want to switch to
+            play_video(self.cap3, self.label3,"up_with_band_and_lean", "band")  # Change "Page3" to the name of the page you want to switch to
 
 
     def on_arrow_click_forward(self):
@@ -847,9 +855,9 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
 
     def save_changes(self):
-        new_values_ex_patient = {"open_arms_with_rubber_band": bool(self.checkbox_var1.get()),
-                                 "open_arms_and_up_with_rubber_band": bool(self.checkbox_var2.get()),
-                                 "up_with_rubber_band_and_lean_both_sides": bool(self.checkbox_var3.get())}
+        new_values_ex_patient = {"open_arms_with_band": bool(self.checkbox_var1.get()),
+                                 "open_arms_and_up_with_band": bool(self.checkbox_var2.get()),
+                                 "up_with_band_and_lean": bool(self.checkbox_var3.get())}
 
         Excel.find_and_change_values_Patients(s.chosen_patient_ID, new_values_ex_patient)
 
@@ -926,11 +934,12 @@ class ChooseStickExercisesPage(tk.Frame):
                 self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened()):
             print("Error opening video streams or files")
 
-        # Play videos
-        play_video(self.cap1, self.label1, "bend_elbows_stick", "stick")
-        play_video(self.cap2, self.label2,"bend_elbows_and_up_stick", "stick")
-        play_video(self.cap3, self.label3,"arms_up_and_down_stick", "stick")
-        play_video(self.cap4, self.label4,"switch_with_stick", "stick")
+        else:
+            # Play videos
+            play_video(self.cap1, self.label1, "bend_elbows_stick", "stick")
+            play_video(self.cap2, self.label2,"bend_elbows_and_up_stick", "stick")
+            play_video(self.cap3, self.label3,"arms_up_and_down_stick", "stick")
+            play_video(self.cap4, self.label4,"switch_with_stick", "stick")
 
 
     def on_arrow_click_forward(self):
@@ -998,7 +1007,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
 
         self.label4 = tk.Label(self)
         self.label4.place(x=725, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var4 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "raising_right_and_left_hand_alternately_notool"))
+        self.checkbox_var4 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "raising_hands_diagonally_notool"))
         self.checkbox4 = ttk.Checkbutton(self, variable=self.checkbox_var4)
         self.checkbox4.place(x=805, y=430)
 
@@ -1016,7 +1025,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
         video_path3 = os.path.join(os.getcwd(), video_file3)
         self.cap3 = cv2.VideoCapture(video_path3)
 
-        video_file4 = 'Videos//raising_right_and_left_hand_alternately_notool_vid.mp4'
+        video_file4 = 'Videos//raising_hands_diagonally_notool_vid.mp4'
         video_path4 = os.path.join(os.getcwd(), video_file4)
         self.cap4 = cv2.VideoCapture(video_path4)
 
@@ -1026,12 +1035,12 @@ class ChooseNoToolExercisesPage(tk.Frame):
         if not (
                 self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened()):
             print("Error opening video streams or files")
-
-        # Play videos
-        play_video(self.cap1, self.label1, "hands_behind_and_lean_notool", "no_tool")
-        play_video(self.cap2, self.label2,"right_hand_up_and_bend_notool", "no_tool")
-        play_video(self.cap3, self.label3,"left_hand_up_and_bend_notool", "no_tool")
-        play_video(self.cap4, self.label4,"raising_right_and_left_hand_alternately_notool", "no_tool")
+        else:
+            # Play videos
+            play_video(self.cap1, self.label1, "hands_behind_and_lean_notool", "no_tool")
+            play_video(self.cap2, self.label2,"right_hand_up_and_bend_notool", "no_tool")
+            play_video(self.cap3, self.label3,"left_hand_up_and_bend_notool", "no_tool")
+            play_video(self.cap4, self.label4,"raising_hands_diagonally_notool", "no_tool")
 
 
     def on_end_click(self):
@@ -1051,7 +1060,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
         new_values_ex_patient = {"hands_behind_and_lean_notool": bool(self.checkbox_var1.get()),
                                  "right_hand_up_and_bend_notool": bool(self.checkbox_var2.get()),
                                  "left_hand_up_and_bend_notool": bool(self.checkbox_var3.get()),
-                                 "raising_right_and_left_hand_alternately_notool": bool(self.checkbox_var4.get())}
+                                 "raising_hands_diagonally_notool": bool(self.checkbox_var4.get())}
 
         Excel.find_and_change_values_Patients(s.chosen_patient_ID, new_values_ex_patient)
 
@@ -1068,7 +1077,7 @@ class GraphPage(tk.Frame):
 
         if previous=="ball":
             previous_page=ChooseBallExercisesPage
-        elif previous=="rubber_band":
+        elif previous=="band":
             previous_page=ChooseRubberBandExercisesPage
         elif previous=="stick":
             previous_page=ChooseStickExercisesPage
@@ -1086,6 +1095,8 @@ class GraphPage(tk.Frame):
             df = pd.read_excel(s.excel_file_path_Patient, sheet_name=exercise)
             success_flag = True  # Set the flag to True if reading is successful
 
+            if self.get_number_of_angles_in_exercise(exercise)==1:
+                self.one_angle_graph(df)
             if self.get_number_of_angles_in_exercise(exercise)==2:
                 self.two_angles_graph(df)
             if self.get_number_of_angles_in_exercise(exercise)==3:
@@ -1131,34 +1142,71 @@ class GraphPage(tk.Frame):
     def three_angles_graph(self, df):
         first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
         y_values_1=df.iloc[72, :]
-        self.draw_graph(df.columns, y_values_1, first_graph_name, 20, 75, min(y_values_1), max(y_values_1), mean(y_values_1), stdev(y_values_1))
+        self.draw_graph(df.columns, y_values_1, first_graph_name, 20, 100, min(y_values_1), max(y_values_1), mean(y_values_1), stdev(y_values_1))
 
         second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
         y_values_2=df.iloc[73, :]
-        self.draw_graph(df.columns, y_values_2, second_graph_name, 20, 300, min(y_values_2), max(y_values_2), mean(y_values_2), stdev(y_values_2))
+        self.draw_graph(df.columns, y_values_2, second_graph_name, 20, 325, min(y_values_2), max(y_values_2), mean(y_values_2), stdev(y_values_2))
 
         second_graph_name = df.iloc[24, 0] + ", " + df.iloc[28, 0] + ", " + df.iloc[32, 0]
         y_values_3= df.iloc[74, :]
-        self.draw_graph(df.columns, y_values_3, second_graph_name, 350, 75, min(y_values_3), max(y_values_3), mean(y_values_3), stdev(y_values_3))
+        self.draw_graph(df.columns, y_values_3, second_graph_name, 350, 100, min(y_values_3), max(y_values_3), mean(y_values_3), stdev(y_values_3))
 
         second_graph_name = df.iloc[36, 0] + ", " + df.iloc[40, 0] + ", " + df.iloc[44, 0]
         y_values_4= df.iloc[75, :]
-        self.draw_graph(df.columns, y_values_4, second_graph_name, 350, 300, min(y_values_4), max(y_values_4), mean(y_values_4), stdev(y_values_4))
+        self.draw_graph(df.columns, y_values_4, second_graph_name, 350, 325, min(y_values_4), max(y_values_4), mean(y_values_4), stdev(y_values_4))
 
         second_graph_name = df.iloc[48, 0] + ", " + df.iloc[52, 0] + ", " + df.iloc[56, 0]
         y_values_5 = df.iloc[76, :]
-        self.draw_graph(df.columns, y_values_5, second_graph_name, 680, 75, min(y_values_5), max(y_values_5), mean(y_values_5), stdev(y_values_5))
+        self.draw_graph(df.columns, y_values_5, second_graph_name, 680, 100, min(y_values_5), max(y_values_5), mean(y_values_5), stdev(y_values_5))
 
         second_graph_name = df.iloc[60, 0] + ", " + df.iloc[64, 0] + ", " + df.iloc[68, 0]
         y_values_6 = df.iloc[77, :]
-        self.draw_graph(df.columns, y_values_6, second_graph_name, 680, 300, min(y_values_6), max(y_values_6), mean(y_values_6), stdev(y_values_6))
+        self.draw_graph(df.columns, y_values_6, second_graph_name, 680, 325, min(y_values_6), max(y_values_6), mean(y_values_6), stdev(y_values_6))
+
+
+    def two_angles_graph(self, df):
+        first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
+        y_values_1=df.iloc[48, :]
+        y_values_1_float = y_values_1.astype(float)
+        self.draw_graph(df.columns, y_values_1_float, first_graph_name, 190, 100, min(y_values_1_float), max(y_values_1_float), mean(y_values_1_float), stdev(y_values_1_float))
+
+        second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
+        y_values_2=df.iloc[49, :]
+        y_values_2_float = y_values_2.astype(float)
+        self.draw_graph(df.columns, y_values_2_float, second_graph_name, 190, 325, min(y_values_2_float), max(y_values_2_float), mean(y_values_2_float), stdev(y_values_2_float))
+
+        second_graph_name = df.iloc[24, 0] + ", " + df.iloc[28, 0] + ", " + df.iloc[32, 0]
+        y_values_3= df.iloc[50, :]
+        y_values_3_float = y_values_3.astype(float)
+        self.draw_graph(df.columns, y_values_3_float, second_graph_name, 540, 100, min(y_values_3_float), max(y_values_3_float), mean(y_values_3_float), stdev(y_values_3_float))
+
+        second_graph_name = df.iloc[36, 0] + ", " + df.iloc[40, 0] + ", " + df.iloc[44, 0]
+        y_values_4= df.iloc[51, :]
+        y_values_4_float = y_values_4.astype(float)
+        self.draw_graph(df.columns, y_values_4_float, second_graph_name, 540, 325, min(y_values_4_float), max(y_values_4_float), mean(y_values_4_float), stdev(y_values_4_float))
+
+
+    def one_angle_graph(self, df):
+        first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
+        y_values_1 = df.iloc[24, :]
+        self.draw_graph(df.columns, y_values_1, first_graph_name, 20, 75, min(y_values_1), max(y_values_1), mean(y_values_1), stdev(y_values_1))
+
+        second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
+        y_values_2 = df.iloc[25, :]
+        self.draw_graph(df.columns, y_values_2, second_graph_name, 20, 300, min(y_values_2), max(y_values_2),mean(y_values_2), stdev(y_values_2))
+
+    import matplotlib.pyplot as plt
+    from PIL import Image, ImageTk
 
     def draw_graph(self, x_values, y_values, graph_name, x_location, y_location, min_val, max_val, average, sd):
         # Create a figure and axis with constrained layout
-        fig, ax = plt.subplots(figsize=(3, 2), constrained_layout=True)  # Adjust figsize as needed
+        fig, ax = plt.subplots(figsize=(3, 2), constrained_layout=True)  # Keep the same size
 
-        # Plot the graph
-        ax.plot(x_values, y_values, marker='o')
+        # Plot the graph with smaller marker size
+        marker_size = 0.5  # Adjust this value as needed to control the marker size relative to the figure size
+        ax.plot(x_values, y_values, marker='o', markersize=marker_size, linestyle='-', color='blue',
+                alpha=0.5)  # Adjust parameters as needed
 
         # Set axis labels
         ax.set_xlabel('הדידמ רפסמ')
@@ -1183,6 +1231,7 @@ class GraphPage(tk.Frame):
         label = tk.Label(self, image=image)
         label.image = image
         label.place(x=x_location, y=y_location)
+
 
 ############################################### Exercises Pages ########################################################
 class DemoPage(tk.Frame):
@@ -1388,6 +1437,159 @@ class GoodbyePage(tk.Frame):
         tk.Label(self, image=self.photo_image).pack()
 
 
+######################################################## Effort scale Page #################################################
+class EffortScale(tk.Frame):
+    def __init__(self, master, exercises, **kwargs):
+        tk.Frame.__init__(self, master, **kwargs)
+        if not exercises:
+            s.finished_effort= True
+
+        else:
+            self.exercises= exercises
+            image = Image.open('Pictures//background.jpg')
+            self.photo_image = ImageTk.PhotoImage(image)
+            self.background_label = tk.Label(self, image=self.photo_image)
+            self.background_label.pack()
+            self.chosen_effort= -1
+
+            self.label = tk.Label(self)
+            self.label.place(x=700, y=200)  # Adjust x and y coordinates for the fifth video
+            # Video paths
+            video_file = 'Videos//'+ exercises[0]+ '_vid.mp4'
+            video_path = os.path.join(os.getcwd(), video_file)
+            self.cap = cv2.VideoCapture(video_path)
+
+            if not (self.cap.isOpened()):
+                print("Error opening video streams or files")
+
+                # Play videos
+            play_video(self.cap, self.label, exercises[0], None)
+
+
+            ## buttons to press for scale
+            image0 = Image.open('Pictures//scale_0.jpg')
+            resized_image0 = image0.resize((350, 40), Image.LANCZOS)
+            self.photo_image0 = ImageTk.PhotoImage(resized_image0)
+            button0= tk.Button(self,image=self.photo_image0, command=self.on_click_0)
+            button0.place(height=40, width=350, x=100, y=100)
+
+            image1 = Image.open('Pictures//scale_1.jpg')
+            resized_image1 = image1.resize((350, 40), Image.LANCZOS)
+            self.photo_image1 = ImageTk.PhotoImage(resized_image1)
+            button1= tk.Button(self,image=self.photo_image1, command=self.on_click_1)
+            button1.place(height=40, width=350, x=100, y=140)
+
+            image2 = Image.open('Pictures//scale_2.jpg')
+            resized_image2= image2.resize((350, 40), Image.LANCZOS)
+            self.photo_image2 = ImageTk.PhotoImage(resized_image2)
+            button2 = tk.Button(self, image=self.photo_image2, command=self.on_click_2)
+            button2.place(height=40, width=350, x=100, y=180)
+
+            image3 = Image.open('Pictures//scale_3.jpg')
+            resized_image3 = image3.resize((350, 40), Image.LANCZOS)
+            self.photo_image3 = ImageTk.PhotoImage(resized_image3)
+            button3 = tk.Button(self, image=self.photo_image3, command=self.on_click_3)
+            button3.place(height=40, width=350, x=100, y=220)
+
+            image4 = Image.open('Pictures//scale_4.jpg')
+            resized_image4 = image4.resize((350, 40), Image.LANCZOS)
+            self.photo_image4 = ImageTk.PhotoImage(resized_image4)
+            button4 = tk.Button(self, image=self.photo_image4, command=self.on_click_4)
+            button4.place(height=40, width=350, x=100, y=260)
+
+            image5 = Image.open('Pictures//scale_5.jpg')
+            resized_image5 = image5.resize((350, 40), Image.LANCZOS)
+            self.photo_image5 = ImageTk.PhotoImage(resized_image5)
+            button5 = tk.Button(self, image=self.photo_image5, command=self.on_click_5)
+            button5.place(height=40, width=350, x=100, y=300)
+
+            image6 = Image.open('Pictures//scale_6.jpg')
+            resized_image6 = image6.resize((350, 40), Image.LANCZOS)
+            self.photo_image6 = ImageTk.PhotoImage(resized_image6)
+            button6 = tk.Button(self, image=self.photo_image6, command=self.on_click_6)
+            button6.place(height=40, width=350, x=100, y=340)
+
+            image7 = Image.open('Pictures//scale_7.jpg')
+            resized_image7 = image7.resize((350, 40), Image.LANCZOS)
+            self.photo_image7 = ImageTk.PhotoImage(resized_image7)
+            button7 = tk.Button(self, image=self.photo_image7, command=self.on_click_7)
+            button7.place(height=40, width=350, x=100, y=380)
+
+            image8 = Image.open('Pictures//scale_8.jpg')
+            resized_image8 = image8.resize((350, 40), Image.LANCZOS)
+            self.photo_image8 = ImageTk.PhotoImage(resized_image8)
+            button8 = tk.Button(self, image=self.photo_image8, command=self.on_click_8)
+            button8.place(height=40, width=350, x=100, y=420)
+
+            image9 = Image.open('Pictures//scale_9.jpg')
+            resized_image9 = image9.resize((350, 40), Image.LANCZOS)
+            self.photo_image9 = ImageTk.PhotoImage(resized_image9)
+            button9 = tk.Button(self, image=self.photo_image9, command=self.on_click_9)
+            button9.place(height=40, width=350, x=100, y=460)
+
+            image10 = Image.open('Pictures//scale_10.jpg')
+            resized_image10 = image10.resize((350, 40), Image.LANCZOS)
+            self.photo_image10 = ImageTk.PhotoImage(resized_image10)
+            button10 = tk.Button(self, image=self.photo_image10, command=self.on_click_10)
+            button10.place(height=40, width=350, x=100, y=500)
+
+
+    def on_click_0(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 0})
+        exercises= self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_1(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 1})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_2(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 2})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_3(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 3})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_4(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 4})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_5(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 5})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_6(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 6})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_7(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 7})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_8(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 8})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_9(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 9})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+    def on_click_10(self):
+        s.list_effort_each_exercise.update({self.exercises[0]: 10})
+        exercises = self.exercises[1:]
+        s.screen.switch_frame(EffortScale, exercises=exercises)
+
+
 class FullScreenApp(object):
     def __init__(self, master, **kwargs):
         self.master=master
@@ -1407,6 +1609,11 @@ class FullScreenApp(object):
 if __name__ == "__main__":
     s.audio_path = 'audio files/Hebrew/Male/'
     s.screen = Screen()
-    s.screen.switch_frame(EntrancePage)
+    s.finished_effort= False
+    s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
+    s.list_effort_each_exercise= {}
+    s.chosen_patient_ID= '314808981'
+    #s.screen.switch_frame(ChooseBallExercisesPage)
+    s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

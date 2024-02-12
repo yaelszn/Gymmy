@@ -25,9 +25,9 @@ class Camera(threading.Thread):
         # if joint1.is_joint_all_zeros() or joint2.is_joint_all_zeros() or joint3.is_joint_all_zeros():
         #   return None
 
-        a = np.array([joint1.x, joint1.y, joint1.z])  # First
-        b = np.array([joint2.x, joint2.y, joint2.z])  # Mid
-        c = np.array([joint3.x, joint3.y, joint3.z])  # End
+        a = np.array([joint1.x, joint1.y, joint1.z], dtype=np.float32)  # First
+        b = np.array([joint2.x, joint2.y, joint2.z], dtype=np.float32)  # Mid
+        c = np.array([joint3.x, joint3.y, joint3.z], dtype=np.float32)  # End
 
         ba = a - b
         bc = c - b
@@ -51,22 +51,23 @@ class Camera(threading.Thread):
 
 
     def run(self):
-        print("CAMERA START")
-        medaip = MP()
-        medaip.start()
-        self.zed = MP.get_zed(medaip)
+        while True:
+            print("CAMERA START")
+            medaip = MP()
+            medaip.start()
+            self.zed = MP.get_zed(medaip)
 
-        while not s.finish_workout:
-            time.sleep(0.00000001)  # Prevents the MP to stuck
-            if (s.req_exercise != "" and s.demo_finish) or (s.req_exercise=="hello_waving"):
-                ex = s.req_exercise
-                print("CAMERA: Exercise ", ex, " start")
-                time.sleep(1)
-                getattr(self, ex)()
-                print("CAMERA: Exercise ", ex, " done")
-                s.req_exercise = ""
-                s.camera_done = True
-        print("Camera Done")
+            while not s.finish_workout:
+                time.sleep(0.00000001)  # Prevents the MP to stuck
+                if (s.req_exercise != "" and s.demo_finish) or (s.req_exercise=="hello_waving"):
+                    ex = s.req_exercise
+                    print("CAMERA: Exercise ", ex, " start")
+                    time.sleep(1)
+                    getattr(self, ex)()
+                    print("CAMERA: Exercise ", ex, " done")
+                    s.req_exercise = ""
+                    s.camera_done = True
+            print("Camera Done")
 
 
     def get_skeleton_data(self):
@@ -259,7 +260,7 @@ class Camera(threading.Thread):
             #else:
              #   s.screen.switch_frame(Fail)
 
-    # s.ex_list.append([exercise_name, counter])
+        # s.ex_list.update({exercise_name: counter})
         #Excel.wf_joints(exercise_name, list_joints)
 
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
@@ -357,8 +358,9 @@ class Camera(threading.Thread):
                     break
 
             self.end_exercise(counter)
-          #  s.ex_list.append([exercise_name, counter])
-           # Excel.wf_joints(exercise_name, list_joints)
+            s.ex_list.update({exercise_name: counter})
+            Excel.wf_joints(exercise_name, list_joints)
+
 
     def exercise_two_angles_3d_with_axis_check(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                                joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, use_alternate_angles=False,
@@ -461,7 +463,7 @@ class Camera(threading.Thread):
 
         self.end_exercise(counter)
 
-    #  s.ex_list.append([exercise_name, counter])
+    # s.ex_list.update({exercise_name: counter})
     # Excel.wf_joints(exercise_name, list_joints)
 
 
@@ -541,7 +543,7 @@ class Camera(threading.Thread):
 
         self.end_exercise(counter)
 
-    #  s.ex_list.append([exercise_name, counter])
+    # s.ex_list.update({exercise_name: counter})
     # Excel.wf_joints(exercise_name, list_joints)
 
 
@@ -603,7 +605,7 @@ class Camera(threading.Thread):
 
         self.end_exercise(counter)
 
-       # s.ex_list.append([exercise_name, counter])
+       # s.ex_list.update({exercise_name: counter})
         #Excel.wf_joints(exercise_name, list_joints)
 
 
@@ -655,20 +657,20 @@ class Camera(threading.Thread):
 
 ########################################################### Set with a rubber band
 
-    def open_arms_with_rubber_band(self):  # EX6
-        self.exercise_two_angles_3d("open_arms_with_rubber_band","hip", "shoulder", "wrist", 75, 95, 70, 95,
+    def open_arms_with_band(self):  # EX6
+        self.exercise_two_angles_3d("open_arms_with_band","hip", "shoulder", "wrist", 75, 95, 70, 95,
                                     "wrist", "shoulder", "shoulder", 110,150,70,95,True)
 
         #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
 
-    def open_arms_and_up_with_rubber_band(self):  # EX7
-        self.exercise_three_angles_3d("open_arms_and_up_with_rubber_band", "hip", "shoulder", "wrist", 135, 170, 60, 95,
+    def open_arms_and_up_with_band(self):  # EX7
+        self.exercise_three_angles_3d("open_arms_and_up_with_band", "hip", "shoulder", "wrist", 135, 170, 60, 95,
                                     "shoulder", "elbow", "wrist", 130,180,135,180,
                                     "elbow", "shoulder", "shoulder", 105, 130, 70, 110, True)
 
 
-    def up_with_rubber_band_and_lean_both_sides(self):  # EX8
-        self.exercise_two_angles_3d("up_with_rubber_band_and_lean_both_sides", "shoulder", "elbow", "wrist", 125, 180, 125,180,
+    def up_with_band_and_lean(self):  # EX8
+        self.exercise_two_angles_3d("up_with_band_and_lean", "shoulder", "elbow", "wrist", 125, 180, 125,180,
                                    "wrist", "hip", "hip", 120, 170, 50, 100, True, True)
 
 
@@ -696,7 +698,7 @@ class Camera(threading.Thread):
     ################################################# Set of exercises without accessories ############################################################################
 
     def hands_behind_and_lean_notool(self): # EX13
-        self.exercise_two_angles_3d("hands_behind_and_lean", "shoulder", "elbow", "wrist", 15,60,15,60,
+        self.exercise_two_angles_3d("hands_behind_and_lean_notool", "shoulder", "elbow", "wrist", 15,60,15,60,
                                     "elbow", "shoulder", "hip", 80, 110, 120, 170,False, True)
 
     #def hands_behind_and_turn_both_sides(self):  # EX14
@@ -704,14 +706,14 @@ class Camera(threading.Thread):
       #                              "elbow", "hip", "knee", 130, 115, 80, 105, False, True)
 
     def right_hand_up_and_bend_notool(self):  # EX15
-        self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 145, 0, 40, "right")
+        self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 145, 0, 40, "right")
 
     def left_hand_up_and_bend_notool(self): #EX16
-        self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 145, 0, 40, "left")
+        self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 145, 0, 40, "left")
 
 ################################בעייתי כי אפשר לעשות גם תנועה לא מלאה
-    def raising_right_and_left_hand_alternately_notool(self): # EX17
-        self.exercise_two_angles_3d_with_axis_check("raising_right_and_left_hand_alternately", "wrist", "shoulder", "hip", 0, 100, 105, 135,
+    def raising_hands_diagonally_notool(self): # EX17
+        self.exercise_two_angles_3d_with_axis_check("raising_hands_diagonally_notool", "wrist", "shoulder", "hip", 0, 100, 105, 135,
                                     "elbow", "shoulder", "shoulder", 0, 180, 40, 75, True, True)
 
 

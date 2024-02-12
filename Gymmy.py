@@ -84,29 +84,30 @@ class Gymmy(threading.Thread):
 
     ########################################################### RUN ##########################################
     def run(self):
-        try:
-            print("ROBOT START")
-            while not s.finish_workout:
-                time.sleep(0.00000001)  # Prevents the MP to stuck
-                if s.req_exercise != "" and not s.req_exercise=="hello_waving":
-                    ex = s.req_exercise
-                    time.sleep(1)
+        while True:
+            try:
+                print("ROBOT START")
+                while not s.finish_workout:
+                    time.sleep(0.00000001)  # Prevents the MP to stuck
+                    if s.req_exercise != "" and not s.req_exercise=="hello_waving":
+                        ex = s.req_exercise
+                        time.sleep(1)
 
-                    print("ROBOT: Exercise ", ex, " start")
-                    self.exercise_demo(ex)
-                    print("ROBOT: Exercise ", ex, " done")
+                        print("ROBOT: Exercise ", ex, " start")
+                        self.exercise_demo(ex)
+                        print("ROBOT: Exercise ", ex, " done")
 
 
-                    s.req_exercise = ""
-                    s.gymmy_done = True
+                        s.req_exercise = ""
+                        s.gymmy_done = True
 
-            print("Robot Done")
+                print("Robot Done")
 
-        except:
-            self.cleanup_func()
-        # time.sleep(3)
-       # except SystemExit:
-         # self.cleanup_func()
+            except:
+                self.cleanup_func()
+            # time.sleep(3)
+           # except SystemExit:
+             # self.cleanup_func()
 
        # except KeyboardInterrupt:
         #  self.cleanup_func()
@@ -325,7 +326,7 @@ class Gymmy(threading.Thread):
 # -------------------------------------- Rubber band exercises --------------------------------------
 
     # EX6
-    def open_arms_with_rubber_band(self, i):
+    def open_arms_with_band(self, i):
         self.gymmy.l_shoulder_y.goto_position(-95, 1.5, wait=False)
         self.gymmy.r_shoulder_y.goto_position(-95, 1.5, wait=False)
 
@@ -355,7 +356,7 @@ class Gymmy(threading.Thread):
 
 
     # EX7
-    def open_arms_and_up_with_rubber_band(self, i):
+    def open_arms_and_up_with_band(self, i):
         self.gymmy.l_shoulder_y.goto_position(-90, 1.5, wait=False)
         self.gymmy.r_shoulder_y.goto_position(-90, 1.5, wait=False)
 
@@ -391,7 +392,7 @@ class Gymmy(threading.Thread):
 
 
     # EX8
-    def up_with_rubber_band_and_lean_both_sides(self, i):
+    def up_with_band_and_lean(self, i):
         if i == 0:
             self.gymmy.l_shoulder_y.goto_position(-90, 1.5, wait=False)
             self.gymmy.r_shoulder_y.goto_position(-90, 1.5, wait=False)
@@ -696,7 +697,7 @@ class Gymmy(threading.Thread):
 
 
     # EX 17
-    def raising_right_and_left_hand_alternately(self, i):
+    def raising_hands_diagonally_notool(self, i):
         # left hand
         self.gymmy.l_shoulder_x.goto_position(10, 1.5, wait=False)
         #self.gymmy.l_shoulder_y.goto_position(-30, 1.5, wait=False)

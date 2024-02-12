@@ -30,9 +30,9 @@ if __name__ == '__main__':
     s.audio_path = 'audio files/' + language + '/' + gender + '/'
     s.picture_path = 'audio files/' + language + '/' + gender + '/'
     # s.str_to_say = ""
-    current_time = datetime.datetime.now()
-    s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
-                         str(current_time.minute) + "." + str(current_time.second)
+    #current_time = datetime.datetime.now()
+    #s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
+                        # str(current_time.minute) + "." + str(current_time.second)
 
     # Training variables initialization
     s.rep = 10
@@ -46,12 +46,13 @@ if __name__ == '__main__':
     s.camera_done = False
     s.robot_count = False
     s.demo_finish= False
+    s.list_effort_each_exercise={}
     s.ex_in_training=[]
     #s.exercises_start=False
     s.waved_has_tool= True # True just in order to go through the loop in Gymmy
     # Excel variable
     ############################# להוריד את הסולמיות
-    s.ex_list = []
+    s.ex_list = {}
 
     # Create all components
     s.camera = Camera()

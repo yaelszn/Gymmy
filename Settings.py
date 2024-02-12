@@ -11,6 +11,7 @@ def __init__():
     global ex_list
     global Last_workbook #the workbook of the last time the patient did every exercise
     global success_sheet
+    global effort_sheet
 
     # training variables
     global exercise_amount
@@ -27,6 +28,8 @@ def __init__():
     global waved_has_tool #the participant has the tool in his hand and is ready to start
     global demo_finish #the first demo of the exercise is done
     global ex_in_training
+    global list_effort_each_exercise #list of chosen effort to each exercise
+    global finished_effort #finished to grade the efforts of exercises
 
     # audio variables
     global audio_path
