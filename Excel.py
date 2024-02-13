@@ -56,6 +56,62 @@ def create_Last_workbook():
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
+def get_success_number(exercise):
+    try:
+        # Load the workbook
+        workbook = openpyxl.load_workbook(s.excel_file_path_Patient)
+
+        # Check if the worksheet exists
+        if "success" not in workbook.sheetnames:
+            print(f"Worksheet success not found in the workbook.")
+            return None
+
+        # Select the worksheet
+        worksheet = workbook["success"]
+
+        # Iterate through the rows in the first column and search for the value
+        for row in worksheet.iter_rows(values_only=True):
+            if row[0] == exercise:
+                # Return the value from the second column
+                return row[1]
+
+        # If the value is not found, return None
+        return None
+
+    except FileNotFoundError:
+        print(f"File success not found.")
+        return None
+
+
+
+def get_effort_number(exercise):
+    try:
+        # Load the workbook
+        workbook = openpyxl.load_workbook(s.excel_file_path_Patient)
+
+        # Check if the worksheet exists
+        if "success" not in workbook.sheetnames:
+            print(f"Worksheet success not found in the workbook.")
+            return None
+
+        # Select the worksheet
+        worksheet = workbook["effort"]
+
+        # Iterate through the rows in the first column and search for the value
+        for row in worksheet.iter_rows(values_only=True):
+            if row[0] == exercise:
+                # Return the value from the second column
+                return row[1]
+
+        # If the value is not found, return None
+        return None
+
+    except FileNotFoundError:
+        print(f"File success not found.")
+        return None
+
+
 def wf_joints(ex_name, list_joints):
     if ex_name in s.Last_workbook.sheetnames:
         # Remove the existing sheet
@@ -93,9 +149,9 @@ def success_worksheet():
     s.success_sheet.write(0, 1, "number of successful repetitions")
 
     row = 1
-    for exercise, effort in s.ex_list.items():
+    for exercise, success in s.ex_list.items():
         s.success_sheet.write(row, 0, exercise)
-        s.success_sheet.write(row, 1, effort)
+        s.success_sheet.write(row, 1, success)
 
         row += 1
 

@@ -254,14 +254,12 @@ class Camera(threading.Thread):
                 break
 
         self.end_exercise(counter)
+        s.ex_list.update({exercise_name: counter})
+        Excel.wf_joints(exercise_name, list_joints)
 
 
 
-            #else:
-             #   s.screen.switch_frame(Fail)
 
-        # s.ex_list.update({exercise_name: counter})
-        #Excel.wf_joints(exercise_name, list_joints)
 
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                                    joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, use_alternate_angles=False, left_right_differ=False):
@@ -462,9 +460,8 @@ class Camera(threading.Thread):
                 break
 
         self.end_exercise(counter)
-
-    # s.ex_list.update({exercise_name: counter})
-    # Excel.wf_joints(exercise_name, list_joints)
+        s.ex_list.update({exercise_name: counter})
+        Excel.wf_joints(exercise_name, list_joints)
 
 
     def exercise_three_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
@@ -543,8 +540,8 @@ class Camera(threading.Thread):
 
         self.end_exercise(counter)
 
-    # s.ex_list.update({exercise_name: counter})
-    # Excel.wf_joints(exercise_name, list_joints)
+        s.ex_list.update({exercise_name: counter})
+        Excel.wf_joints(exercise_name, list_joints)
 
 
     def exercise_one_angle_3d_by_sides(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side):
@@ -605,8 +602,8 @@ class Camera(threading.Thread):
 
         self.end_exercise(counter)
 
-       # s.ex_list.update({exercise_name: counter})
-        #Excel.wf_joints(exercise_name, list_joints)
+        s.ex_list.update({exercise_name: counter})
+        Excel.wf_joints(exercise_name, list_joints)
 
 
     def hello_waving(self):  # check if the participant waved
@@ -719,7 +716,7 @@ class Camera(threading.Thread):
 
 if __name__ == '__main__':
     s.exercise_amount = 6
-    s.rep = 8
+    s.rep = 10
     s.req_exercise = ""
     s.finish_workout = False
     s.waved = False
@@ -732,13 +729,14 @@ if __name__ == '__main__':
     s.demo_finish = True
     s.audio_path = 'audio files/Hebrew/Male/'
     s.screen = Screen()
+    s.patient_repititions_counting=0
 
     c = Camera()
     c.start()
     time.sleep(1)
     c.init_position()
 
-    s.req_exercise = "right_hand_up_and_bend"
+    s.req_exercise = "bend_elbows_ball"
     # s.screen.mainloop()
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

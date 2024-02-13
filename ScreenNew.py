@@ -124,24 +124,19 @@ class EntrancePage(tk.Frame):
         tk.Frame.__init__(self, master)
         image1 = Image.open('Pictures//background.jpg')
         self.photo_image1 = ImageTk.PhotoImage(image1)
-        self.background_label = tk.Label(image=self.photo_image1)
-        self.background_label.pack()
-        s.chosen_patient_ID=None
+        self.background_label = tk.Label(self, image=self.photo_image1)
+        self.background_label.pack()  # Pack the background label here
+        s.chosen_patient_ID = None
 
-        image2 = Image.open('Pictures//therapist_enterence_button.jpg')
-        self.photo_image2 = ImageTk.PhotoImage(image2)
-        button2 = tk.Button(image=self.photo_image2, command=lambda: self.on_click_therapist_chosen())
-        button2.pack()
-        button2.place(x=300, y=150)
+        enter_as_therapist_button = tk.Button(self, text="כניסת\nמטפל",
+                                              command=lambda: self.on_click_therapist_chosen(),
+                                              font=('Thaoma', 50, 'bold'), width=8, height=3, bg='#50a6ad')
+        enter_as_therapist_button.place(x=150, y=150)
 
-        image3 = Image.open('Pictures//patient_enterence_button.jpg')
-        self.photo_image3 = ImageTk.PhotoImage(image3)
-        button3 = tk.Button(image=self.photo_image3, command=lambda: self.on_click_patient_chosen())
-        button3.pack()
-        button3.place(x=680, y=150)
-
-        s.ex_in_training=[]
-
+        enter_as_patient_button = tk.Button(self, text="כניסת\nמטופל", command=lambda: self.on_click_patient_chosen(),
+                                            font=('Thaoma', 50, 'bold'), width=8, height=3, bg='#50a6ad')
+        enter_as_patient_button.place(x=530, y=150)
+        s.ex_in_training = []
 
 
     def on_click_therapist_chosen(self):
@@ -333,14 +328,14 @@ class Choose_Action_Physio(tk.Frame):
         quit_button = tk.Button(self, text="יציאה מהמערכת", command= lambda: self.on_click_quit(),font=('Thaoma', 14))
         quit_button.place(x=50, y=50)  # Adjust x and y coordinates as needed
 
-        add_physio_button = tk.Button(self, text="הוסף\nמטפל", command= lambda: self.on_register_physio_click(), font=('Thaoma', 28), width=10, height=3, bg='peachpuff')
-        add_physio_button.place(x=530, y=300)
+        add_physio_button = tk.Button(self, text="הוסף\nמטפל", command= lambda: self.on_register_physio_click(), font=('Thaoma', 28, 'bold'), width=10, height=3, bg='#50a6ad')
+        add_physio_button.place(x=530, y=325)
 
-        add_patient_button = tk.Button(self, text="הוסף\nמטופל", command= lambda: self.on_register_patient_click(), font=('Thaoma', 28), width=10,height=3, bg='peachpuff')
-        add_patient_button.place(x=250, y=300)
+        add_patient_button = tk.Button(self, text="הוסף\nמטופל", command= lambda: self.on_register_patient_click(), font=('Thaoma', 28, 'bold'), width=10,height=3, bg='#50a6ad')
+        add_patient_button.place(x=250, y=325)
 
-        go_to_training_sessions_button = tk.Button(self, text="כניסה לתוכניות אימונים מטופלים", command=lambda: s.screen.switch_frame(PatientDisplaying), font=('Thaoma', 28),width=22, height=3, bg='peachpuff')
-        go_to_training_sessions_button.place(x=258, y=100)
+        go_to_training_sessions_button = tk.Button(self, text="כניסה לתוכניות אימונים מטופלים", command=lambda: s.screen.switch_frame(PatientDisplaying), font=('Thaoma', 28, 'bold'),width=22, height=3, bg='#50a6ad')
+        go_to_training_sessions_button.place(x=258, y=125)
 
 
     def on_register_physio_click(self):
@@ -537,7 +532,7 @@ class PatientDisplaying(tk.Frame):
 
         # Set up a custom style for the Treeview
         style = ttk.Style(self)
-        style.configure("Treeview", font=("Thaoma", 13))  # Adjust the font size (16 in this case)
+        style.configure("Treeview", font=("Thaoma", 14), rowheight=30)  # Adjust the font size (16 in this case)
 
         # Add columns to the Treeview
         for col in df.columns:
@@ -552,7 +547,7 @@ class PatientDisplaying(tk.Frame):
         # Set up event handling for row selection
         self.treeview.tag_configure("selected", background="lightblue")
         self.treeview.bind("<ButtonRelease-1>", self.on_treeview_click)
-        self.treeview.config(height=15)  # Replace 15 with your desired height
+        self.treeview.config(height=10)
 
         # Pack the Treeview widget
         self.treeview.place(x=270, y=180)
@@ -560,7 +555,7 @@ class PatientDisplaying(tk.Frame):
         # Set up a vertical scrollbar
         scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
         self.treeview.configure(yscrollcommand=scrollbar.set)
-        scrollbar.place(x=725, y=180, height=self.treeview.winfo_reqheight())
+        scrollbar.place(x=725, y=180, height=325)
 
         to_choose_action_button = tk.Button(self, text="חזרה לתפריט", command=lambda: self.on_click_to_physio_menu(), font=('Thaoma', 14))
         to_choose_action_button.place(x=50, y=50)  # Adjust x and y coordinates as needed
@@ -1091,6 +1086,10 @@ class GraphPage(tk.Frame):
 
         success_flag = False
 
+        back = Image.open('Pictures//empty.jpg')
+        background_img = ImageTk.PhotoImage(back)
+
+
         try:
             df = pd.read_excel(s.excel_file_path_Patient, sheet_name=exercise)
             success_flag = True  # Set the flag to True if reading is successful
@@ -1101,6 +1100,22 @@ class GraphPage(tk.Frame):
                 self.two_angles_graph(df)
             if self.get_number_of_angles_in_exercise(exercise)==3:
                 self.three_angles_graph(df)
+
+
+            success_number= Excel.get_success_number(exercise)
+            effort_number= Excel.get_effort_number(exercise)
+
+            if success_number is not None:
+                self.label = tk.Label(self, text="מספר חזרות מוצלחות בביצוע האחרון: "+str(success_number) , image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
+                self.label.place(x=130, y=10)
+                self.label.image = background_img
+
+            if effort_number is not None:
+                self.label = tk.Label(self, text="דירוג קושי התרגיל על ידי המתאמן בביצוע האחרון: "+str(effort_number), image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
+                self.label.place(x=130, y=40)
+                self.label.image = background_img
+
+
         except (pd.errors.ParserError, FileNotFoundError):
             # Handle the case where the sheet is not found
             pass  # Continue to the next iteration
@@ -1142,27 +1157,33 @@ class GraphPage(tk.Frame):
     def three_angles_graph(self, df):
         first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
         y_values_1=df.iloc[72, :]
-        self.draw_graph(df.columns, y_values_1, first_graph_name, 20, 100, min(y_values_1), max(y_values_1), mean(y_values_1), stdev(y_values_1))
+        y_values_1_float = y_values_1.astype(float)
+        self.draw_graph(df.columns, y_values_1_float, first_graph_name, 20, 100, min(y_values_1_float), max(y_values_1_float), mean(y_values_1_float), stdev(y_values_1_float))
 
         second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
         y_values_2=df.iloc[73, :]
-        self.draw_graph(df.columns, y_values_2, second_graph_name, 20, 325, min(y_values_2), max(y_values_2), mean(y_values_2), stdev(y_values_2))
+        y_values_2_float = y_values_2.astype(float)
+        self.draw_graph(df.columns, y_values_2_float, second_graph_name, 20, 325, min(y_values_2_float), max(y_values_2_float), mean(y_values_2_float), stdev(y_values_2_float))
 
         second_graph_name = df.iloc[24, 0] + ", " + df.iloc[28, 0] + ", " + df.iloc[32, 0]
         y_values_3= df.iloc[74, :]
-        self.draw_graph(df.columns, y_values_3, second_graph_name, 350, 100, min(y_values_3), max(y_values_3), mean(y_values_3), stdev(y_values_3))
+        y_values_3_float = y_values_3.astype(float)
+        self.draw_graph(df.columns, y_values_3_float, second_graph_name, 350, 100, min(y_values_3_float), max(y_values_3_float), mean(y_values_3_float), stdev(y_values_3_float))
 
         second_graph_name = df.iloc[36, 0] + ", " + df.iloc[40, 0] + ", " + df.iloc[44, 0]
         y_values_4= df.iloc[75, :]
-        self.draw_graph(df.columns, y_values_4, second_graph_name, 350, 325, min(y_values_4), max(y_values_4), mean(y_values_4), stdev(y_values_4))
+        y_values_4_float = y_values_4.astype(float)
+        self.draw_graph(df.columns, y_values_4_float, second_graph_name, 350, 325, min(y_values_4_float), max(y_values_4_float), mean(y_values_4_float), stdev(y_values_4_float))
 
         second_graph_name = df.iloc[48, 0] + ", " + df.iloc[52, 0] + ", " + df.iloc[56, 0]
         y_values_5 = df.iloc[76, :]
-        self.draw_graph(df.columns, y_values_5, second_graph_name, 680, 100, min(y_values_5), max(y_values_5), mean(y_values_5), stdev(y_values_5))
+        y_values_5_float = y_values_5.astype(float)
+        self.draw_graph(df.columns, y_values_5_float, second_graph_name, 680, 100, min(y_values_5_float), max(y_values_5_float), mean(y_values_5_float), stdev(y_values_5_float))
 
         second_graph_name = df.iloc[60, 0] + ", " + df.iloc[64, 0] + ", " + df.iloc[68, 0]
         y_values_6 = df.iloc[77, :]
-        self.draw_graph(df.columns, y_values_6, second_graph_name, 680, 325, min(y_values_6), max(y_values_6), mean(y_values_6), stdev(y_values_6))
+        y_values_6_float = y_values_6.astype(float)
+        self.draw_graph(df.columns, y_values_6_float, second_graph_name, 680, 325, min(y_values_6_float), max(y_values_6_float), mean(y_values_6_float), stdev(y_values_6_float))
 
 
     def two_angles_graph(self, df):
@@ -1190,11 +1211,13 @@ class GraphPage(tk.Frame):
     def one_angle_graph(self, df):
         first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
         y_values_1 = df.iloc[24, :]
-        self.draw_graph(df.columns, y_values_1, first_graph_name, 20, 75, min(y_values_1), max(y_values_1), mean(y_values_1), stdev(y_values_1))
+        y_values_1_float = y_values_1.astype(float)
+        self.draw_graph(df.columns, y_values_1_float, first_graph_name, 350, 100, min(y_values_1_float), max(y_values_1_float), mean(y_values_1_float), stdev(y_values_1_float))
 
         second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
         y_values_2 = df.iloc[25, :]
-        self.draw_graph(df.columns, y_values_2, second_graph_name, 20, 300, min(y_values_2), max(y_values_2),mean(y_values_2), stdev(y_values_2))
+        y_values_2_float = y_values_2.astype(float)
+        self.draw_graph(df.columns, y_values_2_float, second_graph_name, 350, 325, min(y_values_2_float), max(y_values_2_float),mean(y_values_2_float), stdev(y_values_2_float))
 
     import matplotlib.pyplot as plt
     from PIL import Image, ImageTk
@@ -1613,7 +1636,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= '314808981'
-    #s.screen.switch_frame(ChooseBallExercisesPage)
-    s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
+    s.screen.switch_frame(PatientDisplaying)
+    #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
