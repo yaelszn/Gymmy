@@ -584,11 +584,14 @@ class PatientDisplaying(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
         excel_file_path = "Patients.xlsx"
-        df = pd.read_excel(excel_file_path, usecols=range(3))
-        new_headers = {'ID': 'תעודת זהות', 'first name': 'שם פרטי', 'last name': 'שם משפחה'}
+        df = pd.read_excel(excel_file_path, usecols=['ID', 'first name', 'last name'])
+        new_headers = {'ID': 'תעודת זהות'[::-1], 'first name': 'שם פרטי'[::-1], 'last name': 'שם משפחה'[::-1]}
         df.rename(columns=new_headers, inplace=True)
         s.chosen_patient_ID=None
         s.excel_file_path_Patient=None
+
+        for col in df.columns[1:3]:
+            df[col] = df[col].apply(lambda x: x[::-1])
 
         # Load the background image
         image = Image.open('Pictures//Patient_list.jpg')
@@ -603,7 +606,7 @@ class PatientDisplaying(tk.Frame):
 
         # Set up a custom style for the Treeview
         style = ttk.Style(self)
-        style.configure("Treeview", font=("Thaoma", 14), rowheight=30)  # Adjust the font size (16 in this case)
+        style.configure("Treeview", font=("Thaoma", 14, 'bold'), rowheight=30)  # Adjust the font size (16 in this case)
 
         # Add columns to the Treeview
         for col in df.columns:
@@ -626,7 +629,7 @@ class PatientDisplaying(tk.Frame):
         # Set up a vertical scrollbar
         scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
         self.treeview.configure(yscrollcommand=scrollbar.set)
-        scrollbar.place(x=725, y=180, height=325)
+        scrollbar.place(x=725, y=180, height=310)
 
         to_choose_action_button = tk.Button(self, text="חזרה לתפריט", command=lambda: self.on_click_to_physio_menu(), font=('Thaoma', 14))
         to_choose_action_button.place(x=50, y=50)  # Adjust x and y coordinates as needed
