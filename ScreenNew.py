@@ -128,14 +128,26 @@ class EntrancePage(tk.Frame):
         self.background_label.pack()  # Pack the background label here
         s.chosen_patient_ID = None
 
-        enter_as_therapist_button = tk.Button(self, text="כניסת\nמטפל",
-                                              command=lambda: self.on_click_therapist_chosen(),
-                                              font=('Thaoma', 50, 'bold'), width=8, height=3, bg='#50a6ad')
-        enter_as_therapist_button.place(x=150, y=150)
+        # Load images for buttons
+        therapist_image = Image.open("Pictures//therapist_enterence_button.jpg")  # Change path to your image file
+        therapist_photo = ImageTk.PhotoImage(therapist_image)
+        patient_image = Image.open("Pictures//patient_enterence_button.jpg")  # Change path to your image file
+        patient_photo = ImageTk.PhotoImage(patient_image)
 
-        enter_as_patient_button = tk.Button(self, text="כניסת\nמטופל", command=lambda: self.on_click_patient_chosen(),
-                                            font=('Thaoma', 50, 'bold'), width=8, height=3, bg='#50a6ad')
-        enter_as_patient_button.place(x=530, y=150)
+        # Create buttons with images
+        enter_as_therapist_button = tk.Button(self, image=therapist_photo,
+                                              command=lambda: self.on_click_therapist_chosen(),
+                                              width=therapist_image.width, height=therapist_image.height,
+                                              bg='#50a6ad', bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        enter_as_therapist_button.image = therapist_photo  # Store reference to image to prevent garbage collection
+        enter_as_therapist_button.place(x=150, y=130)
+
+        enter_as_patient_button = tk.Button(self, image=patient_photo,
+                                            command=lambda: self.on_click_patient_chosen(),
+                                            width=patient_image.width, height=patient_image.height,
+                                            bg='#50a6ad', bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        enter_as_patient_button.image = patient_photo  # Store reference to image to prevent garbage collection
+        enter_as_patient_button.place(x=530, y=130)
         s.ex_in_training = []
 
 
@@ -155,10 +167,20 @@ class ID_patient_fill_page(tk.Frame):
         tk.Label(self, image=self.photo_image).pack()
         self.user_id_entry_patient = tk.Entry(self, font=('Thaoma', 14), width=20)
         self.user_id_entry_patient.place(x=400, y=260)
-        # Button to retrieve information from the Entry widget
-        submit_button = tk.Button(self, text="היכנס", command=lambda: self.on_submit_patient(), font=('Thaoma', 14))
-        submit_button.place(x=480, y=300)  # Adjust x and y coordinates as needed
-        self.labels= []
+        self.labels = []
+
+        # Load image for the submit button
+        submit_image = Image.open("Pictures//enter.jpg")  # Change path to your image file
+        submit_photo = ImageTk.PhotoImage(submit_image)
+
+        # Create button with image
+        submit_button = tk.Button(self, image=submit_photo,
+                                  command=lambda: self.on_submit_patient(),
+                                  width=submit_image.width, height=submit_image.height,
+                                  bg='#50a6ad', bd=0, highlightthickness=0)  # Set highlightthickness to 0
+        submit_button.image = submit_photo  # Store reference to image to prevent garbage collection
+        submit_button.place(x=460, y=300)  # Adjust x and y coordinates as needed
+
 
 
 
@@ -182,14 +204,11 @@ class ID_patient_fill_page(tk.Frame):
 
             if row_of_patient.empty:
                 # empty image as background for label
-                back = Image.open('Pictures//empty.jpg')
+                back = Image.open('Pictures//id_not_in_system.jpg')
                 background_img = ImageTk.PhotoImage(back)
 
-                self.label = tk.Label(self, text=",תעודת זהות לא שמורה במערכת\n אנא פנה לנציג או הכנס תז חדשה",
-                                      image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=350,
-                                      height=75, anchor='center', justify='center', bd=0, highlightthickness=5,
-                                      highlightcolor='red', highlightbackground='red')
-                self.label.place(x=330, y=350)
+                self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+                self.label.place(x=250, y=360)
                 self.label.image = background_img
                 self.labels.append(self.label)
 
@@ -198,14 +217,11 @@ class ID_patient_fill_page(tk.Frame):
 
                 if ezer==0:
                     # empty image as background for label
-                    back = Image.open('Pictures//empty.jpg')
+                    back = Image.open('Pictures//no_exercsies_for_patient.jpg')
                     background_img = ImageTk.PhotoImage(back)
 
-                    self.label = tk.Label(self, text=",אין תרגילים שמורים למשתמש\n אנא פנה לנציג",
-                                          image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=350,
-                                          height=75, anchor='center', justify='center', bd=0, highlightthickness=5,
-                                          highlightcolor='red', highlightbackground='red')
-                    self.label.place(x=330, y=350)
+                    self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+                    self.label.place(x=260, y=360)
                     self.label.image = background_img
                     self.labels.append(self.label)
 
@@ -231,14 +247,11 @@ class ID_patient_fill_page(tk.Frame):
 
 
         else:
-            # empty image as background for label
-            back = Image.open('Pictures//empty.jpg')
+            back = Image.open('Pictures//no_id.jpg')
             background_img = ImageTk.PhotoImage(back)
-            self.label = tk.Label(self, text="לא הוכנסה תעודת זהות",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=200, height=40,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=405, y=370)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=320, y=360)
             self.label.image = background_img
             self.labels.append(self.label)
 
@@ -256,10 +269,21 @@ class ID_therapist_fill_page(tk.Frame):
         tk.Label(self, image = self.photo_image).pack()
         self.user_id_entry_physio= tk.Entry(self, font=('Thaoma', 14), width=20)
         self.user_id_entry_physio.place(x=400, y=260)
-        # Button to retrieve information from the Entry widget
-        submit_button = tk.Button(self, text="היכנס", command= lambda: self.on_submit_physio(), font=('Thaoma', 14))
-        submit_button.place(x=480, y=300)  # Adjust x and y coordinates as needed
         self.labels=[]
+
+
+        # Load image for the submit button
+        submit_image = Image.open("Pictures//enter.jpg")  # Change path to your image file
+        submit_photo = ImageTk.PhotoImage(submit_image)
+
+        # Create button with image
+        submit_button = tk.Button(self, image=submit_photo,
+                                  command=lambda: self.on_submit_physio(),
+                                  width=submit_image.width, height=submit_image.height,
+                                  bg='#50a6ad', bd=0, highlightthickness=0)  # Set highlightthickness to 0
+        submit_button.image = submit_photo  # Store reference to image to prevent garbage collection
+        submit_button.place(x=460, y=300)  # Adjust x and y coordinates as needed
+
 
     def on_submit_physio(self):
         self.delete_all_labels()
@@ -282,12 +306,11 @@ class ID_therapist_fill_page(tk.Frame):
 
 
             if row_of_patient.empty:
-                # empty image as background for label
-                back = Image.open('Pictures//empty.jpg')
+                back = Image.open('Pictures//id_not_in_system.jpg')
                 background_img = ImageTk.PhotoImage(back)
 
-                self.label = tk.Label(self, text=",תעודת זהות לא שמורה במערכת\n אנא פנה לנציג או הכנס תז חדשה", image=background_img,compound=tk.CENTER, font=("Thaoma", 16), width=350, height=75, anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red', highlightbackground='red')
-                self.label.place(x=330, y=350)
+                self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+                self.label.place(x=250, y=360)
                 self.label.image = background_img
                 self.labels.append(self.label)
 
@@ -301,14 +324,11 @@ class ID_therapist_fill_page(tk.Frame):
 
 
         else:
-            # empty image as background for label
-            back = Image.open('Pictures//empty.jpg')
+            back = Image.open('Pictures//no_id.jpg')
             background_img = ImageTk.PhotoImage(back)
-            self.label = tk.Label(self, text="לא הוכנסה תעודת זהות",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=200, height=40,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=405, y=370)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=320, y=360)
             self.label.image = background_img
             self.labels.append(self.label)
 
@@ -325,17 +345,48 @@ class Choose_Action_Physio(tk.Frame):
         image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image)  # self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image=self.photo_image).pack()
-        quit_button = tk.Button(self, text="יציאה מהמערכת", command= lambda: self.on_click_quit(),font=('Thaoma', 14))
-        quit_button.place(x=50, y=50)  # Adjust x and y coordinates as needed
 
-        add_physio_button = tk.Button(self, text="הוסף\nמטפל", command= lambda: self.on_register_physio_click(), font=('Thaoma', 28, 'bold'), width=10, height=3, bg='#50a6ad')
-        add_physio_button.place(x=530, y=325)
+        exit_button_img = Image.open("Pictures//exit_system.jpg")  # Change path to your image file
+        exit_button_photo = ImageTk.PhotoImage(exit_button_img)
 
-        add_patient_button = tk.Button(self, text="הוסף\nמטופל", command= lambda: self.on_register_patient_click(), font=('Thaoma', 28, 'bold'), width=10,height=3, bg='#50a6ad')
-        add_patient_button.place(x=250, y=325)
+        exit_button = tk.Button(self, image=exit_button_photo, command=lambda: self.on_click_quit(),
+                                              width=exit_button_img.width, height=exit_button_img.height, bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        exit_button.image = exit_button_photo  # Store reference to image to prevent garbage collection
+        exit_button.place(x=30, y=30)
 
-        go_to_training_sessions_button = tk.Button(self, text="כניסה לתוכניות אימונים מטופלים", command=lambda: s.screen.switch_frame(PatientDisplaying), font=('Thaoma', 28, 'bold'),width=22, height=3, bg='#50a6ad')
-        go_to_training_sessions_button.place(x=258, y=125)
+
+
+         # Load images for buttons
+        therapist_register_button_img = Image.open("Pictures//add_physio.jpg")  # Change path to your image file
+        therapist_register_button_photo = ImageTk.PhotoImage(therapist_register_button_img)
+        patient_register_button_img = Image.open("Pictures//add_patient.jpg")  # Change path to your image file
+        patient_register_button_photo = ImageTk.PhotoImage(patient_register_button_img)
+        go_to_training_sessions_page_button_img = Image.open("Pictures//to_patients_list.jpg")  # Change path to your image file
+        go_to_training_sessions_page_button_photo = ImageTk.PhotoImage(go_to_training_sessions_page_button_img)
+
+        # Create buttons with images
+        therapist_register_button = tk.Button(self, image=therapist_register_button_photo,
+                                              command=lambda: self.on_register_physio_click(),
+                                              width=therapist_register_button_img.width, height=therapist_register_button_img.height,  bg='#50a6ad', bd=0,
+                                              highlightthickness=0)  # Set border width to 0 to remove button border
+        therapist_register_button.image = therapist_register_button_photo  # Store reference to image to prevent garbage collection
+        therapist_register_button.place(x=530, y=325)
+
+        patient_register_button = tk.Button(self, image=patient_register_button_photo,
+                                            command=lambda: self.on_register_patient_click(),
+                                            width=patient_register_button_img.width, height=patient_register_button_img.height,
+                                            bg='#50a6ad', bd=0,
+                                            highlightthickness=0)  # Set border width to 0 to remove button border
+        patient_register_button.image = patient_register_button_photo  # Store reference to image to prevent garbage collection
+        patient_register_button.place(x=200, y=325)
+
+        go_to_training_sessions_page_button = tk.Button(self, image=go_to_training_sessions_page_button_photo,
+                                            command=lambda: self.on_go_to_training_sessions_page_click(),
+                                            width=go_to_training_sessions_page_button_img.width, height=go_to_training_sessions_page_button_img.height,
+                                            bg='#50a6ad', bd=0,
+                                            highlightthickness=0)  # Set border width to 0 to remove button border
+        go_to_training_sessions_page_button.image = go_to_training_sessions_page_button_photo  # Store reference to image to prevent garbage collection
+        go_to_training_sessions_page_button.place(x=200, y=150)
 
 
     def on_register_physio_click(self):
@@ -345,8 +396,11 @@ class Choose_Action_Physio(tk.Frame):
         s.screen.switch_frame(PatientRegistration)
 
 
+    def on_go_to_training_sessions_page_click(self):
+        s.screen.switch_frame(PatientDisplaying)
+
     def on_click_quit(self):
-        s.screen.switch_frame(EntrancePage)
+        s.screen.switch_frame(ID_therapist_fill_page)
 
 class PhysioRegistration(tk.Frame):
     def __init__(self, master):
@@ -376,7 +430,7 @@ class PhysioRegistration(tk.Frame):
         df = pd.read_excel(excel_file_path)
         ID_entered=self.id_entry.get()
         is_in_ID = ID_entered in df['ID'].astype(str).values #chaeck if the ID that the user inserted is already in system
-        back = Image.open('Pictures//empty.jpg')
+        back = Image.open('Pictures//empty.JPG')
         background_img = ImageTk.PhotoImage(back)
 
 
@@ -453,7 +507,7 @@ class PatientRegistration(tk.Frame):
         df = pd.read_excel(excel_file_path)
         ID_entered=self.id_entry.get()
         is_in_ID = ID_entered in df['ID'].astype(str).values #chaeck if the ID that the user inserted is already in system
-        back = Image.open('Pictures//empty.jpg')
+        back = Image.open('Pictures//empty.JPG')
         background_img = ImageTk.PhotoImage(back)
 
 
@@ -1086,7 +1140,7 @@ class GraphPage(tk.Frame):
 
         success_flag = False
 
-        back = Image.open('Pictures//empty.jpg')
+        back = Image.open('Pictures//empty.JPG')
         background_img = ImageTk.PhotoImage(back)
 
 
@@ -1636,7 +1690,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= '314808981'
-    s.screen.switch_frame(PatientDisplaying)
+    s.screen.switch_frame(Choose_Action_Physio)
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

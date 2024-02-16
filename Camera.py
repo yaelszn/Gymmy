@@ -426,7 +426,7 @@ class Camera(threading.Thread):
                     if left_right_differ:
                         if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
                                 (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
-                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < 150) & (not flag):
+                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < 180) & (not flag):
                             flag = True
                             counter += 1
                             s.patient_repititions_counting += 1
@@ -623,7 +623,7 @@ class Camera(threading.Thread):
 
     def bend_elbows_ball(self):  # EX1
         self.exercise_two_angles_3d("bend_elbows_ball", "shoulder", "elbow", "wrist",140, 180, 10, 50,
-                                    "elbow", "shoulder", "hip", 0, 40, 0, 40)
+                                    "elbow", "shoulder", "hip", 0, 60, 0, 60)
 
     def raise_arms_above_head_ball(self):  # EX2
         self.exercise_two_angles_3d("raise_arms_above_head_ball", "hip", "shoulder", "elbow", 125, 170, 0, 50,
@@ -631,7 +631,7 @@ class Camera(threading.Thread):
 
 ############################לבדוק זוויות כי קשה לי לעשות את התרגיל
     def raise_arms_forward_turn_ball(self):  # EX3
-        self.exercise_two_angles_3d_with_axis_check("raise_arms_forward_turn_ball", "shoulder", "elbow","wrist", 130, 180, 140, 180,
+        self.exercise_two_angles_3d_with_axis_check("raise_arms_forward_turn_ball", "shoulder", "elbow","wrist", 100, 180, 140, 180,
                                     "wrist", "hip", "hip",105,140,35,60, True, True)
                                     #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
 
