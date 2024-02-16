@@ -140,14 +140,14 @@ class EntrancePage(tk.Frame):
                                               width=therapist_image.width, height=therapist_image.height,
                                               bg='#50a6ad', bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
         enter_as_therapist_button.image = therapist_photo  # Store reference to image to prevent garbage collection
-        enter_as_therapist_button.place(x=150, y=130)
+        enter_as_therapist_button.place(x=160, y=130)
 
         enter_as_patient_button = tk.Button(self, image=patient_photo,
                                             command=lambda: self.on_click_patient_chosen(),
                                             width=patient_image.width, height=patient_image.height,
                                             bg='#50a6ad', bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
         enter_as_patient_button.image = patient_photo  # Store reference to image to prevent garbage collection
-        enter_as_patient_button.place(x=530, y=130)
+        enter_as_patient_button.place(x=540, y=130)
         s.ex_in_training = []
 
 
@@ -364,13 +364,22 @@ class Choose_Action_Physio(tk.Frame):
         go_to_training_sessions_page_button_img = Image.open("Pictures//to_patients_list.jpg")  # Change path to your image file
         go_to_training_sessions_page_button_photo = ImageTk.PhotoImage(go_to_training_sessions_page_button_img)
 
+        go_to_training_sessions_page_button = tk.Button(self, image=go_to_training_sessions_page_button_photo,
+                                                        command=lambda: self.on_go_to_training_sessions_page_click(),
+                                                        width=go_to_training_sessions_page_button_img.width,
+                                                        height=go_to_training_sessions_page_button_img.height,
+                                                        bg='#50a6ad', bd=0,
+                                                        highlightthickness=0)  # Set border width to 0 to remove button border
+        go_to_training_sessions_page_button.image = go_to_training_sessions_page_button_photo  # Store reference to image to prevent garbage collection
+        go_to_training_sessions_page_button.place(x=195, y=120)
+
         # Create buttons with images
         therapist_register_button = tk.Button(self, image=therapist_register_button_photo,
                                               command=lambda: self.on_register_physio_click(),
                                               width=therapist_register_button_img.width, height=therapist_register_button_img.height,  bg='#50a6ad', bd=0,
                                               highlightthickness=0)  # Set border width to 0 to remove button border
         therapist_register_button.image = therapist_register_button_photo  # Store reference to image to prevent garbage collection
-        therapist_register_button.place(x=530, y=325)
+        therapist_register_button.place(x=535, y=325)
 
         patient_register_button = tk.Button(self, image=patient_register_button_photo,
                                             command=lambda: self.on_register_patient_click(),
@@ -378,15 +387,9 @@ class Choose_Action_Physio(tk.Frame):
                                             bg='#50a6ad', bd=0,
                                             highlightthickness=0)  # Set border width to 0 to remove button border
         patient_register_button.image = patient_register_button_photo  # Store reference to image to prevent garbage collection
-        patient_register_button.place(x=200, y=325)
+        patient_register_button.place(x=195, y=325)
 
-        go_to_training_sessions_page_button = tk.Button(self, image=go_to_training_sessions_page_button_photo,
-                                            command=lambda: self.on_go_to_training_sessions_page_click(),
-                                            width=go_to_training_sessions_page_button_img.width, height=go_to_training_sessions_page_button_img.height,
-                                            bg='#50a6ad', bd=0,
-                                            highlightthickness=0)  # Set border width to 0 to remove button border
-        go_to_training_sessions_page_button.image = go_to_training_sessions_page_button_photo  # Store reference to image to prevent garbage collection
-        go_to_training_sessions_page_button.place(x=200, y=150)
+
 
 
     def on_register_physio_click(self):
@@ -408,18 +411,32 @@ class PhysioRegistration(tk.Frame):
         image = Image.open('Pictures//physio_registration.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
-        to_choose_action_button = tk.Button(self, text="חזרה לתפריט", command=lambda: self.on_click_to_physio_menu(),font=('Thaoma', 14))
-        to_choose_action_button.place(x=50, y=50)  # Adjust x and y coordinates as needed
+
+        back_button_img = Image.open("Pictures//back_to_menu.jpg")  # Change path to your image file
+        back_button_photo = ImageTk.PhotoImage(back_button_img)
+
+        back_button = tk.Button(self, image=back_button_photo, command=lambda: self.on_click_to_physio_menu(),
+                                              width=back_button_img.width, height=back_button_img.height, bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        back_button.image = back_button_photo  # Store reference to image to prevent garbage collection
+        back_button.place(x=30, y=30)
+
+
 
         self.first_name_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
-        self.first_name_entry.place(x=370, y=260)
+        self.first_name_entry.place(x=370, y=190)
         self.last_name_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
-        self.last_name_entry.place(x=370, y=320)
+        self.last_name_entry.place(x=370, y=250)
         self.id_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
-        self.id_entry.place(x=370, y=385)
-        physio_registration_button = tk.Button(self, text="הוסף", command=lambda: self.on_click_physio_registration(),
-                                           font=('Thaoma', 14))
-        physio_registration_button.place(x=430, y=450)
+        self.id_entry.place(x=370, y=310)
+
+        add_physio_button_img = Image.open("Pictures//add.jpg")  # Change path to your image file
+        add_physio_button_photo = ImageTk.PhotoImage(add_physio_button_img)
+
+        add_physio_button = tk.Button(self, image=add_physio_button_photo, command=lambda: self.on_click_physio_registration(),
+                                width=add_physio_button_img.width, height=add_physio_button_img.height, bd=0,
+                                highlightthickness=0)  # Set border width to 0 to remove button border
+        add_physio_button.image = add_physio_button_photo  # Store reference to image to prevent garbage collection
+        add_physio_button.place(x=425, y=365)
         self.labels=[] #collect the labels that apear so that on a click on the button i can delete them
 
 
@@ -435,21 +452,20 @@ class PhysioRegistration(tk.Frame):
 
 
         if ID_entered=="":
-            self.label = tk.Label(self, text="לא הוכנסה תעודת זהות",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=250, height=50,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=340, y=500)
+            back = Image.open('Pictures//no_id.jpg')
+            no_id_label = ImageTk.PhotoImage(back)
+            self.label = tk.Label(self, image=no_id_label, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=290, y=425)
+            self.label.image = no_id_label
             self.labels.append(self.label)
 
         elif is_in_ID is True:
-            self.label = tk.Label(self, text="תעודת הזהות כבר שמורה במערכת",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=350, height=50,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=300, y=500)
+            back = Image.open('Pictures//id_already_in_system.jpg')
+            id_already_in_system = ImageTk.PhotoImage(back)
+            self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=220, y=425)
+            self.label.image = id_already_in_system
             self.labels.append(self.label)
-
 
 
         else: #insret a new row to the physio excel
@@ -458,11 +474,12 @@ class PhysioRegistration(tk.Frame):
             new_row_df = pd.DataFrame([new_row_data])
             df = pd.concat([df, new_row_df], ignore_index=True)
             df.to_excel(excel_file_path, index=False)
-            self.label = tk.Label(self, text="הפיזיותרפיסט נוסף בהצלחה",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=350, height=50,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=300, y=500)
+
+            back = Image.open('Pictures//successfully_added_physio.jpg')
+            successfully_added_physio = ImageTk.PhotoImage(back)
+            self.label = tk.Label(self, image=successfully_added_physio, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=280, y=425)
+            self.label.image = successfully_added_physio
             self.first_name_entry.delete(0, tk.END)
             self.last_name_entry.delete(0, tk.END)
             self.id_entry.delete(0, tk.END)
@@ -1690,7 +1707,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= '314808981'
-    s.screen.switch_frame(Choose_Action_Physio)
+    s.screen.switch_frame(PhysioRegistration)
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
