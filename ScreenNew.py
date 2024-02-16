@@ -371,7 +371,7 @@ class Choose_Action_Physio(tk.Frame):
                                                         bg='#50a6ad', bd=0,
                                                         highlightthickness=0)  # Set border width to 0 to remove button border
         go_to_training_sessions_page_button.image = go_to_training_sessions_page_button_photo  # Store reference to image to prevent garbage collection
-        go_to_training_sessions_page_button.place(x=195, y=120)
+        go_to_training_sessions_page_button.place(x=225, y=120)
 
         # Create buttons with images
         therapist_register_button = tk.Button(self, image=therapist_register_button_photo,
@@ -379,7 +379,7 @@ class Choose_Action_Physio(tk.Frame):
                                               width=therapist_register_button_img.width, height=therapist_register_button_img.height,  bg='#50a6ad', bd=0,
                                               highlightthickness=0)  # Set border width to 0 to remove button border
         therapist_register_button.image = therapist_register_button_photo  # Store reference to image to prevent garbage collection
-        therapist_register_button.place(x=535, y=325)
+        therapist_register_button.place(x=535, y=310)
 
         patient_register_button = tk.Button(self, image=patient_register_button_photo,
                                             command=lambda: self.on_register_patient_click(),
@@ -387,7 +387,7 @@ class Choose_Action_Physio(tk.Frame):
                                             bg='#50a6ad', bd=0,
                                             highlightthickness=0)  # Set border width to 0 to remove button border
         patient_register_button.image = patient_register_button_photo  # Store reference to image to prevent garbage collection
-        patient_register_button.place(x=195, y=325)
+        patient_register_button.place(x=225, y=310)
 
 
 
@@ -1707,7 +1707,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= '314808981'
-    s.screen.switch_frame(PhysioRegistration)
+    s.screen.switch_frame(Choose_Action_Physio)
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
