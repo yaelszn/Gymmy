@@ -90,8 +90,8 @@ class MP(threading.Thread):
         image = sl.Mat()
 
         with mp_pose.Pose(
-                min_detection_confidence=0.8,
-                min_tracking_confidence=0.5) as pose:
+                min_detection_confidence=0.85,
+                min_tracking_confidence=0.7) as pose:
 
             # Create a UDP socket
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
