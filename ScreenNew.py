@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import atexit
+import threading
 import time
 import tkinter as tk
 from datetime import datetime
@@ -10,6 +11,8 @@ import openpyxl
 from gtts import gTTS
 from gtts.tokenizer import Tokenizer
 import os
+import matplotlib
+matplotlib.use('TkAgg')  # Use the TkAgg backend
 
 import cv2
 import pandas as pd
@@ -1434,13 +1437,20 @@ class GraphPage(tk.Frame):
     from PIL import Image, ImageTk
 
     def draw_graph(self, x_values, y_values, graph_name, x_location, y_location, min_val, max_val, average, sd):
+        # Create a background thread for plotting
+        plot_thread = threading.Thread(target=self.plot_graph,
+                                       args=(x_values, y_values, graph_name, min_val, max_val, average, sd, x_location,
+                                             y_location))
+        plot_thread.start()
+
+    def plot_graph(self, x_values, y_values, graph_name, min_val, max_val, average, sd, x_location, y_location):
         # Create a figure and axis with constrained layout
         fig, ax = plt.subplots(figsize=(3, 2), constrained_layout=True)  # Keep the same size
 
-        # Plot the graph with smaller marker size
-        marker_size = 0.5  # Adjust this value as needed to control the marker size relative to the figure size
-        ax.plot(x_values, y_values, marker='o', markersize=marker_size, linestyle='-', color='blue',
-                alpha=0.5)  # Adjust parameters as needed
+        # Plot the graph with line plot and interpolation
+        ax.plot(x_values, y_values, linestyle='-', color='blue', alpha=0.5)  # Line plot instead of markers
+        ax.fill_between(x_values, y_values, color='blue',
+                        alpha=0.1)  # Fill area under the line for better visualization
 
         # Set axis labels
         ax.set_xlabel('הדידמ רפסמ')
@@ -1451,6 +1461,7 @@ class GraphPage(tk.Frame):
         ax.set_title(graph_name, pad=title_padding)
 
         # Display statistics as text on the plot
+        # You may consider removing or simplifying this text display for faster rendering
         text_content = f"{min_val} :םומינימ \n{max_val} :םומיסקמ \n {round(average, 2)} :עצוממ \n {round(sd, 2)} :ןקת תייטס"
         ax.text(0, 0, text_content, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right',
                 fontsize=7, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
