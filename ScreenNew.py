@@ -232,7 +232,7 @@ class ID_patient_fill_page(tk.Frame):
                     s.ex_in_training=[]
                     num_columns= df.shape[1]
 
-                    for i in range (4,num_columns):
+                    for i in range (5,num_columns): #including 0
                         if row_of_patient.iloc[0,i]==True:
                             s.ex_in_training.append(df.columns[i])
 
@@ -447,8 +447,7 @@ class PhysioRegistration(tk.Frame):
         df = pd.read_excel(excel_file_path)
         ID_entered=self.id_entry.get()
         is_in_ID = ID_entered in df['ID'].astype(str).values #chaeck if the ID that the user inserted is already in system
-        back = Image.open('Pictures//empty.JPG')
-        background_img = ImageTk.PhotoImage(back)
+
 
 
         if ID_entered=="":
@@ -502,20 +501,63 @@ class PatientRegistration(tk.Frame):
         image = Image.open('Pictures//patient_registration.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
-        to_choose_action_button = tk.Button(self, text="חזרה לתפריט", command= lambda: self.on_click_to_physio_menu(),font=('Thaoma', 14))
-        to_choose_action_button.place(x=50, y=50)
+
+        back_button_img = Image.open("Pictures//back_to_menu.jpg")  # Change path to your image file
+        back_button_photo = ImageTk.PhotoImage(back_button_img)
+
+        back_button = tk.Button(self, image=back_button_photo, command=lambda: self.on_click_to_physio_menu(),
+                                width=back_button_img.width, height=back_button_img.height, bd=0,
+                                highlightthickness=0)  # Set border width to 0 to remove button border
+        back_button.image = back_button_photo  # Store reference to image to prevent garbage collection
+        back_button.place(x=30, y=30)
 
         self.first_name_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
-        self.first_name_entry.place(x=370, y=260)
+        self.first_name_entry.place(x=370, y=190)
         self.last_name_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
-        self.last_name_entry.place(x=370, y=320)
+        self.last_name_entry.place(x=370, y=250)
         self.id_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
-        self.id_entry.place(x=370, y=385)
-        patient_registration_button = tk.Button(self, text="הוסף", command=lambda: self.on_click_patient_registration(),
-                                           font=('Thaoma', 14))
-        patient_registration_button.place(x=430, y=450)
-        self.labels=[] #collect the labels that apear so that on a click on the button i can delete them
+        self.id_entry.place(x=370, y=310)
 
+        self.options = ["גבר", "אישה"]
+        self.gender = 'Male'
+        self.selected_option = tk.StringVar()
+        self.selected_option.set(self.options[0])  # Set the default selected option
+
+        # Create a custom style for the OptionMenu
+        style = ttk.Style()
+        style.theme_use('clam')  # Choose a theme (e.g., 'clam', 'default', 'alt', 'classic')
+
+        # Configure the appearance of the OptionMenu
+        style.configure('Custom.TMenubutton', font=('Arial', 12, 'bold'), background='lightgray', foreground='black',
+                        anchor='e')
+        style.configure('Custom.TMenubutton.TMenu', font=('Arial', 12, 'bold'), anchor='e')  # Bold font for the dropdown list
+
+        # Create the OptionMenu with the custom style
+        self.option_menu = ttk.OptionMenu(self, self.selected_option, self.selected_option.get(), *self.options,
+                                          command=self.on_select_gender)
+        self.option_menu['style'] = 'Custom.TMenubutton'  # Apply the custom style
+        self.option_menu.config(width=6)  # Adjust the width of the grey place
+        self.option_menu.place(x=440, y=365)
+
+
+
+        add_patient_button_img = Image.open("Pictures//add.jpg")  # Change path to your image file
+        add_patient_button_photo = ImageTk.PhotoImage(add_patient_button_img)
+
+        add_patient_button = tk.Button(self, image=add_patient_button_photo,
+                                      command=lambda: self.on_click_patient_registration(),
+                                      width=add_patient_button_img.width, height=add_patient_button_img.height, bd=0,
+                                      highlightthickness=0)  # Set border width to 0 to remove button border
+        add_patient_button.image = add_patient_button_photo  # Store reference to image to prevent garbage collection
+        add_patient_button.place(x=425, y=445)
+        self.labels = []  # collect the labels that apear so that on a click on the button i can delete them
+
+    def on_select_gender(self, option):
+        if option=='אישה':
+            self.gender='Female'
+
+        else:
+            self.gender='Male'
 
     def on_click_patient_registration(self):
         self.delete_all_labels()
@@ -524,24 +566,25 @@ class PatientRegistration(tk.Frame):
         df = pd.read_excel(excel_file_path)
         ID_entered=self.id_entry.get()
         is_in_ID = ID_entered in df['ID'].astype(str).values #chaeck if the ID that the user inserted is already in system
-        back = Image.open('Pictures//empty.JPG')
-        background_img = ImageTk.PhotoImage(back)
+
 
 
         if ID_entered=="":
-            self.label = tk.Label(self, text="לא הוכנסה תעודת זהות",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=250, height=50,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=340, y=500)
+            back = Image.open('Pictures//no_id.jpg')
+            background_img = ImageTk.PhotoImage(back)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=310, y=500)
+            self.label.image = background_img
             self.labels.append(self.label)
 
+
         elif is_in_ID is True:
-            self.label = tk.Label(self, text="תעודת הזהות כבר שמורה במערכת",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=350, height=50,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=300, y=500)
+            back = Image.open('Pictures//id_already_in_system.jpg')
+            id_already_in_system = ImageTk.PhotoImage(back)
+            self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=220, y=500)
+            self.label.image = id_already_in_system
             self.labels.append(self.label)
 
 
@@ -554,22 +597,27 @@ class PatientRegistration(tk.Frame):
                 'ID': ID_entered,
                 'first name': self.first_name_entry.get(),
                 'last name': self.last_name_entry.get(),
+                'gender': self.gender,
                 'number of exercises': 0
             })
-
 
             new_row_df = pd.DataFrame([new_row_data])
             df = pd.concat([df, new_row_df], ignore_index=True)
             df.to_excel(excel_file_path, index=False)
-            self.label = tk.Label(self, text="המטופל נוסף בהצלחה",
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 16), width=350, height=50,
-                                  anchor='center', justify='center', bd=0, highlightthickness=5, highlightcolor='red',
-                                  highlightbackground='red')
-            self.label.place(x=300, y=500)
+
+            back = Image.open('Pictures//successfully_added_patient.jpg')
+            successfully_added_patient = ImageTk.PhotoImage(back)
+            self.label = tk.Label(self, image=successfully_added_patient, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=280, y=500)
+            self.label.image = successfully_added_patient
             self.first_name_entry.delete(0, tk.END)
             self.last_name_entry.delete(0, tk.END)
             self.id_entry.delete(0, tk.END)
+            self.selected_option.set(self.options[0])
+            self.gender='Male'
             self.labels.append(self.label)
+
+
 
 
     def delete_all_labels(self):
@@ -631,8 +679,16 @@ class PatientDisplaying(tk.Frame):
         self.treeview.configure(yscrollcommand=scrollbar.set)
         scrollbar.place(x=725, y=180, height=310)
 
-        to_choose_action_button = tk.Button(self, text="חזרה לתפריט", command=lambda: self.on_click_to_physio_menu(), font=('Thaoma', 14))
-        to_choose_action_button.place(x=50, y=50)  # Adjust x and y coordinates as needed
+
+        back_button_img = Image.open("Pictures//back_to_menu.jpg")  # Change path to your image file
+        back_button_photo = ImageTk.PhotoImage(back_button_img)
+        back_button = tk.Button(self, image=back_button_photo, command=lambda: self.on_click_to_physio_menu(),
+                                width=back_button_img.width, height=back_button_img.height, bd=0,
+                                highlightthickness=0)  # Set border width to 0 to remove button border
+        back_button.image = back_button_photo  # Store reference to image to prevent garbage collection
+        back_button.place(x=30, y=30)
+
+
 
     def on_click_to_physio_menu(self): #go back to the physio menu page
         s.screen.switch_frame(Choose_Action_Physio)
@@ -750,11 +806,22 @@ class ChooseBallExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        arrow_button = tk.Button(self, text=" ⬅ ", command= lambda: self.on_arrow_click(), font=("Thaoma", 22))
-        arrow_button.place(x=50, y=480)  # Adjust x and y coordinates as needed
+        forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
+        forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
+        forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo, command=lambda: self.on_arrow_click(),
+                                width=forward_arrow_button_img.width, height=forward_arrow_button_img.height, bd=0,
+                                highlightthickness=0)
+        forward_arrow_button.image = forward_arrow_button_photo
+        forward_arrow_button.place(x=50, y=480)
 
-        to_main_page_button = tk.Button(self, text="בחזרה לרשימת\nהמטופלים", command=lambda: self.on_main_page_button_click(), font=("Thaoma", 14))
-        to_main_page_button.place(x=20, y=20)  # Adjust x and y coordinates as needed
+
+        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
+        to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
+        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo, command=lambda: self.to_patients_list_button_click(),
+                                   width=to_patients_list_button_img.width, height=to_patients_list_button_img.height, bd=0,
+                                   highlightthickness=0)  # Set border width to 0 to remove button border
+        to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
+        to_patients_list_button.place(x=30, y=30)
 
         row_of_patient = get_row_of_patient()
 
@@ -837,7 +904,7 @@ class ChooseBallExercisesPage(tk.Frame):
         self.save_changes()
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
-    def on_main_page_button_click(self):
+    def to_patients_list_button_click(self):
         self.save_changes()
         s.screen.switch_frame(PatientDisplaying)
 
@@ -852,14 +919,31 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        arrow_button_back = tk.Button(self, text=" ➡ ", command= lambda: self.on_arrow_click_back(), font=("Thaoma", 22))
-        arrow_button_back.place(x=900, y=480)  # Adjust x and y coordinates as needed
+        forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
+        forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
+        forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo, command=lambda: self.on_arrow_click_forward(),
+                                   width=forward_arrow_button_img.width, height=forward_arrow_button_img.height, bd=0,
+                                   highlightthickness=0)
+        forward_arrow_button.image = forward_arrow_button_photo
+        forward_arrow_button.place(x=50, y=480)
 
-        arrow_button_back_forward = tk.Button(self, text=" ⬅ ", command= lambda: self.on_arrow_click_forward(), font=("Thaoma", 22))
-        arrow_button_back_forward.place(x=50, y=480)  # Adjust x and y coordinates as needed
+        backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
+        backward_arrow_button_photo = ImageTk.PhotoImage(backward_arrow_button_img)
+        backward_arrow_button = tk.Button(self, image=backward_arrow_button_photo, command=lambda: self.on_arrow_click_back(),
+                                   width=backward_arrow_button_img.width, height=backward_arrow_button_img.height, bd=0,
+                                   highlightthickness=0)
+        backward_arrow_button.image = backward_arrow_button_photo
+        backward_arrow_button.place(x=913, y=480)
 
-        to_main_page_button = tk.Button(self, text="בחזרה לעמוד\nהראשי", command= lambda: self.on_main_page_button_click(),font=("Thaoma", 14))
-        to_main_page_button.place(x=20, y=20)  # Adjust x and y coordinates as needed
+        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
+        to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
+        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo,
+                                   command=lambda: self.to_patients_list_button_click(),
+                                   width=to_patients_list_button_img.width, height=to_patients_list_button_img.height,
+                                   bd=0,
+                                   highlightthickness=0)  # Set border width to 0 to remove button border
+        to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
+        to_patients_list_button.place(x=30, y=30)
 
         row_of_patient = get_row_of_patient()
 
@@ -918,7 +1002,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         self.save_changes()
         s.screen.switch_frame(ChooseBallExercisesPage)
 
-    def on_main_page_button_click(self):
+    def to_patients_list_button_click(self):
         self.save_changes()
         s.screen.switch_frame(PatientDisplaying)
 
@@ -942,14 +1026,36 @@ class ChooseStickExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        arrow_button_back = tk.Button(self, text=" ➡ ", command= lambda: self.on_arrow_click_back(), font=("Thaoma", 22))
-        arrow_button_back.place(x=900, y=480)  # Adjust x and y coordinates as needed
+        forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
+        forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
+        forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo,
+                                         command=lambda: self.on_arrow_click_forward(),
+                                         width=forward_arrow_button_img.width, height=forward_arrow_button_img.height,
+                                         bd=0,
+                                         highlightthickness=0)
+        forward_arrow_button.image = forward_arrow_button_photo
+        forward_arrow_button.place(x=50, y=480)
 
-        arrow_button_back_forward = tk.Button(self, text=" ⬅ ", command= lambda: self.on_arrow_click_forward(), font=("Thaoma", 22))
-        arrow_button_back_forward.place(x=50, y=480)  # Adjust x and y coordinates as needed
+        backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
+        backward_arrow_button_photo = ImageTk.PhotoImage(backward_arrow_button_img)
+        backward_arrow_button = tk.Button(self, image=backward_arrow_button_photo,
+                                          command=lambda: self.on_arrow_click_back(),
+                                          width=backward_arrow_button_img.width,
+                                          height=backward_arrow_button_img.height, bd=0,
+                                          highlightthickness=0)
+        backward_arrow_button.image = backward_arrow_button_photo
+        backward_arrow_button.place(x=913, y=480)
 
-        to_main_page_button = tk.Button(self, text="בחזרה לעמוד\nהראשי", command=self.on_main_page_button_click(),font=("Thaoma", 14))
-        to_main_page_button.place(x=20, y=20)  # Adjust x and y coordinates as needed
+        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
+        to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
+        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo,
+                                            command=lambda: self.to_patients_list_button_click(),
+                                            width=to_patients_list_button_img.width,
+                                            height=to_patients_list_button_img.height,
+                                            bd=0,
+                                            highlightthickness=0)  # Set border width to 0 to remove button border
+        to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
+        to_patients_list_button.place(x=30, y=30)
 
         row_of_patient=get_row_of_patient()
 
@@ -1019,7 +1125,7 @@ class ChooseStickExercisesPage(tk.Frame):
         self.save_changes()
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
-    def on_main_page_button_click(self):
+    def to_patients_list_button_click(self):
         self.save_changes()
         s.screen.switch_frame(PatientDisplaying)
 
@@ -1044,14 +1150,36 @@ class ChooseNoToolExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        arrow_button_back = tk.Button(self, text=" ➡ ", command= lambda: self.on_arrow_click_back(), font=("Thaoma", 22))
-        arrow_button_back.place(x=900, y=480)  # Adjust x and y coordinates as needed
+        forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
+        forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
+        forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo,
+                                         command=lambda: self.on_arrow_click_forward(),
+                                         width=forward_arrow_button_img.width, height=forward_arrow_button_img.height,
+                                         bd=0,
+                                         highlightthickness=0)
+        forward_arrow_button.image = forward_arrow_button_photo
+        forward_arrow_button.place(x=50, y=480)
 
-        end_button = tk.Button(self, text="סיום", command= lambda: self.on_end_click(), font=("Thaoma", 22))
-        end_button.place(x=50, y=480)  # Adjust x and y coordinates as needed
+        backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
+        backward_arrow_button_photo = ImageTk.PhotoImage(backward_arrow_button_img)
+        backward_arrow_button = tk.Button(self, image=backward_arrow_button_photo,
+                                          command=lambda: self.on_arrow_click_back(),
+                                          width=backward_arrow_button_img.width,
+                                          height=backward_arrow_button_img.height, bd=0,
+                                          highlightthickness=0)
+        backward_arrow_button.image = backward_arrow_button_photo
+        backward_arrow_button.place(x=913, y=480)
 
-        to_main_page_button = tk.Button(self, text="בחזרה לעמוד\nהראשי", command= lambda: self.on_main_page_button_click(),font=("Thaoma", 14))
-        to_main_page_button.place(x=20, y=20)  # Adjust x and y coordinates as needed
+        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
+        to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
+        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo,
+                                            command=lambda: self.to_patients_list_button_click(),
+                                            width=to_patients_list_button_img.width,
+                                            height=to_patients_list_button_img.height,
+                                            bd=0,
+                                            highlightthickness=0)  # Set border width to 0 to remove button border
+        to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
+        to_patients_list_button.place(x=30, y=30)
 
         row_of_patient=get_row_of_patient()
 
@@ -1120,7 +1248,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
         self.save_changes()
         s.screen.switch_frame(ChooseStickExercisesPage)
 
-    def on_main_page_button_click(self):
+    def to_patients_list_button_click(self):
         self.save_changes()
         s.screen.switch_frame(PatientDisplaying)
 
@@ -1153,10 +1281,19 @@ class GraphPage(tk.Frame):
         elif previous=="no_tool":
             previous_page=ChooseNoToolExercisesPage
 
-        previous_button = tk.Button(self, text="הקודם",  command=lambda: s.screen.switch_frame(previous_page), font=("Thaoma", 16))
-        previous_button.place(x=20, y=20)  # Adjust x and y coordinates as needed
+        previous_page_button_img = Image.open("Pictures//previous.jpg")
+        previous_page_button_photo = ImageTk.PhotoImage(previous_page_button_img)
+        backward_arrow_button = tk.Button(self, image=previous_page_button_photo,
+                                          command=lambda: s.screen.switch_frame(previous_page),
+                                          width=previous_page_button_img.width,
+                                          height=previous_page_button_img.height, bd=0,
+                                          highlightthickness=0)
+        backward_arrow_button.image = previous_page_button_photo
+        backward_arrow_button.place(x=30, y=30)
 
-        #possible_values = [exercise + "_2", exercise + "_3"]
+
+
+
 
         success_flag = False
 
@@ -1180,12 +1317,12 @@ class GraphPage(tk.Frame):
             effort_number= Excel.get_effort_number(exercise)
 
             if success_number is not None:
-                self.label = tk.Label(self, text="מספר חזרות מוצלחות בביצוע האחרון: "+str(success_number) , image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
+                self.label = tk.Label(self, text="מספר חזרות מוצלחות בביצוע האחרון: "[::-1]+str(success_number) , image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
                 self.label.place(x=130, y=10)
                 self.label.image = background_img
 
             if effort_number is not None:
-                self.label = tk.Label(self, text="דירוג קושי התרגיל על ידי המתאמן בביצוע האחרון: "+str(effort_number), image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
+                self.label = tk.Label(self, text="דירוג קושי התרגיל על ידי המתאמן בביצוע האחרון: "[::-1]+str(effort_number), image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
                 self.label.place(x=130, y=40)
                 self.label.image = background_img
 
@@ -1710,7 +1847,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= '314808981'
-    s.screen.switch_frame(Choose_Action_Physio)
+    s.screen.switch_frame(ChooseStickExercisesPage)
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
