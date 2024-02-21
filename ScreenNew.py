@@ -38,6 +38,7 @@ import Excel
 
 
 
+
 class Screen(tk.Tk):
     def __init__(self):
         print("screen start")
@@ -1445,12 +1446,15 @@ class GraphPage(tk.Frame):
 
     def plot_graph(self, x_values, y_values, graph_name, min_val, max_val, average, sd, x_location, y_location):
         # Create a figure and axis with constrained layout
+        x_downsampled = x_values[::2]
+        y_downsampled = y_values[::2]
+
         fig, ax = plt.subplots(figsize=(3, 2), constrained_layout=True)  # Keep the same size
 
         # Plot the graph with line plot and interpolation
-        ax.plot(x_values, y_values, linestyle='-', color='blue', alpha=0.5)  # Line plot instead of markers
-        ax.fill_between(x_values, y_values, color='blue',
-                        alpha=0.1)  # Fill area under the line for better visualization
+        ax.plot(x_downsampled, y_downsampled, linestyle='-', color='blue', alpha=0.5)  # Line plot instead of markers
+        #ax.fill_between(x_downsampled, y_downsampled, color='blue',
+        #                alpha=0.1)  # Fill area under the line for better visualization
 
         # Set axis labels
         ax.set_xlabel('הדידמ רפסמ')
@@ -1473,7 +1477,7 @@ class GraphPage(tk.Frame):
         image = ImageTk.PhotoImage(Image.open('temp.png'))
 
         # Create a label to display the image in the Tkinter window
-        label = tk.Label(self, image=image)
+        label = tk.Label(image=image)
         label.image = image
         label.place(x=x_location, y=y_location)
 
