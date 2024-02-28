@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import atexit
+import queue
 import threading
 import time
 import tkinter as tk
@@ -1271,6 +1272,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
 class GraphPage(tk.Frame):
     def __init__(self, master, exercise, previous, **kwargs):
         tk.Frame.__init__(self, master, **kwargs)
+        self.queue = queue.Queue()
         self.exercise = exercise
         image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
@@ -1321,13 +1323,13 @@ class GraphPage(tk.Frame):
             effort_number= Excel.get_effort_number(exercise)
 
             if success_number is not None:
-                self.label = tk.Label(self, text="מספר חזרות מוצלחות בביצוע האחרון: "[::-1]+str(success_number) , image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
-                self.label.place(x=130, y=10)
+                self.label = tk.Label(self, text=str(success_number)+ "מספר חזרות מוצלחות בביצוע האחרון: "[::-1] , image=background_img, compound=tk.CENTER, font=("Thaoma", 11, 'bold'), width=350, height=30)
+                self.label.place(x=155, y=10)
                 self.label.image = background_img
 
             if effort_number is not None:
-                self.label = tk.Label(self, text="דירוג קושי התרגיל על ידי המתאמן בביצוע האחרון: "[::-1]+str(effort_number), image=background_img, compound=tk.CENTER, font=("Thaoma", 13, 'bold'), width=350, height=30)
-                self.label.place(x=130, y=40)
+                self.label = tk.Label(self, text=str(effort_number)+ "דירוג קושי התרגיל על ידי המתאמן בביצוע האחרון: "[::-1], image=background_img, compound=tk.CENTER, font=("Thaoma", 11, 'bold'), width=350, height=30)
+                self.label.place(x=155, y=40)
                 self.label.image = background_img
 
 
@@ -1438,11 +1440,25 @@ class GraphPage(tk.Frame):
     from PIL import Image, ImageTk
 
     def draw_graph(self, x_values, y_values, graph_name, x_location, y_location, min_val, max_val, average, sd):
-        # Create a background thread for plotting
-        plot_thread = threading.Thread(target=self.plot_graph,
-                                       args=(x_values, y_values, graph_name, min_val, max_val, average, sd, x_location,
-                                             y_location))
-        plot_thread.start()
+        # Put data into the queue
+        self.queue.put((x_values, y_values, graph_name, min_val, max_val, average, sd, x_location, y_location))
+
+        # Notify the main thread to process the data
+        self.master.after(0, self.process_queue)
+
+    def process_queue(self):
+        try:
+            # Get data from the queue
+            data = self.queue.get_nowait()
+
+            # Process the data and create Matplotlib plot here
+            self.plot_graph(*data)
+
+            # Continue processing the queue
+            self.master.after(0, self.process_queue)
+        except queue.Empty:
+            # No more data in the queue, stop processing
+            pass
 
     def plot_graph(self, x_values, y_values, graph_name, min_val, max_val, average, sd, x_location, y_location):
         # Create a figure and axis with constrained layout
@@ -1471,15 +1487,15 @@ class GraphPage(tk.Frame):
                 fontsize=7, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
         # Save the figure with tight bounding box adjustments
-        fig.savefig('temp.png', bbox_inches='tight', pad_inches=0.1)
+        fig.savefig('temp.jpg', bbox_inches='tight', pad_inches=0.1)
 
         # Create a Tkinter PhotoImage from the saved image
-        image = ImageTk.PhotoImage(Image.open('temp.png'))
+        image = ImageTk.PhotoImage(Image.open('temp.jpg'))
 
         # Create a label to display the image in the Tkinter window
         label = tk.Label(image=image)
         label.image = image
-        label.place(x=x_location, y=y_location)
+        label.place(x=x_location+100, y=y_location)
 
 
 ############################################### Exercises Pages ########################################################
