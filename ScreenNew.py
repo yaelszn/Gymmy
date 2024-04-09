@@ -903,7 +903,7 @@ class ChooseBallExercisesPage(tk.Frame):
                                  "open_arms_and_forward_ball": bool(self.checkbox_var4.get()),
                                  "open_arms_above_head_ball": bool(self.checkbox_var5.get())}
 
-        Excel.find_and_change_values_Patients(s.chosen_patient_ID,new_values_ex_patient)
+        Excel.find_and_change_values_Patients(new_values_ex_patient)
 
     def on_arrow_click(self):
         self.save_changes()
@@ -1017,7 +1017,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
                                  "open_arms_and_up_with_band": bool(self.checkbox_var2.get()),
                                  "up_with_band_and_lean": bool(self.checkbox_var3.get())}
 
-        Excel.find_and_change_values_Patients(s.chosen_patient_ID, new_values_ex_patient)
+        Excel.find_and_change_values_Patients(new_values_ex_patient)
 
 
 
@@ -1141,7 +1141,7 @@ class ChooseStickExercisesPage(tk.Frame):
                                  "arms_up_and_down_stick": bool(self.checkbox_var3.get()),
                                  "switch_with_stick": bool(self.checkbox_var4.get())}
 
-        Excel.find_and_change_values_Patients(s.chosen_patient_ID, new_values_ex_patient)
+        Excel.find_and_change_values_Patients(new_values_ex_patient)
 
 
 
@@ -1264,7 +1264,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
                                  "left_hand_up_and_bend_notool": bool(self.checkbox_var3.get()),
                                  "raising_hands_diagonally_notool": bool(self.checkbox_var4.get())}
 
-        Excel.find_and_change_values_Patients(s.chosen_patient_ID, new_values_ex_patient)
+        Excel.find_and_change_values_Patients(new_values_ex_patient)
 
 
 
@@ -1289,13 +1289,13 @@ class GraphPage(tk.Frame):
 
         previous_page_button_img = Image.open("Pictures//previous.jpg")
         previous_page_button_photo = ImageTk.PhotoImage(previous_page_button_img)
-        backward_arrow_button = tk.Button(self, image=previous_page_button_photo,
+        previous_page_category = tk.Button(self, image=previous_page_button_photo,
                                           command=lambda: s.screen.switch_frame(previous_page),
                                           width=previous_page_button_img.width,
                                           height=previous_page_button_img.height, bd=0,
                                           highlightthickness=0)
-        backward_arrow_button.image = previous_page_button_photo
-        backward_arrow_button.place(x=30, y=30)
+        previous_page_category.image = previous_page_button_photo
+        previous_page_category.place(x=30, y=30)
 
 
 
@@ -1436,66 +1436,7 @@ class GraphPage(tk.Frame):
         y_values_2_float = y_values_2.astype(float)
         self.draw_graph(df.columns, y_values_2_float, second_graph_name, 350, 325, min(y_values_2_float), max(y_values_2_float),mean(y_values_2_float), stdev(y_values_2_float))
 
-    import matplotlib.pyplot as plt
-    from PIL import Image, ImageTk
 
-    def draw_graph(self, x_values, y_values, graph_name, x_location, y_location, min_val, max_val, average, sd):
-        # Put data into the queue
-        self.queue.put((x_values, y_values, graph_name, min_val, max_val, average, sd, x_location, y_location))
-
-        # Notify the main thread to process the data
-        self.master.after(0, self.process_queue)
-
-    def process_queue(self):
-        try:
-            # Get data from the queue
-            data = self.queue.get_nowait()
-
-            # Process the data and create Matplotlib plot here
-            self.plot_graph(*data)
-
-            # Continue processing the queue
-            self.master.after(0, self.process_queue)
-        except queue.Empty:
-            # No more data in the queue, stop processing
-            pass
-
-    def plot_graph(self, x_values, y_values, graph_name, min_val, max_val, average, sd, x_location, y_location):
-        # Create a figure and axis with constrained layout
-        x_downsampled = x_values[::2]
-        y_downsampled = y_values[::2]
-
-        fig, ax = plt.subplots(figsize=(3, 2), constrained_layout=True)  # Keep the same size
-
-        # Plot the graph with line plot and interpolation
-        ax.plot(x_downsampled, y_downsampled, linestyle='-', color='blue', alpha=0.5)  # Line plot instead of markers
-        #ax.fill_between(x_downsampled, y_downsampled, color='blue',
-        #                alpha=0.1)  # Fill area under the line for better visualization
-
-        # Set axis labels
-        ax.set_xlabel('הדידמ רפסמ')
-        ax.set_ylabel('תולעמ')
-
-        # Set title with padding
-        title_padding = 0.02  # Adjust the padding as needed
-        ax.set_title(graph_name, pad=title_padding)
-
-        # Display statistics as text on the plot
-        # You may consider removing or simplifying this text display for faster rendering
-        text_content = f"{min_val} :םומינימ \n{max_val} :םומיסקמ \n {round(average, 2)} :עצוממ \n {round(sd, 2)} :ןקת תייטס"
-        ax.text(0, 0, text_content, transform=ax.transAxes, verticalalignment='top', horizontalalignment='right',
-                fontsize=7, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-
-        # Save the figure with tight bounding box adjustments
-        fig.savefig('temp.jpg', bbox_inches='tight', pad_inches=0.1)
-
-        # Create a Tkinter PhotoImage from the saved image
-        image = ImageTk.PhotoImage(Image.open('temp.jpg'))
-
-        # Create a label to display the image in the Tkinter window
-        label = tk.Label(image=image)
-        label.image = image
-        label.place(x=x_location+100, y=y_location)
 
 
 ############################################### Exercises Pages ########################################################
