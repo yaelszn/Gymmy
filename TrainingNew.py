@@ -9,6 +9,13 @@ import Excel
 import random
 from Audio import say, get_wav_duration
 from datetime import datetime
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+import Email
 
 
 
@@ -39,9 +46,9 @@ class Training(threading.Thread):
         for i in categories:
             exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
             random.shuffle(exercises_in_category)
-            s.waved_has_tool=False
+            s.waved_has_tool= False
             if exercises_in_category!=[]:
-                time.sleep(1)
+                #time.sleep(1)
                 self.show_screen_category(i)
 
                 while not s.waved_has_tool:
@@ -51,8 +58,9 @@ class Training(threading.Thread):
                     self.exercises_by_order.append(e)
                     s.gymmy_done= False
                     s.camera_done= False
-                    s.demo_finish = False
-                    s.patient_repititions_counting=0
+                    #s.demo_finish = False
+                    s.number_of_repetitions_in_training =0
+                    s.max_repetitions_in_training =0
                     time.sleep(1)
                     self.run_exercise(e)
                     while (not s.gymmy_done) or (not s.camera_done):
@@ -61,7 +69,7 @@ class Training(threading.Thread):
                     #s.gymmy_done = False
                     #s.camera_done = False
                     #s.demo_finish = False
-                    time.sleep(3)
+                    #time.sleep(3)
 
     def show_screen_category(self, category):
         if category=="ball":
@@ -74,7 +82,7 @@ class Training(threading.Thread):
             s.screen.switch_frame(NoTool)
 
     def finish_workout(self):
-        time.sleep(3)
+        #time.sleep(3)
         s.finished_effort= False
         s.list_effort_each_exercise= {}
         s.screen.switch_frame(EffortScale, exercises=self.exercises_by_order)
@@ -86,6 +94,8 @@ class Training(threading.Thread):
         s.screen.switch_frame(GoodbyePage)
         Excel.success_worksheet()
         Excel.effort_worksheet()
+        Excel.find_and_add_training_to_patient()
+        self.check_points_and_send_email()
         Excel.close_workbook()
         time.sleep(8)
         print("TRAINING DONE")
@@ -94,10 +104,11 @@ class Training(threading.Thread):
     def run_exercise(self, name):
         time.sleep(0.1)  # wait between exercises
         s.success_exercise = False
+        s.patient_repititions_counting_in_exercise=0
         s.req_exercise = name
         print("TRAINING: Exercise ", name, " start")
 
-        while not s.demo_finish or s.req_exercise == name:
+        while s.req_exercise == name:
             time.sleep(0.00000001)
 
 
@@ -116,16 +127,45 @@ class Training(threading.Thread):
         s.gymmy_done = False
         s.camera_done = False
         s.robot_count = False
-        s.demo_finish = False
+        #s.demo_finish = False
         s.list_effort_each_exercise = {}
         s.ex_in_training = []
         # s.exercises_start=False
         s.waved_has_tool = True  # True just in order to go through the loop in Gymmy
         # Excel variable
-        ############################# להוריד את הסולמיות
         s.ex_list = {}
         s.screen.switch_frame(EntrancePage)
 
+
+    #A function that checks how many points did the patient get in the current level, and if he is progressing to the next level
+    def check_points_and_send_email(self):
+        level_up = False  #has the patient progressed to another level
+
+        points_in_this_training = s.number_of_repetitions_in_training - 0.5 * (
+                    s.max_repetitions_in_training - s.number_of_repetitions_in_training) #how many points the patient got on this training
+
+        points_into_excel = 0 #varaible for points to put in excel
+
+        if (s.points_in_current_level_before_training + points_in_this_training) < 100: #checks whether the sum of the points before the training and in it are less than 100
+            points_into_excel = s.points_in_current_level_before_training + points_in_this_training #if less than 100, the points will stay as the sum
+
+        elif 100 <= (s.points_in_current_level_before_training + points_in_this_training) < 200: #if the points are between 100 and 200
+            s.current_level_of_patient += 1 #the level will increase in 1
+            points_into_excel = s.points_in_current_level_before_training + points_in_this_training - 100 #if between 100 and 200, we will deduct 100 points (because the patient progressed in one level)
+            level_up = True
+
+        elif (s.number_of_repetitions_in_training + s.number_of_repetitions_in_current_level_before_training) >= 200: #if the points are more than 200
+            s.current_level_of_patient += 2 #the level will increase in 2
+            points_into_excel = s.points_in_current_level_before_training + points_in_this_training - 200 #if more than 200, we will deduct 200 points (because the patient progressed in two levels)
+            level_up = True
+
+        dict_new_values={"level": s.current_level_of_patient, "points in current level": points_into_excel}
+        Excel.find_and_change_values_Patients(dict_new_values)
+
+        if level_up is True:
+            Email.email_sending_level_up()
+        else:
+            Email.email_sending_not_level_up()
 
 if __name__ == "__main__":
     s.audio_path = 'audio files/Hebrew/Male/'
@@ -141,7 +181,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.chosen_patient_ID="314808981"
     s.req_exercise=""
-    s.demo_finish = False
+    #s.demo_finish = False
     s.screen = Screen()
     s.camera = Camera()
     s.training = Training()

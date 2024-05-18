@@ -37,9 +37,6 @@ import pyttsx3
 import Excel
 
 
-
-
-
 class Screen(tk.Tk):
     def __init__(self):
         print("screen start")
@@ -118,10 +115,6 @@ def text_to_speech2(language='iw'):
 
     # Play the generated speech using a media player
     os.system("start output.mp3")
-
-
-
-
 
 
 class EntrancePage(tk.Frame):
@@ -233,11 +226,17 @@ class ID_patient_fill_page(tk.Frame):
 
 
                 else:
+                    patient_workbook_path= "C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients.xlsx"
                     s.chosen_patient_ID=user_id
+                    s.email_of_patient= Excel.find_row_by_value(patient_workbook_path, "patient_details_and_exercises", user_id, "email")
+                    s.current_level_of_patient= float(Excel.find_row_by_value(patient_workbook_path, "patient_details_and_exercises", user_id, "level"))
+                    s.points_in_current_level_before_training= float(Excel.find_row_by_value(patient_workbook_path, "patient_details_and_exercises", user_id, "points in current level"))
+
+
                     s.ex_in_training=[]
                     num_columns= df.shape[1]
 
-                    for i in range (5,num_columns): #including 0
+                    for i in range (0,num_columns): #including 0
                         if row_of_patient.iloc[0,i]==True:
                             s.ex_in_training.append(df.columns[i])
 
@@ -499,7 +498,6 @@ class PhysioRegistration(tk.Frame):
         s.screen.switch_frame(Choose_Action_Physio)
 
 
-
 class PatientRegistration(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
@@ -568,7 +566,7 @@ class PatientRegistration(tk.Frame):
         self.delete_all_labels()
 
         excel_file_path = "Patients.xlsx"
-        df = pd.read_excel(excel_file_path)
+        df = pd.read_excel(excel_file_path, sheet_name="patient_details_and_exercises")
         ID_entered=self.id_entry.get()
         is_in_ID = ID_entered in df['ID'].astype(str).values #chaeck if the ID that the user inserted is already in system
 
@@ -594,8 +592,8 @@ class PatientRegistration(tk.Frame):
 
 
 
-        else: #insret a new row to the physio excel
-            df = pd.read_excel(excel_file_path)
+        else:
+            # insret a new row to the patient excel
             new_row_data = {column: False for column in df.columns}
             #modifying the columns that has other value than false
             new_row_data.update({
@@ -608,7 +606,13 @@ class PatientRegistration(tk.Frame):
 
             new_row_df = pd.DataFrame([new_row_data])
             df = pd.concat([df, new_row_df], ignore_index=True)
-            df.to_excel(excel_file_path, index=False)
+            df.to_excel(excel_file_path, index=False, sheet_name="patient_details_and_exercises")
+
+            #insert a row to the excel of history of training
+            df2 = pd.read_excel(excel_file_path, sheet_name="patients_history_of_trainings")
+            new_row_data = {'ID': ID_entered}
+            df2 = df2.append(new_row_data, ignore_index=True)
+            df2.to_excel(excel_file_path, index=False, sheet_name="patients_history_of_trainings" )
 
             back = Image.open('Pictures//successfully_added_patient.jpg')
             successfully_added_patient = ImageTk.PhotoImage(back)
@@ -728,6 +732,63 @@ class PatientDisplaying(tk.Frame):
             s.excel_file_path_Patient = s.chosen_patient_ID+"_Last.xlsx"
             s.screen.switch_frame(ChooseBallExercisesPage)
 
+
+#search for previous training that the exercise was in (before the last one that was found)
+def search_for_previous_graphs_of_exercise(exercise_name, last_training_exercise_was_in):
+        # Load the workbook
+        file_path = "Patients.xlsx"
+        workbook = openpyxl.load_workbook(file_path)
+
+        # Select the desired sheet
+        sheet = workbook["patients_history_of_trainings"]
+        row_of_patient=""
+
+        # Iterate through the rows to find the value in the first column
+        for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=1, max_col=1):
+            cell = row[0]
+            if str(cell.value) == s.chosen_patient_ID:
+                row_of_patient=row
+                break  # Stop searching after finding the value
+
+
+        #if this is the first page of shown exercises
+        if last_training_exercise_was_in == "":
+            # Exclude the first cell and select only the even-indexed cells
+            for cell in reversed(row_of_patient[1::2]):
+                exercise_existing = check_worksheet_exists(cell, ("graphs_" + exercise_name)[:31])
+                if exercise_existing:
+                    return cell
+
+        else:
+            #if there was one page or more with graphs shown before
+            found_previous = False
+            for cell in reversed(row_of_patient[1::2]):
+                if cell.value == last_training_exercise_was_in:
+                    found_previous=True
+
+                if found_previous:
+                    exercise_existing= check_worksheet_exists(cell, ("graphs_"+exercise_name)[:31])
+                    if exercise_existing:
+                        return cell
+
+
+
+def check_worksheet_exists(workbook_path, worksheet_name):
+    try:
+        # Load the workbook
+        workbook = openpyxl.load_workbook(workbook_path)
+
+        # Check if the worksheet exists
+        if worksheet_name in workbook.sheetnames:
+            print(f"Worksheet '{worksheet_name}' exists in the workbook.")
+            return True
+        else:
+            print(f"Worksheet '{worksheet_name}' does not exist in the workbook.")
+            return False
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False
 
 
 def show_graph(exercise, previous):
@@ -911,7 +972,17 @@ class ChooseBallExercisesPage(tk.Frame):
 
     def to_patients_list_button_click(self):
         self.save_changes()
-        s.screen.switch_frame(PatientDisplaying)
+        if Excel.count_true_values_in_row_by_ID()<5:
+            back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
+            background_img = ImageTk.PhotoImage(back)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=170, y=10)
+            self.label.image = background_img
+            self.labels.append(self.label)
+
+        else:
+            s.screen.switch_frame(PatientDisplaying)
 
 
 class ChooseRubberBandExercisesPage(tk.Frame):
@@ -1530,7 +1601,7 @@ class Stick(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("Stick")
-        self.after(9000,lambda: master.wait_until_waving())
+        self.after(6000,lambda: master.wait_until_waving())
 
 
 class Rubber_Band(tk.Frame):
@@ -1540,7 +1611,7 @@ class Rubber_Band(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("Band")
-        self.after(9000,lambda: master.wait_until_waving())
+        self.after(6000,lambda: master.wait_until_waving())
 
 
 class NoTool(tk.Frame):
@@ -1550,7 +1621,7 @@ class NoTool(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("NoTool")
-        self.after(9000,lambda: master.wait_until_waving())
+        self.after(6000,lambda: master.wait_until_waving())
 
 
 ######################################### Counting Pages #############################################################
@@ -1819,7 +1890,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= '314808981'
-    s.screen.switch_frame(ChooseStickExercisesPage)
+    s.screen.switch_frame(EntrancePage)
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

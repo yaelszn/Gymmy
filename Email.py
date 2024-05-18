@@ -1,21 +1,18 @@
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
-from email.mime.base import MIMEBase
-from email import encoders
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import smtplib
-import base64
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
+import Settings as s
 
-
-def get_percentage_of_successes_in_arrays():
+def get_percentage_of_successes_in_last_10_training():
     df = pd.read_excel("Patients.xlsx", sheet_name="patients_history_of_trainings")
     df.iloc[:, 0] = df.iloc[:, 0].astype(str)
-    filtered_rows = df[df.iloc[:, 0] == "314808981"]
+    filtered_rows = df[df.iloc[:, 0] == s.chosen_patient_ID]
 
     x_values = []
     y_values = []
@@ -40,7 +37,7 @@ def get_percentage_of_successes_in_arrays():
 
 
 def draw_a_success_graph_and_save():
-    x_values, y_values = get_percentage_of_successes_in_arrays()
+    x_values, y_values = get_percentage_of_successes_in_last_10_training()
 
     # Create a new plot
     plt.plot(x_values, y_values)
@@ -87,7 +84,7 @@ def add_text_to_image(level):
     return image_with_text_path
 
 
-def email_sending_level_up(level):
+def email_sending_level_up():
     # Generate the graph file path
     graph_file_path = draw_a_success_graph_and_save()
 
@@ -102,7 +99,7 @@ def email_sending_level_up(level):
     password = 'diyf cxzc tifj sotp'
 
     # Read the PNG file and add text
-    png_path_with_text = add_text_to_image(level)
+    png_path_with_text = add_text_to_image(s.current_level_of_patient)
 
     with open(png_path_with_text, "rb") as file:
         png_data = file.read()
@@ -164,7 +161,7 @@ def email_sending_level_up(level):
 
 
 
-def email_sending_not_level_up(level):
+def email_sending_not_level_up():
     # Generate the graph file path
     graph_file_path = draw_a_success_graph_and_save()
 
@@ -191,8 +188,8 @@ def email_sending_not_level_up(level):
     html_content = f'''
     <html>
       <body style="direction: rtl;">
-        <p>{name}, כל הכבוד שהתאמנת היום! </p>
-        <p> הרמה הנוכחית שלך היא רמה  {level} </p>
+        <p>{name}, כל הכבוד על האימון היום! </p>
+        <p> הרמה הנוכחית שלך היא רמה  {s.current_level_of_patient} </p>
         <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
         <p style="font-family: Arial, sans-serif; font-weight: bold;">גרף ההתקדמות באחוזי ההצלחה שלך בכל אימון: </p>
         <img src="cid:graph" alt="Image">
@@ -225,5 +222,3 @@ def email_sending_not_level_up(level):
         print('Email sent successfully!')
 
 
-#email_sending_level_up("5")
-email_sending_not_level_up("5")

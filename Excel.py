@@ -1,19 +1,15 @@
-import os
-from statistics import mean, stdev
-
 import pandas as pd
 import xlsxwriter
-import openpyxl
 from datetime import datetime
-import Settings as s
 from Joint import Joint
 import openpyxl
-from openpyxl.drawing.image import Image
-from openpyxl.chart import LineChart, Reference
-import matplotlib.pyplot as plt
-import io
 import Settings as s
-from xlsxwriter import Workbook
+from openpyxl import load_workbook
+from openpyxl.drawing.image import Image
+import matplotlib.pyplot as plt
+import numpy as np
+from openpyxl.drawing.image import Image as XLImage
+import Excel
 
 
 
@@ -22,55 +18,36 @@ def create_workbook():
     workbook_name = f"{s.chosen_patient_ID} {datetime_string}.xlsx"
     s.excel_workbook_name = workbook_name
     s.excel_workbook = xlsxwriter.Workbook(workbook_name)
-    create_Last_workbook()
 
 
-def create_Last_workbook():
-    file_path = f"{s.chosen_patient_ID}_Last.xlsx"
 
+def find_row_by_value(workbook_path, worksheet_name, ID, target_col):
     try:
-        # Load the existing workbook into a variable
-        s.Last_workbook = openpyxl.load_workbook(file_path)
+        # Load the workbook
+        workbook = load_workbook(workbook_path)
 
-        # Check if "success" sheet exists, if not add it
-        if "success" not in s.Last_workbook.sheetnames:
-            s.Last_workbook.create_sheet("success")
+        # Access the worksheet
+        worksheet = workbook[worksheet_name]
+        target_row=None
 
+        # Search for the target value in the first column
+        for row_number, row in enumerate(worksheet.iter_rows(min_row=2, max_row=worksheet.max_row, min_col=1, max_col=1), start=2):
+            for cell in row:
+                if str(cell.value) == ID:
+                    target_row= row_number  # Return row number and value from specified column
+                    break
+            if target_row is not None:
+                break
 
-        # Check if "effort" sheet exists, if not add it
-        if "effort" not in s.Last_workbook.sheetnames:
-            s.Last_workbook.create_sheet("effort")
-
-        # Save the workbook after adding sheets
-        s.Last_workbook.save(file_path)
-
-
-    except FileNotFoundError:
-
-        print(f"File '{file_path}' not found. Creating a new workbook.")
-
-        # Create a new workbook
-        s.Last_workbook = openpyxl.Workbook()
-
-        # Remove the default sheet named "Sheet"
-        default_sheet = s.Last_workbook["Sheet"]
-        s.Last_workbook.remove(default_sheet)
-
-        # Add "success" sheet
-        s.Last_workbook.create_sheet("success")
-
-        # Add "effort" sheet
-        s.effort_sheet = s.Last_workbook.create_sheet("effort")
-
-
-        s.Last_workbook.save(file_path)
+        for col in worksheet.iter_cols():
+            # Check if the first cell in the column matches the specified column name
+            if col[0].value == target_col:
+                # Return the entire column
+                return col[target_row-1].value
 
     except Exception as e:
         print(f"An error occurred: {e}")
-
-
-
-
+        return None
 
 def get_success_number(exercise):
     try:
@@ -97,7 +74,6 @@ def get_success_number(exercise):
     except FileNotFoundError:
         print(f"File success not found.")
         return None
-
 
 
 def get_effort_number(exercise):
@@ -128,17 +104,17 @@ def get_effort_number(exercise):
 
 
 def wf_joints(ex_name, list_joints):
-    if ex_name in s.Last_workbook.sheetnames:
+    #if ex_name in s.Last_workbook.sheetnames:
         # Remove the existing sheet
-        s.Last_workbook.remove(s.Last_workbook[ex_name])
+     #   s.Last_workbook.remove(s.Last_workbook[ex_name])
 
     worksheet1 = s.excel_workbook.add_worksheet(ex_name)
-    worksheet2 = s.Last_workbook.create_sheet(title=ex_name)
+    #worksheet2 = s.Last_workbook.create_sheet(title=ex_name)
     col = 0
 
     for l in range(0, len(list_joints)):
         worksheet1.write(0, col, col + 1)
-        worksheet2.cell(1, col+1, col + 1)
+        #worksheet2.cell(1, col+1, col + 1)
 
         row = 1
         for j in list_joints[l]:
@@ -146,13 +122,13 @@ def wf_joints(ex_name, list_joints):
                 j_ar = j.joint_to_array()
                 for i in range(len(j_ar)):
                     worksheet1.write(row, col, str(j_ar[i]))
-                    worksheet2.cell(row+1, col+1, str(j_ar[i])) #index starts from 1
+                    #worksheet2.cell(row+1, col+1, str(j_ar[i])) #index starts from 1
                     row += 1
 
             else:
                 # Handle other types appropriately, e.g., just write the value to the worksheet
                 worksheet1.write(row, col, str(j))
-                worksheet2.cell(row+1, col+1, str(j))
+                #worksheet2.cell(row+1, col+1, str(j))
                 row += 1
 
         col += 1
@@ -166,10 +142,10 @@ def create_graphs(exercise):
         df = pd.read_excel(s.excel_file_path_Patient, sheet_name=exercise)
         if get_number_of_angles_in_exercise(exercise) == 1:
             one_angle_graph(df, exercise)
-        if get_number_of_angles_in_exercise(exercise) == 2:
-            two_angles_graph(df, exercise)
-        if get_number_of_angles_in_exercise(exercise) == 3:
-            three_angles_graph(df, exercise)
+       # if get_number_of_angles_in_exercise(exercise) == 2:
+        #    two_angles_graph(df, exercise)
+        #if get_number_of_angles_in_exercise(exercise) == 3:
+         #   three_angles_graph(df, exercise)
 
 
     except (pd.errors.ParserError, FileNotFoundError):
@@ -201,102 +177,57 @@ def get_number_of_angles_in_exercise(exercise):
         print(f"An error occurred: {e}")
         return False
 
-
-def three_angles_graph(df, exercise):
-    worksheet = s.excel_workbook.add_worksheet(("graphs_"+exercise)[:31])
-
-    first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
-    y_values_1 = df.iloc[72, :]
-    y_values_1_float = y_values_1.astype(float)
-    create_and_save_graph(df.columns, y_values_1_float, first_graph_name, worksheet, 72)
-
-    second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
-    y_values_2 = df.iloc[73, :]
-    y_values_2_float = y_values_2.astype(float)
-    create_and_save_graph(df.columns, y_values_2_float, second_graph_name, worksheet, 73)
-
-    third_graph_name = df.iloc[24, 0] + ", " + df.iloc[28, 0] + ", " + df.iloc[32, 0]
-    y_values_3 = df.iloc[74, :]
-    y_values_3_float = y_values_3.astype(float)
-    create_and_save_graph(df.columns, y_values_3_float, third_graph_name, worksheet, 74)
-
-    fourth_graph_name = df.iloc[36, 0] + ", " + df.iloc[40, 0] + ", " + df.iloc[44, 0]
-    y_values_4 = df.iloc[75, :]
-    y_values_4_float = y_values_4.astype(float)
-    create_and_save_graph(df.columns, y_values_4_float, fourth_graph_name, worksheet, 75)
-
-    fifth_graph_name = df.iloc[48, 0] + ", " + df.iloc[52, 0] + ", " + df.iloc[56, 0]
-    y_values_5 = df.iloc[76, :]
-    y_values_5_float = y_values_5.astype(float)
-    create_and_save_graph(df.columns, y_values_5_float, fifth_graph_name, worksheet, 76)
-
-    sixth_graph_name = df.iloc[60, 0] + ", " + df.iloc[64, 0] + ", " + df.iloc[68, 0]
-    y_values_6 = df.iloc[77, :]
-    y_values_6_float = y_values_6.astype(float)
-    create_and_save_graph(df.columns, y_values_6_float, sixth_graph_name, worksheet, 77)
-
-def two_angles_graph(df, exercise):
-    worksheet = s.excel_workbook.add_worksheet(("graphs_"+exercise)[:31])
-
-    first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
-    y_values_1 = df.iloc[48, :]
-    y_values_1_float = y_values_1.astype(float)
-    create_and_save_graph(df.columns, y_values_1_float, first_graph_name, worksheet, 48)
-
-    second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
-    y_values_2 = df.iloc[49, :]
-    y_values_2_float = y_values_2.astype(float)
-    create_and_save_graph(df.columns, y_values_2_float, second_graph_name, worksheet, 49)
-
-    third_graph_name = df.iloc[24, 0] + ", " + df.iloc[28, 0] + ", " + df.iloc[32, 0]
-    y_values_3 = df.iloc[50, :]
-    y_values_3_float = y_values_3.astype(float)
-    create_and_save_graph(df.columns, y_values_3_float, third_graph_name, worksheet, 50)
-
-    fourth_graph_name = df.iloc[36, 0] + ", " + df.iloc[40, 0] + ", " + df.iloc[44, 0]
-    y_values_4 = df.iloc[51, :]
-    y_values_4_float = y_values_4.astype(float)
-    create_and_save_graph(df.columns, y_values_4_float, fourth_graph_name, worksheet, 51)
-
 def one_angle_graph(df, exercise):
-    worksheet = s.excel_workbook.add_worksheet(("graphs_"+exercise)[:31])
+    worksheet_graphs = s.excel_workbook.add_worksheet(("graphs_"+exercise)[:31])
 
     first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
     y_values_1 = df.iloc[24, :]
     y_values_1_float = y_values_1.astype(float)
-    create_and_save_graph(df.columns, y_values_1_float, first_graph_name, worksheet, 24)
+    create_and_save_graph(df.columns, y_values_1_float, first_graph_name, worksheet_graphs, 24)
 
     second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
     y_values_2 = df.iloc[25, :]
     y_values_2_float = y_values_2.astype(float)
-    create_and_save_graph(df.columns, y_values_2_float, second_graph_name, worksheet, 25)
+    create_and_save_graph(df.columns, y_values_2_float, second_graph_name, worksheet_graphs, 25)
 
-def create_and_save_graph(x_values, y_values, graph_name, worksheet, row_of_values):
-    # Write the x and y data to the worksheet.
-    worksheet.write_row('A1', x_values)
-    worksheet.write_row('A2', y_values)
+    data = {
+    first_graph_name: {'x': df.columns, 'y': y_values_1_float},
+    second_graph_name: {'x': df.columns, 'y': y_values_2_float}}
 
-    # Create a new chart object.
-    chart = s.excel_workbook.add_chart({'type': 'line'})
+    create_and_save_graph(data, worksheet_graphs)
 
-    last_column_letter = chr(ord('A') + len(x_values) - 1)  # Convert the length to a column letter
+def create_and_save_graph(data, worksheet_graphs):
+    # Define the starting row and column for inserting the graphs
+    start_row = 1
 
-    # Add series with x and y values.
-    chart.add_series({
-        'name': graph_name,  # Title of the series
-        'categories': f'={worksheet.name}!$A$1:${last_column_letter}$1',  # X values
-        'values': f'={worksheet.name}!$A$2:${last_column_letter}${row_of_values}'  # Y values
-    })
+    # Iterate over each plot data
+    for plot_name, plot_data in data.items():
+        # Create a new plot
+        plt.plot(plot_data['x'], plot_data['y'])
+        plt.xlabel('מספר מדידה')
+        plt.ylabel('זווית')
+        plt.title(plot_name)
 
-    # Add title to the chart
-    chart.set_title({'name': graph_name})
+        # Add text box with statistics
+        min_val = min(plot_data['y'])
+        max_val = max(plot_data['y'])
+        average = sum(plot_data['y']) / len(plot_data['y'])
+        stdev = np.std(plot_data['y'])
 
-    # Add axis labels
-    chart.set_x_axis({'name': 'מספר מדידה'})
-    chart.set_y_axis({'name': 'זווית'})
+        text_content = f" {min_val}מינימום: \n {max_val} מקסימום: \n  {round(average, 2)} ממוצע: \n {round(stdev,2)} סטיית תקן:"
+        plt.text(0.95, 0.95, text_content, transform=plt.gca().transAxes, verticalalignment='top',
+                 horizontalalignment='right', fontsize=7, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-    # Insert the chart into the worksheet.
-    worksheet.insert_chart('D'+str(row_of_values), chart)
+        # Save the plot as an image file
+        plot_filename = f'temp_graph.png'
+        plt.savefig(plot_filename)
+        plt.close()  # Close the plot to clear the figure
+
+
+        worksheet_graphs.insert_image(f"A{start_row}", plot_filename)
+
+        # Update the starting row for the next image
+        start_row += 20  # Adjust as needed
 
 
 
@@ -313,7 +244,8 @@ def success_worksheet():
 
         row += 1
 
-    find_and_change_values_success_in_Last()
+
+    #find_and_change_values_success_in_Last()
 
 def effort_worksheet():
     s.effort_sheet = s.excel_workbook.add_worksheet("effort")
@@ -327,7 +259,7 @@ def effort_worksheet():
 
         row += 1
 
-    find_and_change_values_effort_in_Last()
+    #find_and_change_values_effort_in_Last()
 
 def find_and_change_values_Patients(new_values_dict, headers_row=1):
     # Load the workbook
@@ -373,11 +305,33 @@ def find_and_add_training_to_patient(headers_row=1):
             next_column = sheet.max_column + 1
 
             # Write the new value to the next available column in the row
-            sheet.cell(row=cell.row, column=next_column, value=s.excel_workbook_name)
+            sheet.cell(row=cell.row, column=next_column, value=s.excel_workbook_name.replace(".xlsx", ""))
+            sheet.cell(row=cell.row, column=next_column+1, value=(s.number_of_repetitions_in_training/s.max_repetitions_in_training))
+
             break  # Stop searching after finding the value
 
     workbook.save(file_path)
 
+
+ # Load the workbook
+    file_path = "Patients.xlsx"
+    workbook = openpyxl.load_workbook(file_path)
+
+    # Select the desired sheet
+    sheet = workbook["patients_history_of_trainings"]
+
+    # Iterate through the rows to find the value in the first column
+    for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=1):
+        cell = row[0]
+        if str(cell.value) == s.chosen_patient_ID:
+            # Find the next available column in the row
+            next_column = sheet.max_column + 1
+
+            # Write the new value to the next available column in the row
+            sheet.cell(row=cell.row, column=next_column, value=s.excel_workbook_name.replace(".xlsx", ""))
+            sheet.cell(row=cell.row, column=next_column+1, value=(s.number_of_repetitions_in_training/s.max_repetitions_in_training))
+
+            break  # Stop searching after finding the value
 
 
 def find_and_change_values_effort_in_Last(headers_row=1):
@@ -444,33 +398,67 @@ def find_and_change_values_success_in_Last(headers_row=1):
             sheet.cell(row=new_row_index, column=2, value=success_count)
 
 
+def count_true_values_in_row_by_ID():
+    # Select the specific sheet
+    workbook = openpyxl.load_workbook("C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients.xlsx")
+
+    sheet = workbook["patient_details_and_exercises"]
+
+    # Search for the row containing the search_value in the first column
+    for row in sheet.iter_rows():
+        if str(row[0].value) == s.chosen_patient_ID:
+            row_number = row[0].row
+            break
+    else:
+        # If the value is not found, return 0
+        return 0
+
+    # Get the values of the found row
+    row_values = sheet[row_number]
+
+    # Count the number of TRUE values in the row
+    true_count = sum(1 for cell in row_values if cell.value is True)
+
+    return true_count
+
 
 
 def close_workbook():
-    s.Last_workbook.save(f"{s.chosen_patient_ID}_Last.xlsx")
+    #s.Last_workbook.save(f"{s.chosen_patient_ID}_Last.xlsx")
     s.excel_workbook.close()
 
 
+def extract_string_between_spaces(input_string):
+    parts = input_string.split()  # Split the string into parts based on spaces
+    if len(parts) >= 3:  # Ensure there are at least three parts (two spaces)
+        return parts[1]  # Extract the second part
+    else:
+        return None
 
 
 
 if __name__ == "__main__":
+
+
+    find_row_by_value("314808981", "email")
+
     s.chosen_patient_ID="315454"
     create_workbook()
-    worksheet = s.excel_workbook.add_worksheet(("graphs_1")[:31])
+    s.excel_workbook.add_worksheet("graphs_1")
+
+    worksheet = s.excel_workbook.get_worksheet_by_name("graphs_1")
 
     x_values=(1,2,3,4)
-    y_values=(1,2,3,4)
-    create_and_save_graph(x_values, y_values, "xxx", worksheet, 2)
+    y_values=(5,6,7,8)
+    data = {
+        "graph_1":{'x': x_values, 'y': y_values}}
+
+
+    create_and_save_graph(data, worksheet)
     s.excel_workbook.close()
 
 
-    def extract_string_between_spaces(input_string):
-        parts = input_string.split()  # Split the string into parts based on spaces
-        if len(parts) >= 3:  # Ensure there are at least three parts (two spaces)
-            return parts[1]  # Extract the second part
-        else:
-            return None
+
 
     s.chosen_patient_ID='314808981'
     # Example usage:

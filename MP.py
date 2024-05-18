@@ -1,7 +1,5 @@
+
 import pyzed.sl as sl
-import threading
-import socket
-import json
 import threading
 import cv2
 import mediapipe as mp
@@ -16,13 +14,8 @@ class MP(threading.Thread):
         print("MP INITIALIZATION")
         self.zed = sl.Camera()
 
-
     def run(self):
         print("MP START")
-        show = True
-        mp_drawing = mp.solutions.drawing_utils
-        mp_drawing_styles = mp.solutions.drawing_styles
-        mp_pose = mp.solutions.pose
 
         ################################################################
         # Create a ZED camera object
@@ -30,12 +23,12 @@ class MP(threading.Thread):
         # Set configuration parameters
         init = sl.InitParameters()
         init.camera_resolution = sl.RESOLUTION.HD720
-        init.coordinate_system= sl.COORDINATE_SYSTEM.IMAGE
+        init.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE
         init.depth_mode = sl.DEPTH_MODE.ULTRA
         init.coordinate_units = sl.UNIT.MILLIMETER
-        init.camera_fps=60
-        if len(sys.argv) >= 2:
-            init.svo_input_filename = sys.argv[1]
+        init.camera_fps = 60
+        # if len(sys.argv) >= 2:
+        #    init.svo_input_filename = sys.argv[1]
 
         # Open the camera
         #################למחוק בסוף
@@ -51,7 +44,7 @@ class MP(threading.Thread):
         # Define the Objects detection module parameters
         body_params = sl.BodyTrackingParameters()
         # Set runtime parameters for body tracking
-        body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_ACCURATE
+        body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_FAST
         body_params.enable_tracking = True
         body_params.image_sync = True
         # body_params.enable_segmentation = False
@@ -67,6 +60,7 @@ class MP(threading.Thread):
         # Set positional tracking parameters
         positional_tracking_parameters = sl.PositionalTrackingParameters()
         # Enable positional tracking
+        positional_tracking_parameters.set_as_static = True
         self.zed.enable_positional_tracking(positional_tracking_parameters)
 
         # Enable body tracking
@@ -79,9 +73,8 @@ class MP(threading.Thread):
         # Prepare new image size to retrieve half-resolution images
         image_size = self.zed.get_camera_information().camera_configuration.resolution;
 
-
-        #image_size.width = image_size.width
-        #image_size.height = image_size.height
+        # image_size.width = image_size.width
+        # image_size.height = image_size.height
         # image_size.height = image_size.height / 2
 
         # Declare your sl.Mat matrices
@@ -89,72 +82,25 @@ class MP(threading.Thread):
         ################################################################
         image = sl.Mat()
 
-        with mp_pose.Pose(
-                min_detection_confidence=0.85,
-                min_tracking_confidence=0.7) as pose:
+        while self.zed.is_opened() and not s.finish_workout:
 
-            # Create a UDP socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            server_address = ('localhost', 7000)
+            if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
 
-            while self.zed.is_opened() and not s.finish_workout:
+                self.zed.retrieve_image(image, sl.VIEW.LEFT)
+                # self.zed.retrieve_image(image, sl.VIEW.RIGHT)
+                frame = image.get_data()
+                cv2.imshow("ZED Camera with Skeleton", frame)
 
-                if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
+                # Stop MediaPipe:
+                key = cv2.waitKey(10)
+                if s.finish_workout or key == ord('q'):
+                    s.finish_workout = True
+                    break
 
-                    self.zed.retrieve_image(image, sl.VIEW.LEFT)
-                    self.zed.retrieve_image(image, sl.VIEW.RIGHT)
-                    frame = image.get_data()
-                    # Convert the frame to RGB format (MediaPipe requires RGB input)
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    results = pose.process(frame_rgb)
-
-                    lm_dict = {'nose': "0", 'neck': "1", 'R_shoulder': "2", 'R_elbow': "3", 'R_wrist': "4",
-                               'L_shoulder': "5", 'L_elbow': "6", 'L_wrist': "7", 'R_hip': "8", 'R_knee': "9",
-                               'R_ankle': "10", 'L_hip': "11", 'L_knee': "12", 'L_ankle': "13", 'R_eye': "14", 'L_eye': "15",
-                               'R_ear': "16", 'L_ear': "17"}
-
-                    message = ''
-                    if results.pose_landmarks is not None:
-                        for k, v in lm_dict.items():
-                            j = results.pose_landmarks.landmark[int(v)]
-                            if j.visibility >= 0.7:
-                                new_j = k + "," + str(j.x * image_size.width) + "," + str(
-                                    -j.y * image_size.height) + "," + str(-j.z)
-                            else:
-                                new_j = k + ",0,0,0"
-                            message += new_j + "/"
-                    else:
-                        for k, v in lm_dict.items():
-                            new_j = k + ",0,0,0"
-                            message += new_j + "/"
-
-                    frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-
-                    mp_drawing.draw_landmarks(
-                        frame_rgb,
-                        results.pose_landmarks,
-                        mp_pose.POSE_CONNECTIONS,
-                        landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
-                    # Present camera's video: Flip the image horizontally for a selfie-view display.
-                    zoom_out_factor = 0.5  # Adjust the factor to control the level of zoom-out
-                    resized_frame = cv2.resize(frame_rgb, None, fx=zoom_out_factor, fy=zoom_out_factor)
-
-                    if show:
-                        cv2.imshow("ZED Camera with Skeleton", resized_frame)
-
-                    # Stop MediaPipe:
-                    key = cv2.waitKey(10)  # TODO change
-                    if s.finish_workout or key == ord('q'):
-                        s.finish_workout = True
-                        break
-
-            self.zed.close()
-
+        self.zed.close()
 
     def get_zed(self):
-         return self.zed
-
-
+        return self.zed
 
 
 if __name__ == ('__main__'):

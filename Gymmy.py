@@ -1,6 +1,5 @@
-import atexit
+
 import threading
-import signal
 import random
 
 import serial
@@ -15,7 +14,7 @@ import pypot.dynamixel.io
 import logging, sys
 
 from MP import MP
-from ScreenNew import DemoPage, ExercisePage
+from ScreenNew import DemoPage, ExercisePage, Screen, EntrancePage, FullScreenApp
 
 
 class Gymmy(threading.Thread):
@@ -29,119 +28,69 @@ class Gymmy(threading.Thread):
         print("ROBOT INITIALIZATION")
         for m in self.gymmy.motors:  # motors need to be initialized, False=stiff, True=loose
             m.compliant = False
-        #atexit.register(self.cleanup_func)
-        signal.signal(signal.SIGTERM, self.signal_handler)
-        signal.signal(signal.SIGINT, self.signal_handler)  # Handle SIGINT (Ctrl+C)
-        atexit.register(self.cleanup_func)
-        self._stop_event = threading.Event()
+
         self.init_robot()
 
     def init_robot(self):
-        #self.gymmy.bust_x.goto_position(0, 1, wait=True)
-        #self.gymmy.bust_y.goto_position(0, 1, wait=True)
-
-
         for m in self.gymmy.motors:
             if not m.name == 'r_elbow_y' and not m.name == 'l_elbow_y' and not m.name == 'head_y' \
                 and not m.name == 'abs_z' and not m.name == 'head_z':
-
-                #and not m.name == 'head_z'):
-               # and not m.name == 'bust_x' and not m.name == 'bust_y' :
                     m.goto_position(0, 1, wait=True)
-
-
-                #and not m.name == 'r_arm_z' and not m.name == 'l_arm_z'):
-
-       # self.gymmy.l_arm_z.goto_position(0, 0.5, wait=True)
-        #self.gymmy.r_arm_z.goto_position(0, 0.5, wait=True)
-        #self.gymmy.abs_z.goto_position(0, 0.5, wait=True)
 
         self.gymmy.abs_z.goto_position(-100, 1, wait=True)
         self.gymmy.head_y.goto_position(-20, 1, wait=True)
         self.gymmy.head_z.goto_position(20, 1, wait=True)
         self.gymmy.r_elbow_y.goto_position(90, 1, wait=True)
-        self.gymmy.l_elbow_y.goto_position(90, 1, wait=True)
-
+        self.gymmy.l_elbow_y.goto_position(0, 1, wait=True)
 
         time.sleep(1)
 
-
-
-    def cleanup_func(self):
-        self.init_robot()
-        for m in self.gymmy.motors:  # motors need to be initialized, False=stiff, True=loose
-            m.compliant = True
-        self.gymmy.close()
-        print("*************************************************************************")
-        self._stop_event.set()
-        s.finish_workout=True
-    def signal_handler(self, sig, frame):
-        print("###################################################################################")
-        print("Received signal {}".format(sig))
-        self.cleanup_func()
-
-
-
     ########################################################### RUN ##########################################
     def run(self):
-        while True:
-            try:
-                print("ROBOT START")
-                while not s.finish_workout:
-                    time.sleep(0.00000001)  # Prevents the MP to stuck
-                    if s.req_exercise != "" and not s.req_exercise=="hello_waving":
-                        ex = s.req_exercise
-                        time.sleep(1)
+        print("ROBOT START")
+        while not s.finish_workout:
+            time.sleep(0.00000001)  # Prevents the MP to stuck
+            if s.req_exercise != "" and not s.req_exercise=="hello_waving":
+                ex = s.req_exercise
+                time.sleep(1)
 
-                        print("ROBOT: Exercise ", ex, " start")
-                        self.exercise_demo(ex)
-                        print("ROBOT: Exercise ", ex, " done")
+                print("ROBOT: Exercise ", ex, " start")
+                self.exercise_demo(ex)
+                print("ROBOT: Exercise ", ex, " done")
 
 
-                        s.req_exercise = ""
-                        s.gymmy_done = True
+                s.req_exercise = ""
+                s.gymmy_done = True
 
-                print("Robot Done")
-
-            except:
-                self.cleanup_func()
-            # time.sleep(3)
-           # except SystemExit:
-             # self.cleanup_func()
-
-       # except KeyboardInterrupt:
-        #  self.cleanup_func()
-
-
-
+        print("Robot Done")
 
 
 
     def exercise_demo(self, ex):
         if ex == "hello_waving":
-            s.demo_finish=True
+            #s.demo_finish=True
             self.hello_waving()
         else:
-            #dmonstration
             audio = s.req_exercise + '_' + str(s.rep) + '_times'
             say(audio)
             time.sleep(get_wav_duration(audio))
-            s.screen.switch_frame(DemoPage)
-            time.sleep(get_wav_duration('robot_demo'))
-            getattr(self, ex)(0)
-            time.sleep(1)
+            #s.screen.switch_frame(DemoPage)
+            #time.sleep(get_wav_duration('robot_demo'))
+            #getattr(self, ex)(0)
+            #time.sleep(1)
             s.screen.switch_frame(ExercisePage)
             say('start_ex')
-            s.demo_finish = True
+            time.sleep(get_wav_duration("start_ex"))
+            #s.demo_finish = True
             self.faster_sayings = ['pick_up_pace', 'faster']
             said_faster= 0 #how many times the robot said faster encouragement
             for i in range(s.rep):
                 getattr(self, ex)(i)
                 print("robot count: "+str(i+1))
-                if i-3>= s.patient_repititions_counting and said_faster==0:
+                if i-3>= s.patient_repititions_counting_in_exercise and said_faster==0:
                     self.random_faster()
                     said_faster+=1
-                if i-6>=s.patient_repititions_counting and said_faster==1:
+                if i-6>=s.patient_repititions_counting_in_exercise and said_faster==1:
                     self.random_faster()
                     said_faster+=1
                 if s.success_exercise:
@@ -187,8 +136,8 @@ class Gymmy(threading.Thread):
             time.sleep(1)
 
 
-        self.gymmy.r_arm[3].goto_position(-60, 1.5, wait=False)
-        self.gymmy.l_arm[3].goto_position(-60, 1.5, wait=False)
+        self.gymmy.r_elbow_y.goto_position(-60, 1.5, wait=False)
+        self.gymmy.l_elbow_y.goto_position(-60, 1.5, wait=False)
         time.sleep(2)
         self.gymmy.r_arm[3].goto_position(85, 1.5, wait=False)
         self.gymmy.l_arm[3].goto_position(85, 1.5, wait=False)
@@ -743,7 +692,7 @@ class Gymmy(threading.Thread):
 
 
 if __name__ == "__main__":
-    s.rep = 3
+    s.rep = 10
     s.success_exercise = False
     s.finish_workout = False
 
@@ -756,13 +705,16 @@ if __name__ == "__main__":
     ###########################################################
     s.waved=True
     s.finish_workout=False
-    s.req_exercise="bend_elbows_ball"
     robot = Gymmy()
     #mp=MP()
     #mp.start()
     robot.start()
-    #signal.signal(signal.SIGTERM, signal_handler)
-    #signal.signal(signal.SIGINT, signal_handler)
+    s.screen = Screen()
+
+    app = FullScreenApp(s.screen)
+    s.screen.mainloop()
+
+
 
 
     #robot.join()
@@ -783,6 +735,5 @@ if __name__ == "__main__":
     #robot.join()
     #time.sleep(5)
     #s.finish_workout=True
-    while not s.finish_workout:
-       time.sleep(1)
+
     #sys.exit()

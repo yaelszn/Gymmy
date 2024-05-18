@@ -13,6 +13,10 @@ def __init__():
     global Last_workbook #the workbook of the last time the patient did every exercise
     global success_sheet
     global effort_sheet
+    global number_of_repetitions_in_training
+    global max_repetitions_in_training
+    global current_level_of_patient
+    global points_in_current_level_before_training
 
     # training variables
     global exercise_amount
@@ -27,7 +31,7 @@ def __init__():
     global robot_count
     global exercises_start
     global waved_has_tool #the participant has the tool in his hand and is ready to start
-    global demo_finish #the first demo of the exercise is done
+    #global demo_finish #the first demo of the exercise is done
     global ex_in_training
     global list_effort_each_exercise #list of chosen effort to each exercise
     global finished_effort #finished to grade the efforts of exercises
@@ -42,7 +46,6 @@ def __init__():
     global chosen_patient_ID #the id of the patient the therpist chose to enter
     global excel_file_path_Patient
 
-    global patient_repititions_counting #number of times that the user did the current exercise correctly
 
 
 
