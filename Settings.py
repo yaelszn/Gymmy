@@ -7,8 +7,9 @@ def __init__():
     global screen
 
     global participant_code
-    global excel_workbook
-    global excel_workbook_name
+    global training_workbook
+    global training_workbook_path
+    global training_workbook_name
     global ex_list
     global Last_workbook #the workbook of the last time the patient did every exercise
     global success_sheet

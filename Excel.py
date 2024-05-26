@@ -5,23 +5,51 @@ from Joint import Joint
 import openpyxl
 import Settings as s
 from openpyxl import load_workbook
-from openpyxl.drawing.image import Image
 import matplotlib.pyplot as plt
 import numpy as np
-from openpyxl.drawing.image import Image as XLImage
-import Excel
+import os
+import subprocess
+import platform
+
+
+def create_and_open_folder(folder_path):
+    try:
+        # Create the folder if it doesn't exist
+        os.makedirs(folder_path, exist_ok=True)
+        print(f"Directory created or already exists: {folder_path}")
+
+        # Check if the folder exists after creation
+        if not os.path.exists(folder_path):
+            raise FileNotFoundError(f"Directory still not found: {folder_path}")
+
+        # Open the folder based on the operating system
+        current_os = platform.system()
+        if current_os == 'Windows':
+            os.startfile(folder_path)
+        elif current_os == 'Darwin':  # macOS
+            subprocess.run(['open', folder_path])
+        elif current_os == 'Linux':
+            subprocess.run(['xdg-open', folder_path])
+        else:
+            raise OSError(f"Unsupported operating system: {current_os}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 
+
+#creats a new workbook to each training
 def create_workbook():
     datetime_string = datetime.now().strftime("%d-%m-%Y %H-%M-%S")
-    workbook_name = f"{s.chosen_patient_ID} {datetime_string}.xlsx"
-    s.excel_workbook_name = workbook_name
-    s.excel_workbook = xlsxwriter.Workbook(workbook_name)
+    workbook_name = f"Patients/{s.chosen_patient_ID}/{datetime_string}.xlsx"
+    s.training_workbook_path = workbook_name
+    s.training_workbook_name= f"{datetime_string}.xlsx"
+    s.training_workbook = xlsxwriter.Workbook(workbook_name)
+    s.training_workbook.save()
 
 
-
-def find_row_by_value(workbook_path, worksheet_name, ID, target_col):
+#returns a specific value by ID and name of the column
+def find_value_by_colName_and_userID(workbook_path, worksheet_name, ID, target_col):
     try:
         # Load the workbook
         workbook = load_workbook(workbook_path)
@@ -49,10 +77,12 @@ def find_row_by_value(workbook_path, worksheet_name, ID, target_col):
         print(f"An error occurred: {e}")
         return None
 
-def get_success_number(exercise):
+
+#returns the value of success in a specific training and specific exercise
+def get_success_number(file_path, exercise):
     try:
         # Load the workbook
-        workbook = openpyxl.load_workbook(s.excel_file_path_Patient)
+        workbook = openpyxl.load_workbook(file_path)
 
         # Check if the worksheet exists
         if "success" not in workbook.sheetnames:
@@ -76,6 +106,7 @@ def get_success_number(exercise):
         return None
 
 
+#returns the value of effort rate in a specific training and specific exercise
 def get_effort_number(exercise):
     try:
         # Load the workbook
@@ -104,17 +135,11 @@ def get_effort_number(exercise):
 
 
 def wf_joints(ex_name, list_joints):
-    #if ex_name in s.Last_workbook.sheetnames:
-        # Remove the existing sheet
-     #   s.Last_workbook.remove(s.Last_workbook[ex_name])
-
-    worksheet1 = s.excel_workbook.add_worksheet(ex_name)
-    #worksheet2 = s.Last_workbook.create_sheet(title=ex_name)
+    worksheet1 = s.training_workbook.add_worksheet(ex_name[:31])
     col = 0
 
     for l in range(0, len(list_joints)):
         worksheet1.write(0, col, col + 1)
-        #worksheet2.cell(1, col+1, col + 1)
 
         row = 1
         for j in list_joints[l]:
@@ -122,24 +147,23 @@ def wf_joints(ex_name, list_joints):
                 j_ar = j.joint_to_array()
                 for i in range(len(j_ar)):
                     worksheet1.write(row, col, str(j_ar[i]))
-                    #worksheet2.cell(row+1, col+1, str(j_ar[i])) #index starts from 1
                     row += 1
 
             else:
                 # Handle other types appropriately, e.g., just write the value to the worksheet
                 worksheet1.write(row, col, str(j))
-                #worksheet2.cell(row+1, col+1, str(j))
                 row += 1
 
         col += 1
 
+    s.training_workbook.save(s.training_workbook_path) #save the workbook
     create_graphs(ex_name)
 
 
 def create_graphs(exercise):
 
     try:
-        df = pd.read_excel(s.excel_file_path_Patient, sheet_name=exercise)
+        df = pd.read_excel(s.training_workbook_path, sheet_name=(exercise[:31]))
         if get_number_of_angles_in_exercise(exercise) == 1:
             one_angle_graph(df, exercise)
        # if get_number_of_angles_in_exercise(exercise) == 2:
@@ -154,7 +178,6 @@ def create_graphs(exercise):
     except ValueError as ve:
         # Handle other specific errors
         pass  # Continue to the next iteration
-
 
 
 def get_number_of_angles_in_exercise(exercise):
@@ -178,6 +201,26 @@ def get_number_of_angles_in_exercise(exercise):
         return False
 
 def one_angle_graph(df, exercise):
+    worksheet_graphs = s.training_workbook.add_worksheet(("graphs_"+exercise)[:31])
+
+    first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
+    y_values_1 = df.iloc[24, :]
+    y_values_1_float = y_values_1.astype(float)
+    create_and_save_graph(df.columns, y_values_1_float, first_graph_name, worksheet_graphs, 24)
+
+    second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
+    y_values_2 = df.iloc[25, :]
+    y_values_2_float = y_values_2.astype(float)
+    create_and_save_graph(df.columns, y_values_2_float, second_graph_name, worksheet_graphs, 25)
+
+    data = {
+    first_graph_name: {'x': df.columns, 'y': y_values_1_float},
+    second_graph_name: {'x': df.columns, 'y': y_values_2_float}}
+
+    create_and_save_graph(data, worksheet_graphs)
+
+
+def two_angles_graph(df, exercise):
     worksheet_graphs = s.excel_workbook.add_worksheet(("graphs_"+exercise)[:31])
 
     first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
@@ -195,6 +238,7 @@ def one_angle_graph(df, exercise):
     second_graph_name: {'x': df.columns, 'y': y_values_2_float}}
 
     create_and_save_graph(data, worksheet_graphs)
+
 
 def create_and_save_graph(data, worksheet_graphs):
     # Define the starting row and column for inserting the graphs
@@ -229,11 +273,11 @@ def create_and_save_graph(data, worksheet_graphs):
         # Update the starting row for the next image
         start_row += 20  # Adjust as needed
 
-
+    s.training_workbook.save()
 
 
 def success_worksheet():
-    s.success_sheet = s.excel_workbook.add_worksheet("success")
+    s.success_sheet = s.training_workbook.add_worksheet("success")
     s.success_sheet.write(0, 0, "exercise")
     s.success_sheet.write(0, 1, "number of successful repetitions")
 
@@ -245,10 +289,8 @@ def success_worksheet():
         row += 1
 
 
-    #find_and_change_values_success_in_Last()
-
 def effort_worksheet():
-    s.effort_sheet = s.excel_workbook.add_worksheet("effort")
+    s.effort_sheet = s.training_workbook.add_worksheet("effort")
     s.effort_sheet.write(0, 0, "exercise")
     s.effort_sheet.write(0, 1, "effort")
 
@@ -259,15 +301,42 @@ def effort_worksheet():
 
         row += 1
 
-    #find_and_change_values_effort_in_Last()
 
-def find_and_change_values_Patients(new_values_dict, headers_row=1):
+def find_and_change_values_exercises(new_values_dict, headers_row=1):
     # Load the workbook
     file_path = "Patients.xlsx"
     workbook = openpyxl.load_workbook(file_path)
 
     # Select the desired sheet
-    sheet = workbook["patient_details_and_exercises"]
+    sheet = workbook["patients_exercises"]
+
+    # Find the column indices based on the header names
+    column_indices = {}
+    for header_name, new_value in new_values_dict.items():
+        for cell in sheet[headers_row]:
+            if cell.value == header_name:
+                column_indices[header_name] = cell.column
+                break
+
+    # Iterate through the rows to find the value in the first column
+    for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=1):
+        cell = row[0]
+        if str(cell.value) == s.chosen_patient_ID:
+            # Update the values in the corresponding columns
+            for header_name, column_index in column_indices.items():
+                sheet.cell(row=cell.row, column=column_index, value=new_values_dict[header_name])
+
+    # Save the changes
+    workbook.save(file_path)
+
+
+def find_and_change_values_patients(new_values_dict, headers_row=1):
+    # Load the workbook
+    file_path = "Patients.xlsx"
+    workbook = openpyxl.load_workbook(file_path)
+
+    # Select the desired sheet
+    sheet = workbook["patients_details"]
 
     # Find the column indices based on the header names
     column_indices = {}
@@ -305,104 +374,20 @@ def find_and_add_training_to_patient(headers_row=1):
             next_column = sheet.max_column + 1
 
             # Write the new value to the next available column in the row
-            sheet.cell(row=cell.row, column=next_column, value=s.excel_workbook_name.replace(".xlsx", ""))
-            sheet.cell(row=cell.row, column=next_column+1, value=(s.number_of_repetitions_in_training/s.max_repetitions_in_training))
+            sheet.cell(row=cell.row, column=next_column, value=s.training_workbook_name.replace(".xlsx", "")) #training name
+            sheet.cell(row=cell.row, column=next_column+1, value=(s.number_of_repetitions_in_training/s.max_repetitions_in_training)) #precent of the training that the patient managed to do
 
             break  # Stop searching after finding the value
 
     workbook.save(file_path)
 
 
- # Load the workbook
-    file_path = "Patients.xlsx"
-    workbook = openpyxl.load_workbook(file_path)
-
-    # Select the desired sheet
-    sheet = workbook["patients_history_of_trainings"]
-
-    # Iterate through the rows to find the value in the first column
-    for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=1):
-        cell = row[0]
-        if str(cell.value) == s.chosen_patient_ID:
-            # Find the next available column in the row
-            next_column = sheet.max_column + 1
-
-            # Write the new value to the next available column in the row
-            sheet.cell(row=cell.row, column=next_column, value=s.excel_workbook_name.replace(".xlsx", ""))
-            sheet.cell(row=cell.row, column=next_column+1, value=(s.number_of_repetitions_in_training/s.max_repetitions_in_training))
-
-            break  # Stop searching after finding the value
-
-
-def find_and_change_values_effort_in_Last(headers_row=1):
-    # Select the desired sheet
-    sheet = s.Last_workbook["effort"]
-    new_values_dict = s.list_effort_each_exercise
-
-    # Get all the keys (exercise names) from the new_values_dict
-    #search_values = list(new_values_dict.keys())
-
-    # Check if the sheet is empty (contains only headers)
-    if sheet.max_row == headers_row:
-        # Add headers
-        sheet.cell(row=headers_row, column=1, value="exercise")
-        sheet.cell(row=headers_row, column=2, value="effort")
-
-    # Iterate over new_values_dict
-    for exercise_name, effort_number in new_values_dict.items():
-        found = False
-        # Iterate through the existing rows to check if the exercise is already in the sheet
-        for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=2):
-            if row[0].value == exercise_name:
-                found = True
-                # Update the value in the second column
-                row[1].value = effort_number
-                break
-
-        # If the exercise is not found in the sheet, add it as a new row
-        if not found:
-            new_row_index = sheet.max_row + 1
-            sheet.cell(row=new_row_index, column=1, value=exercise_name)
-            sheet.cell(row=new_row_index, column=2, value=effort_number)
-
-
-def find_and_change_values_success_in_Last(headers_row=1):
-    # Select the desired sheet
-    sheet = s.Last_workbook["success"]
-    new_values_dict = s.ex_list
-
-    # Get all the keys (exercise names) from the new_values_dict
-    #search_values = list(new_values_dict.keys())
-
-    # Check if the sheet is empty (contains only headers)
-    if sheet.max_row == headers_row:
-        # Add headers
-        sheet.cell(row=headers_row, column=1, value="exercise")
-        sheet.cell(row=headers_row, column=2, value="number of successful repetitions")
-
-    # Iterate over new_values_dict
-    for exercise_name, success_count in new_values_dict.items():
-        found = False
-        # Iterate through the existing rows to check if the exercise is already in the sheet
-        for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=2):
-            if row[0].value == exercise_name:
-                found = True
-                # Update the value in the second column
-                row[1].value = success_count
-                break
-
-        # If the exercise is not found in the sheet, add it as a new row
-        if not found:
-            new_row_index = sheet.max_row + 1
-            sheet.cell(row=new_row_index, column=1, value=exercise_name)
-            sheet.cell(row=new_row_index, column=2, value=success_count)
-
-
-def count_true_values_in_row_by_ID():
+# counts number of exercises in a training by ID by counting the true value
+def count_number_of_exercises_in_training_by_ID():
     # Select the specific sheet
-    workbook = openpyxl.load_workbook("C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients.xlsx")
+    workbook = openpyxl.load_workbook("Patients.xlsx")
 
-    sheet = workbook["patient_details_and_exercises"]
+    sheet = workbook["patients_exercises"]
 
     # Search for the row containing the search_value in the first column
     for row in sheet.iter_rows():
@@ -424,23 +409,17 @@ def count_true_values_in_row_by_ID():
 
 
 def close_workbook():
-    #s.Last_workbook.save(f"{s.chosen_patient_ID}_Last.xlsx")
     s.excel_workbook.close()
 
 
-def extract_string_between_spaces(input_string):
-    parts = input_string.split()  # Split the string into parts based on spaces
-    if len(parts) >= 3:  # Ensure there are at least three parts (two spaces)
-        return parts[1]  # Extract the second part
-    else:
-        return None
+
 
 
 
 if __name__ == "__main__":
 
 
-    find_row_by_value("314808981", "email")
+    find_value_by_colName_and_userID("314808981", "email")
 
     s.chosen_patient_ID="315454"
     create_workbook()

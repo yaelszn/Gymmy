@@ -1,39 +1,23 @@
 # -*- coding: utf-8 -*-
-import atexit
 import queue
-import threading
 import time
 import tkinter as tk
 from datetime import datetime
 from statistics import mean, stdev
 from tkinter import ttk
-
 import openpyxl
-from gtts import gTTS
-from gtts.tokenizer import Tokenizer
-import os
 import matplotlib
 matplotlib.use('TkAgg')  # Use the TkAgg backend
-
 import cv2
 import pandas as pd
 import pygame
 from PIL import Image, ImageTk
-from matplotlib import pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from ttkthemes import ThemedTk, ThemedStyle
-import customtkinter
-
-
-
+from email_validator import validate_email, EmailNotValidError
 import Settings as s
 from Audio import say
-import random
-import math
 from gtts import gTTS
 import os
-import playsound  # You can use other libraries for playing the speech, like pygame or pyaudio
-import pyttsx3
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import Excel
 
 
@@ -56,102 +40,52 @@ class Screen(tk.Tk):
         self._frame = new_frame
         self._frame.pack()
 
-    def wait_until_waving(self):
-        s.waved_has_tool = False
-        s.req_exercise = "hello_waving"
-        while not s.waved_has_tool:
-            time.sleep(0.00000001)
-
     def quit(self):
         self.destroy()
-
-
-def add_daytime(to_say):
-    hour = datetime.now().hour
-    print(hour)
-
-    if (22 <= hour <= 23) or (0 <= hour <= 5):
-        to_say += "לילה טוב!"
-
-    if (6 <= hour <= 10):
-        to_say += "בוקר טוב!"
-
-    if (11 <= hour <= 14):
-        to_say += "צהריים טובים!"
-
-    if (15 <= hour <= 18):
-        to_say += "אחר צהריים טובים!"
-
-    if (19 <= hour <= 21):
-        to_say += "ערב טוב!"
-
-    return to_say
-
-
-def text_to_speech(text, lang='iw', slow=False):
-    tts = gTTS(text=text, lang=lang, slow=slow)
-    tts.save("output.mp3")
-
-    # Initialize pygame mixer
-    pygame.mixer.init()
-
-    # Load and play the audio file
-    pygame.mixer.music.load("output.mp3")
-    pygame.mixer.music.play()
-
-    # Wait for the audio to finish playing
-    while pygame.mixer.music.get_busy():
-        pygame.time.Clock().tick(10)
-
-    # Clean up
-    pygame.mixer.quit()
-
-
-
-def text_to_speech2(language='iw'):
-    text = "הרם את הידיים ב-90 מעלות"
-    tts = gTTS(text=text, lang=language, slow=False, lang_check=False)
-    tts.save("output.mp3")
-
-    # Play the generated speech using a media player
-    os.system("start output.mp3")
 
 
 class EntrancePage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        image1 = Image.open('Pictures//background.jpg')
+
+        # Load background image
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        image_path = os.path.join(current_dir, 'Pictures', 'background.jpg')
+        image1 = Image.open(image_path)
         self.photo_image1 = ImageTk.PhotoImage(image1)
         self.background_label = tk.Label(self, image=self.photo_image1)
-        self.background_label.pack()  # Pack the background label here
+        self.background_label.pack()
+
+        # Set initial value
         s.chosen_patient_ID = None
 
         # Load images for buttons
-        therapist_image = Image.open("Pictures//therapist_enterence_button.jpg")  # Change path to your image file
+        therapist_image = Image.open("Pictures//therapist_enterence_button.jpg")
         therapist_photo = ImageTk.PhotoImage(therapist_image)
-        patient_image = Image.open("Pictures//patient_enterence_button.jpg")  # Change path to your image file
+        patient_image = Image.open("Pictures//patient_enterence_button.jpg")
         patient_photo = ImageTk.PhotoImage(patient_image)
+
+        # Store references to prevent garbage collection
+        self.therapist_photo = therapist_photo
+        self.patient_photo = patient_photo
 
         # Create buttons with images
         enter_as_therapist_button = tk.Button(self, image=therapist_photo,
-                                              command=lambda: self.on_click_therapist_chosen(),
+                                              command=self.on_click_therapist_chosen,
                                               width=therapist_image.width, height=therapist_image.height,
-                                              bg='#50a6ad', bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
-        enter_as_therapist_button.image = therapist_photo  # Store reference to image to prevent garbage collection
+                                              bg='#50a6ad', bd=0, highlightthickness=0)
         enter_as_therapist_button.place(x=160, y=130)
 
         enter_as_patient_button = tk.Button(self, image=patient_photo,
-                                            command=lambda: self.on_click_patient_chosen(),
+                                            command=self.on_click_patient_chosen,
                                             width=patient_image.width, height=patient_image.height,
-                                            bg='#50a6ad', bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
-        enter_as_patient_button.image = patient_photo  # Store reference to image to prevent garbage collection
+                                            bg='#50a6ad', bd=0, highlightthickness=0)
         enter_as_patient_button.place(x=540, y=130)
-        s.ex_in_training = []
 
+        s.ex_in_training = []
 
     def on_click_therapist_chosen(self):
         s.screen.switch_frame(ID_therapist_fill_page)
-
 
     def on_click_patient_chosen(self):
         s.screen.switch_frame(ID_patient_fill_page)
@@ -168,7 +102,7 @@ class ID_patient_fill_page(tk.Frame):
         self.labels = []
 
         # Load image for the submit button
-        submit_image = Image.open("Pictures//enter.jpg")  # Change path to your image file
+        submit_image = Image.open("Pictures//enter.jpg")
         submit_photo = ImageTk.PhotoImage(submit_image)
 
         # Create button with image
@@ -187,9 +121,10 @@ class ID_patient_fill_page(tk.Frame):
         user_id = self.user_id_entry_patient.get()
         print(f"User ID entered: {user_id}")
         # Add your logic here to handle the user ID, e.g., store it in a variable or perform an action.
+
         if user_id != "":
             excel_file_path = "Patients.xlsx"
-            df = pd.read_excel(excel_file_path)
+            df = pd.read_excel(excel_file_path, sheet_name="patients_details")
 
             # Convert the first column to string for comparison
             df.iloc[:, 0] = df.iloc[:, 0].astype(str)
@@ -226,11 +161,11 @@ class ID_patient_fill_page(tk.Frame):
 
 
                 else:
-                    patient_workbook_path= "C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients.xlsx"
+                    patient_workbook_path= "Patients.xlsx"
                     s.chosen_patient_ID=user_id
-                    s.email_of_patient= Excel.find_row_by_value(patient_workbook_path, "patient_details_and_exercises", user_id, "email")
-                    s.current_level_of_patient= float(Excel.find_row_by_value(patient_workbook_path, "patient_details_and_exercises", user_id, "level"))
-                    s.points_in_current_level_before_training= float(Excel.find_row_by_value(patient_workbook_path, "patient_details_and_exercises", user_id, "points in current level"))
+                    s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patient_details_and_exercises", user_id, "email")
+                    s.current_level_of_patient= float(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patient_details_and_exercises", user_id, "level"))
+                    s.points_in_current_level_before_training= float(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patient_details_and_exercises", user_id, "points in current level"))
 
 
                     s.ex_in_training=[]
@@ -241,11 +176,7 @@ class ID_patient_fill_page(tk.Frame):
                             s.ex_in_training.append(df.columns[i])
 
                     print(s.ex_in_training)
-                    to_say="היי "+row_of_patient.iloc[0]["first name"]+". "
-                    to_say=add_daytime(to_say)
-                    #text_to_speech(to_say)
-                    #text_to_speech2()
-                    s.screen.switch_frame(StartingOfTraining)
+                    s.screen.switch_frame(StartOfTraining)
 
 
 
@@ -297,17 +228,16 @@ class ID_therapist_fill_page(tk.Frame):
 
         if user_id != "":
             excel_file_path = "Physiotherapists.xlsx"
-            df = pd.read_excel(excel_file_path)
+            df = pd.read_excel(excel_file_path, sheet_name="details")
 
             # Convert the first column to string for comparison
-            df.iloc[:, 0] = df.iloc[:, 0].astype(str)
+            df['ID_str'] = df.iloc[:, 0].astype(str).str.strip()
 
             # Convert the user_id to string and remove leading/trailing spaces for comparison
             user_id_cleaned = str(user_id).strip()
 
             # Filter rows based on the condition
-            row_of_patient = df[df.iloc[:, 0] == user_id_cleaned]
-
+            row_of_patient = df[df['ID_str'] == user_id_cleaned]
 
             if row_of_patient.empty:
                 back = Image.open('Pictures//id_not_in_system.jpg')
@@ -321,9 +251,6 @@ class ID_therapist_fill_page(tk.Frame):
 
 
             else:
-                to_say = "היי " + row_of_patient.iloc[0]["first name"] + ". "
-                to_say = add_daytime(to_say)
-               # text_to_speech(to_say)
                 s.screen.switch_frame(Choose_Action_Physio)
 
 
@@ -448,7 +375,7 @@ class PhysioRegistration(tk.Frame):
         self.delete_all_labels()
 
         excel_file_path = "Physiotherapists.xlsx"
-        df = pd.read_excel(excel_file_path)
+        df = pd.read_excel(excel_file_path, sheet_name="details")
         ID_entered=self.id_entry.get()
         is_in_ID = ID_entered in df['ID'].astype(str).values #chaeck if the ID that the user inserted is already in system
 
@@ -458,7 +385,7 @@ class PhysioRegistration(tk.Frame):
             back = Image.open('Pictures//no_id.jpg')
             no_id_label = ImageTk.PhotoImage(back)
             self.label = tk.Label(self, image=no_id_label, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=290, y=425)
+            self.label.place(x=185, y=425)
             self.label.image = no_id_label
             self.labels.append(self.label)
 
@@ -466,7 +393,7 @@ class PhysioRegistration(tk.Frame):
             back = Image.open('Pictures//id_already_in_system.jpg')
             id_already_in_system = ImageTk.PhotoImage(back)
             self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=220, y=425)
+            self.label.place(x=80, y=425)
             self.label.image = id_already_in_system
             self.labels.append(self.label)
 
@@ -542,7 +469,8 @@ class PatientRegistration(tk.Frame):
         self.option_menu.config(width=6)  # Adjust the width of the grey place
         self.option_menu.place(x=440, y=365)
 
-
+        self.email_entry = tk.Entry(self, font=('Thaoma', 14), width=20, justify='right')
+        self.email_entry.place(x=370, y=425)
 
         add_patient_button_img = Image.open("Pictures//add.jpg")  # Change path to your image file
         add_patient_button_photo = ImageTk.PhotoImage(add_patient_button_img)
@@ -552,7 +480,7 @@ class PatientRegistration(tk.Frame):
                                       width=add_patient_button_img.width, height=add_patient_button_img.height, bd=0,
                                       highlightthickness=0)  # Set border width to 0 to remove button border
         add_patient_button.image = add_patient_button_photo  # Store reference to image to prevent garbage collection
-        add_patient_button.place(x=425, y=445)
+        add_patient_button.place(x=425, y=480)
         self.labels = []  # collect the labels that apear so that on a click on the button i can delete them
 
     def on_select_gender(self, option):
@@ -562,11 +490,23 @@ class PatientRegistration(tk.Frame):
         else:
             self.gender='Male'
 
+    def is_email_valid (self, email):
+        try:
+            # Validate the email address
+            validate_email(email)
+            # If no exception is raised, the email is valid
+            return True
+        except EmailNotValidError:
+            # If an exception is raised, the email is not valid
+            #print(str(e))
+            return False
+
     def on_click_patient_registration(self):
         self.delete_all_labels()
 
         excel_file_path = "Patients.xlsx"
-        df = pd.read_excel(excel_file_path, sheet_name="patient_details_and_exercises")
+        workbook=openpyxl.load_workbook(excel_file_path)
+        df = pd.read_excel(excel_file_path, sheet_name="patients_details")
         ID_entered=self.id_entry.get()
         is_in_ID = ID_entered in df['ID'].astype(str).values #chaeck if the ID that the user inserted is already in system
 
@@ -577,56 +517,81 @@ class PatientRegistration(tk.Frame):
             background_img = ImageTk.PhotoImage(back)
 
             self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=310, y=500)
+            self.label.place(x=185, y=490)
             self.label.image = background_img
             self.labels.append(self.label)
 
 
         elif is_in_ID is True:
-            back = Image.open('Pictures//id_already_in_system.jpg')
-            id_already_in_system = ImageTk.PhotoImage(back)
+            error = Image.open('Pictures//id_already_in_system.jpg')
+            id_already_in_system = ImageTk.PhotoImage(error)
             self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=220, y=500)
+            self.label.place(x=80, y=490)
             self.label.image = id_already_in_system
             self.labels.append(self.label)
 
 
+        elif self.is_email_valid(self.email_entry.get()) is False: #if email is not valid
+            error = Image.open('Pictures//not_valid_email.jpg')
+            id_already_in_system = ImageTk.PhotoImage(error)
+            self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=230, y=490)
+            self.label.image = id_already_in_system
+            self.labels.append(self.label)
+
 
         else:
-            # insret a new row to the patient excel
-            new_row_data = {column: False for column in df.columns}
+            s.chosen_patient_ID=ID_entered
             #modifying the columns that has other value than false
-            new_row_data.update({
+            new_row_data_details={
                 'ID': ID_entered,
-                'first name': self.first_name_entry.get(),
-                'last name': self.last_name_entry.get(),
+                'first name': str(self.first_name_entry.get()),
+                'last name': str(self.last_name_entry.get()),
                 'gender': self.gender,
-                'number of exercises': 0
-            })
+                'number of exercises': 0,
+                'email': str(self.email_entry.get()),
+                'points in current level': 0,
+                'level': 1
+            }
 
-            new_row_df = pd.DataFrame([new_row_data])
-            df = pd.concat([df, new_row_df], ignore_index=True)
-            df.to_excel(excel_file_path, index=False, sheet_name="patient_details_and_exercises")
+            sheet1=workbook["patients_details"]
+            columns = list(new_row_data_details.keys())
+            sheet1.append([new_row_data_details[column] for column in columns])
+            workbook.save("Patients.xlsx")
 
             #insert a row to the excel of history of training
-            df2 = pd.read_excel(excel_file_path, sheet_name="patients_history_of_trainings")
-            new_row_data = {'ID': ID_entered}
-            df2 = df2.append(new_row_data, ignore_index=True)
-            df2.to_excel(excel_file_path, index=False, sheet_name="patients_history_of_trainings" )
+            new_row_hystory_of_training = {'ID': ID_entered}
+            sheet2 = workbook["patients_history_of_trainings"]
+            columns = list(new_row_hystory_of_training.keys())
+            sheet2.append([new_row_hystory_of_training[column] for column in columns])
+            workbook.save("Patients.xlsx")
+
+            #insert a row to the excel of exercises
+            df2 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
+            sheet3 = workbook["patients_exercises"]
+            new_row_data_exercises = {column: False for column in df2.columns}
+            new_row_data_exercises.update({'ID': ID_entered})
+
+            columns = list(new_row_data_exercises.keys())
+            sheet3.append([new_row_data_exercises[column] for column in columns])
+            workbook.save("Patients.xlsx")
+
+
+            Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}") #open folder for patient
+            Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Graphs") #open graphs folder
 
             back = Image.open('Pictures//successfully_added_patient.jpg')
             successfully_added_patient = ImageTk.PhotoImage(back)
             self.label = tk.Label(self, image=successfully_added_patient, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=280, y=500)
+            self.label.place(x=150, y=485)
             self.label.image = successfully_added_patient
             self.first_name_entry.delete(0, tk.END)
             self.last_name_entry.delete(0, tk.END)
             self.id_entry.delete(0, tk.END)
             self.selected_option.set(self.options[0])
+            self.email_entry.delete(0, tk.END)
             self.gender='Male'
             self.labels.append(self.label)
-
-
 
 
     def delete_all_labels(self):
@@ -641,7 +606,7 @@ class PatientDisplaying(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
         excel_file_path = "Patients.xlsx"
-        df = pd.read_excel(excel_file_path, usecols=['ID', 'first name', 'last name'])
+        df = pd.read_excel(excel_file_path, sheet_name="patients_details" ,usecols=['ID', 'first name', 'last name'])
         new_headers = {'ID': 'תעודת זהות'[::-1], 'first name': 'שם פרטי'[::-1], 'last name': 'שם משפחה'[::-1]}
         df.rename(columns=new_headers, inplace=True)
         s.chosen_patient_ID=None
@@ -719,17 +684,6 @@ class PatientDisplaying(tk.Frame):
             print("Selected Row:", selected_row)
 
             s.chosen_patient_ID=selected_row[0]
-
-            excel_file_path = "Patients.xlsx"
-            df = pd.read_excel(excel_file_path)
-            # Convert the first column to string for comparison
-            df.iloc[:, 0] = df.iloc[:, 0].astype(str)
-            # Convert the user_id to string and remove leading/trailing spaces for comparison
-            user_id_cleaned = str(s.chosen_patient_ID).strip()
-            # Filter rows based on the condition
-            row_of_patient = df[df.iloc[:, 0] == user_id_cleaned]
-
-            s.excel_file_path_Patient = s.chosen_patient_ID+"_Last.xlsx"
             s.screen.switch_frame(ChooseBallExercisesPage)
 
 
@@ -775,8 +729,9 @@ def search_for_previous_graphs_of_exercise(exercise_name, last_training_exercise
 
 def check_worksheet_exists(workbook_path, worksheet_name):
     try:
+
         # Load the workbook
-        workbook = openpyxl.load_workbook(workbook_path)
+        workbook = openpyxl.load_workbook(f"{s.chosen_patient_ID}/{workbook_path}.xlsx")
 
         # Check if the worksheet exists
         if worksheet_name in workbook.sheetnames:
@@ -865,7 +820,6 @@ def get_row_of_patient():
 class ChooseBallExercisesPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-
         # Load background image
         background_image = Image.open('Pictures//background.jpg')
         self.background_photo = ImageTk.PhotoImage(background_image)
@@ -966,23 +920,27 @@ class ChooseBallExercisesPage(tk.Frame):
 
         Excel.find_and_change_values_Patients(new_values_ex_patient)
 
+
+
     def on_arrow_click(self):
         self.save_changes()
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
     def to_patients_list_button_click(self):
         self.save_changes()
-        if Excel.count_true_values_in_row_by_ID()<5:
+        num_of_exercises_in_training=Excel.count_number_of_exercises_in_training_by_ID()
+        if num_of_exercises_in_training<5:
             back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
             background_img = ImageTk.PhotoImage(back)
 
             self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=170, y=10)
+            self.label.place(x=170, y=20)
             self.label.image = background_img
-            self.labels.append(self.label)
 
         else:
+            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
             s.screen.switch_frame(PatientDisplaying)
+
 
 
 class ChooseRubberBandExercisesPage(tk.Frame):
@@ -1080,7 +1038,18 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
     def to_patients_list_button_click(self):
         self.save_changes()
-        s.screen.switch_frame(PatientDisplaying)
+        num_of_exercises_in_training = Excel.count_number_of_exercises_in_training_by_ID()
+        if num_of_exercises_in_training < 5:
+            back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
+            background_img = ImageTk.PhotoImage(back)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=170, y=20)
+            self.label.image = background_img
+
+        else:
+            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
+            s.screen.switch_frame(PatientDisplaying)
 
 
     def save_changes(self):
@@ -1203,7 +1172,18 @@ class ChooseStickExercisesPage(tk.Frame):
 
     def to_patients_list_button_click(self):
         self.save_changes()
-        s.screen.switch_frame(PatientDisplaying)
+        num_of_exercises_in_training = Excel.count_number_of_exercises_in_training_by_ID()
+        if num_of_exercises_in_training < 5:
+            back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
+            background_img = ImageTk.PhotoImage(back)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=170, y= 20)
+            self.label.image = background_img
+
+        else:
+            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
+            s.screen.switch_frame(PatientDisplaying)
 
 
     def save_changes(self):
@@ -1226,15 +1206,15 @@ class ChooseNoToolExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
-        forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
-        forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo,
-                                         command=lambda: self.on_arrow_click_forward(),
-                                         width=forward_arrow_button_img.width, height=forward_arrow_button_img.height,
+        end_button_img = Image.open("Pictures//end_button.jpg")
+        end_button_photo = ImageTk.PhotoImage(end_button_img)
+        end_button = tk.Button(self, image=end_button_photo,
+                                         command=lambda: self.on_end_click(),
+                                         width=end_button_img.width, height=end_button_img.height,
                                          bd=0,
                                          highlightthickness=0)
-        forward_arrow_button.image = forward_arrow_button_photo
-        forward_arrow_button.place(x=50, y=480)
+        end_button.image = end_button_photo
+        end_button.place(x=50, y=490)
 
         backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
         backward_arrow_button_photo = ImageTk.PhotoImage(backward_arrow_button_img)
@@ -1245,17 +1225,6 @@ class ChooseNoToolExercisesPage(tk.Frame):
                                           highlightthickness=0)
         backward_arrow_button.image = backward_arrow_button_photo
         backward_arrow_button.place(x=913, y=480)
-
-        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
-        to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
-        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo,
-                                            command=lambda: self.to_patients_list_button_click(),
-                                            width=to_patients_list_button_img.width,
-                                            height=to_patients_list_button_img.height,
-                                            bd=0,
-                                            highlightthickness=0)  # Set border width to 0 to remove button border
-        to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
-        to_patients_list_button.place(x=30, y=30)
 
         row_of_patient=get_row_of_patient()
 
@@ -1318,15 +1287,23 @@ class ChooseNoToolExercisesPage(tk.Frame):
 
     def on_end_click(self):
         self.save_changes()
-        s.screen.switch_frame(PatientDisplaying)
+        num_of_exercises_in_training = Excel.count_number_of_exercises_in_training_by_ID()
+        if num_of_exercises_in_training < 5:
+            back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
+            background_img = ImageTk.PhotoImage(back)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=190, y=480)
+            self.label.image = background_img
+
+        else:
+            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
+            s.screen.switch_frame(PatientDisplaying)
 
     def on_arrow_click_back(self):
         self.save_changes()
         s.screen.switch_frame(ChooseStickExercisesPage)
 
-    def to_patients_list_button_click(self):
-        self.save_changes()
-        s.screen.switch_frame(PatientDisplaying)
 
 
     def save_changes(self):

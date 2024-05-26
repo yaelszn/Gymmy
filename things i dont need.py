@@ -1,0 +1,130 @@
+def find_and_change_values_effort_in_Last(headers_row=1):
+    # Select the desired sheet
+    sheet = s.Last_workbook["effort"]
+    new_values_dict = s.list_effort_each_exercise
+
+    # Get all the keys (exercise names) from the new_values_dict
+    #search_values = list(new_values_dict.keys())
+
+    # Check if the sheet is empty (contains only headers)
+    if sheet.max_row == headers_row:
+        # Add headers
+        sheet.cell(row=headers_row, column=1, value="exercise")
+        sheet.cell(row=headers_row, column=2, value="effort")
+
+    # Iterate over new_values_dict
+    for exercise_name, effort_number in new_values_dict.items():
+        found = False
+        # Iterate through the existing rows to check if the exercise is already in the sheet
+        for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=2):
+            if row[0].value == exercise_name:
+                found = True
+                # Update the value in the second column
+                row[1].value = effort_number
+                break
+
+        # If the exercise is not found in the sheet, add it as a new row
+        if not found:
+            new_row_index = sheet.max_row + 1
+            sheet.cell(row=new_row_index, column=1, value=exercise_name)
+            sheet.cell(row=new_row_index, column=2, value=effort_number)
+
+
+def find_and_change_values_success_in_Last(headers_row=1):
+    # Select the desired sheet
+    sheet = s.Last_workbook["success"]
+    new_values_dict = s.ex_list
+
+    # Get all the keys (exercise names) from the new_values_dict
+    #search_values = list(new_values_dict.keys())
+
+    # Check if the sheet is empty (contains only headers)
+    if sheet.max_row == headers_row:
+        # Add headers
+        sheet.cell(row=headers_row, column=1, value="exercise")
+        sheet.cell(row=headers_row, column=2, value="number of successful repetitions")
+
+    # Iterate over new_values_dict
+    for exercise_name, success_count in new_values_dict.items():
+        found = False
+        # Iterate through the existing rows to check if the exercise is already in the sheet
+        for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=2):
+            if row[0].value == exercise_name:
+                found = True
+                # Update the value in the second column
+                row[1].value = success_count
+                break
+
+        # If the exercise is not found in the sheet, add it as a new row
+        if not found:
+            new_row_index = sheet.max_row + 1
+            sheet.cell(row=new_row_index, column=1, value=exercise_name)
+            sheet.cell(row=new_row_index, column=2, value=success_count)
+
+
+def extract_string_between_spaces(input_string):
+    parts = input_string.split()  # Split the string into parts based on spaces
+    if len(parts) >= 3:  # Ensure there are at least three parts (two spaces)
+        return parts[1]  # Extract the second part
+    else:
+        return None
+
+
+def wait_until_waving(self):
+    s.waved_has_tool = False
+    s.req_exercise = "hello_waving"
+    while not s.waved_has_tool:
+        time.sleep(0.00000001)
+
+
+
+
+def add_daytime(to_say):
+    hour = datetime.now().hour
+    print(hour)
+
+    if (22 <= hour <= 23) or (0 <= hour <= 5):
+        to_say += "לילה טוב!"
+
+    if (6 <= hour <= 10):
+        to_say += "בוקר טוב!"
+
+    if (11 <= hour <= 14):
+        to_say += "צהריים טובים!"
+
+    if (15 <= hour <= 18):
+        to_say += "אחר צהריים טובים!"
+
+    if (19 <= hour <= 21):
+        to_say += "ערב טוב!"
+
+    return to_say
+
+
+def text_to_speech(text, lang='iw', slow=False):
+    tts = gTTS(text=text, lang=lang, slow=slow)
+    tts.save("output.mp3")
+
+    # Initialize pygame mixer
+    pygame.mixer.init()
+
+    # Load and play the audio file
+    pygame.mixer.music.load("output.mp3")
+    pygame.mixer.music.play()
+
+    # Wait for the audio to finish playing
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)
+
+    # Clean up
+    pygame.mixer.quit()
+
+
+
+def text_to_speech2(language='iw'):
+    text = "הרם את הידיים ב-90 מעלות"
+    tts = gTTS(text=text, lang=language, slow=False, lang_check=False)
+    tts.save("output.mp3")
+
+    # Play the generated speech using a media player
+    os.system("start output.mp3")
