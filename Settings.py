@@ -14,7 +14,8 @@ def __init__():
     global Last_workbook #the workbook of the last time the patient did every exercise
     global success_sheet
     global effort_sheet
-    global number_of_repetitions_in_training
+    global number_of_repetitions_in_training #how many successful repetitions the patient did in the whole training
+    global patient_repetitions_counting_in_exercise #save the repetitions so Gymmy will also be able to know the number of repetition done
     global max_repetitions_in_training
     global current_level_of_patient
     global points_in_current_level_before_training

@@ -2,8 +2,6 @@ import random
 import pyzed.sl as sl
 import threading
 import socket
-
-
 from Audio import say, get_wav_duration
 from Joint import Joint
 from MP import MP
@@ -54,8 +52,8 @@ class Camera(threading.Thread):
             medaip.start()
             self.zed = MP.get_zed(medaip)
 
-            while not s.finish_workout:
-                time.sleep(0.00000001)  # Prevents the MP to stuck
+            while not s.finish_program:
+                #time.sleep(0.0001)  # Prevents the MP to stuck
                 if s.req_exercise != "":
                     ex = s.req_exercise
                     print("CAMERA: Exercise ", ex, " start")
@@ -70,7 +68,7 @@ class Camera(threading.Thread):
 
 
     def get_skeleton_data(self):
-            #time.sleep(0.01)
+            time.sleep(0.01)
             bodies = sl.Bodies()  # Structure containing all the detected bodies
             body_runtime_param = sl.BodyTrackingRuntimeParameters()
             body_runtime_param.detection_confidence_threshold = 40
@@ -86,7 +84,6 @@ class Camera(threading.Thread):
                     arr_organs = ['nose', 'neck', 'R_shoulder', 'R_elbow', 'R_wrist', 'L_shoulder', 'L_elbow', 'L_wrist',
                               'R_hip', 'R_knee', 'R_ankle', 'L_hip', 'L_knee', 'L_ankle', 'R_eye', 'L_eye', 'R_ear', 'L_ear']
 
-                   # arr_organs=['', '', '', '', '', '', '', '', '', '', '', '', 'L_shoulder', 'R_shoulder', 'L_elbow', 'R_elbow', 'L_wrist']
 
                     joints={}
                     i=0
@@ -102,7 +99,9 @@ class Camera(threading.Thread):
                     return joints
 
                 else:
+                    time.sleep(0.01)
                     return None
+
 
             else:
                 return None
@@ -253,7 +252,7 @@ class Camera(threading.Thread):
                                     (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & (not flag):
                                 flag = True
                                 counter += 1
-                                s.patient_repititions_counting_in_exercise+=1
+                                s.patient_repetitions_counting_in_exercise+=1
                                 self.change_count_screen(counter)
                                 print("counter:"+ str(counter))
                               #  if not s.robot_count:
@@ -268,7 +267,7 @@ class Camera(threading.Thread):
                                     (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
                                 flag = True
                                 counter += 1
-                                s.patient_repititions_counting_in_exercise+=1
+                                s.patient_repetitions_counting_in_exercise+=1
                                 self.change_count_screen(counter)
                                 print("counter:" + str(counter))
                                 #  if not s.robot_count:
@@ -281,12 +280,12 @@ class Camera(threading.Thread):
                     s.req_exercise = ""
                     s.success_exercise = True
                     break
-            self.ezer(list_first_angle)
-           # self.end_exercise(counter)
-            #s.ex_list.update({exercise_name: counter})
-            #Excel.wf_joints(exercise_name, list_joints)
-            #s.number_of_repetitions_in_training+=counter
-            #s.max_repetitions_in_training+=s.rep
+            #self.ezer(list_first_angle)
+            self.end_exercise(counter)
+            s.ex_list.update({exercise_name: counter})
+            Excel.wf_joints(exercise_name, list_joints)
+            s.number_of_repetitions_in_training+=counter
+            s.max_repetitions_in_training+=s.rep
 
 
 
@@ -357,7 +356,7 @@ class Camera(threading.Thread):
                                 (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < 200) & (not flag):
                             flag = True
                             counter += 1
-                            s.patient_repititions_counting_in_exercise += 1
+                            s.patient_repetitions_counting_in_exercise += 1
                             self.change_count_screen(counter)
                             print("counter:" + str(counter))
                             #  if not s.robot_count:
@@ -373,7 +372,7 @@ class Camera(threading.Thread):
                                 (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
                             flag = True
                             counter += 1
-                            s.patient_repititions_counting_in_exercise += 1
+                            s.patient_repetitions_counting_in_exercise += 1
                             self.change_count_screen(counter)
                             print("counter:" + str(counter))
                             #  if not s.robot_count:
@@ -451,7 +450,7 @@ class Camera(threading.Thread):
                             (up_lb3 < right_angle3 < up_ub3) & (up_lb3 < left_angle3 < up_ub3) & (not flag):
                         flag = True
                         counter += 1
-                        s.patient_repititions_counting_in_exercise += 1
+                        s.patient_repetitions_counting_in_exercise += 1
                         print("counter:" + str(counter))
                         self.change_count_screen(counter)
                        # if not s.robot_count:
@@ -505,12 +504,12 @@ class Camera(threading.Thread):
                         if (one_lb < right_angle < one_ub) & (joints[str("R_wrist")].x>joints[str("L_shoulder")].x+50) & (joints[str("nose")].y-50>joints[str("R_wrist")].y) & (not flag):
                             flag = True
                             counter += 1
-                            s.patient_repititions_counting_in_exercise += 1
+                            s.patient_repetitions_counting_in_exercise += 1
                             print("counter:" + str(counter))
                             self.change_count_screen(counter)
                             # if not s.robot_count:
                             say(str(counter))
-                        elif (two_lb < right_angle < two_ub) & (joints[str("R_wrist")].x<joints[str("L_shoulder")].x-600) & (flag):
+                        elif (two_lb < right_angle < two_ub) & (joints[str("R_wrist")].x<joints[str("L_shoulder")].x-400) & (flag):
                             flag = False
 
                 else:
@@ -518,7 +517,7 @@ class Camera(threading.Thread):
                         if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-50>joints[str("L_wrist")].x)& (joints[str("nose")].y - 50 > joints[str("L_wrist")].y) & (not flag):
                             flag = True
                             counter += 1
-                            s.patient_repititions_counting_in_exercise += 1
+                            s.patient_repetitions_counting_in_exercise += 1
                             print("counter:" + str(counter))
                             self.change_count_screen(counter)
                             #if not s.robot_count:
@@ -632,10 +631,10 @@ class Camera(threading.Thread):
       #                              "elbow", "hip", "knee", 130, 115, 80, 105, False, True)
 
     def right_hand_up_and_bend_notool(self):  # EX15
-        self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 140, 0, 180, "right")
+        self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 150, 0, 180, "right")
 
     def left_hand_up_and_bend_notool(self): #EX16
-        self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 140, 0, 180, "left")
+        self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 150, 0, 180, "left")
 
     def raising_hands_diagonally_notool(self): # EX17
         self.exercise_two_angles_3d_with_axis_check("raising_hands_diagonally_notool", "wrist", "shoulder", "hip", 0, 100, 105, 135,
@@ -675,11 +674,10 @@ if __name__ == '__main__':
 
     # Training variables initialization
     s.rep = 10
-    s.finish_workout = False
     s.waved = False
     s.success_exercise = False
     s.calibration = False
-    s.training_done = False
+    s.finish_workout = False
     s.gymmy_done = False
     s.camera_done = False
     s.robot_count = False

@@ -82,7 +82,7 @@ class MP(threading.Thread):
         ################################################################
         image = sl.Mat()
 
-        while self.zed.is_opened() and not s.finish_workout:
+        while self.zed.is_opened() and not s.finish_program:
 
             if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
 
@@ -93,11 +93,12 @@ class MP(threading.Thread):
 
                 # Stop MediaPipe:
                 key = cv2.waitKey(10)
-                if s.finish_workout or key == ord('q'):
-                    s.finish_workout = True
+                if s.finish_program or key == ord('q'):
+                    s.finish_program = True
                     break
 
         self.zed.close()
+        print("Camera closed")
 
     def get_zed(self):
         return self.zed

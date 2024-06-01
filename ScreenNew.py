@@ -27,6 +27,11 @@ class Screen(tk.Tk):
         tk.Tk.__init__(self, className='Gymmy')
         self._frame = None
         self["bg"]="#F3FCFB"
+        #self.after(1000, lambda: self.pause_execution())
+
+    def pause_execution(self):
+        # Create a dummy function that does nothing
+        pass
 
     def switch_frame(self, frame_class, **kwargs):
         """Destroys all existing frames and creates a new one."""
@@ -48,13 +53,10 @@ class EntrancePage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
 
-        # Load background image
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        image_path = os.path.join(current_dir, 'Pictures', 'background.jpg')
-        image1 = Image.open(image_path)
-        self.photo_image1 = ImageTk.PhotoImage(image1)
-        self.background_label = tk.Label(self, image=self.photo_image1)
-        self.background_label.pack()
+        image = Image.open('Pictures//background.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+
 
         # Set initial value
         s.chosen_patient_ID = None
@@ -163,17 +165,28 @@ class ID_patient_fill_page(tk.Frame):
                 else:
                     patient_workbook_path= "Patients.xlsx"
                     s.chosen_patient_ID=user_id
-                    s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patient_details_and_exercises", user_id, "email")
-                    s.current_level_of_patient= float(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patient_details_and_exercises", user_id, "level"))
-                    s.points_in_current_level_before_training= float(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patient_details_and_exercises", user_id, "points in current level"))
+                    s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "email")
+                    s.current_level_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "level")
+                    s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
+
+
+                    df1 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
+
+                    # Convert the first column to string for comparison
+                    df1.iloc[:, 0] = df1.iloc[:, 0].astype(str)
+
+
+                    # Filter rows based on the condition
+                    row_of_patient = df1[df1.iloc[:, 0] == user_id_cleaned]
 
 
                     s.ex_in_training=[]
-                    num_columns= df.shape[1]
+                    num_columns1= df1.shape[1]
 
-                    for i in range (0,num_columns): #including 0
+
+                    for i in range (0,num_columns1): #including 0
                         if row_of_patient.iloc[0,i]==True:
-                            s.ex_in_training.append(df.columns[i])
+                            s.ex_in_training.append(df1.columns[i])
 
                     print(s.ex_in_training)
                     s.screen.switch_frame(StartOfTraining)
@@ -544,7 +557,7 @@ class PatientRegistration(tk.Frame):
             s.chosen_patient_ID=ID_entered
             #modifying the columns that has other value than false
             new_row_data_details={
-                'ID': ID_entered,
+                'ID': str(ID_entered),
                 'first name': str(self.first_name_entry.get()),
                 'last name': str(self.last_name_entry.get()),
                 'gender': self.gender,
@@ -557,14 +570,14 @@ class PatientRegistration(tk.Frame):
             sheet1=workbook["patients_details"]
             columns = list(new_row_data_details.keys())
             sheet1.append([new_row_data_details[column] for column in columns])
-            workbook.save("Patients.xlsx")
+            #workbook.save("Patients.xlsx")
 
             #insert a row to the excel of history of training
             new_row_hystory_of_training = {'ID': ID_entered}
             sheet2 = workbook["patients_history_of_trainings"]
             columns = list(new_row_hystory_of_training.keys())
             sheet2.append([new_row_hystory_of_training[column] for column in columns])
-            workbook.save("Patients.xlsx")
+            #workbook.save("Patients.xlsx")
 
             #insert a row to the excel of exercises
             df2 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
@@ -576,14 +589,12 @@ class PatientRegistration(tk.Frame):
             sheet3.append([new_row_data_exercises[column] for column in columns])
             workbook.save("Patients.xlsx")
 
-
-            Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}") #open folder for patient
-            Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Graphs") #open graphs folder
+            self.create_folders_when_insert_patient()
 
             back = Image.open('Pictures//successfully_added_patient.jpg')
             successfully_added_patient = ImageTk.PhotoImage(back)
             self.label = tk.Label(self, image=successfully_added_patient, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=150, y=485)
+            self.label.place(x=170, y=490)
             self.label.image = successfully_added_patient
             self.first_name_entry.delete(0, tk.END)
             self.last_name_entry.delete(0, tk.END)
@@ -593,6 +604,24 @@ class PatientRegistration(tk.Frame):
             self.gender='Male'
             self.labels.append(self.label)
 
+
+    def create_folders_when_insert_patient(self):
+        Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}")  # open folder for patient
+        Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Graphs")  # open graphs folder
+
+        df = pd.read_excel("Patients.xlsx", sheet_name="patients_exercises", header=None)
+
+        # Assuming the headers are in the first row of the DataFrame
+        headers = df.iloc[0]  # Extract headers from the first row
+
+        # Exclude a specific header
+        header_to_exclude = 'ID'
+        selected_headers = [header for header in headers if header != header_to_exclude]
+
+        # Iterate over each selected header
+        for header in selected_headers:
+            #create a file for each execise
+            Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Graphs/{header}")  # open graphs folder
 
     def delete_all_labels(self):
         for label in self.labels:
@@ -801,10 +830,11 @@ def ex_in_training_or_not(data_row, exercise):
     else:
         return False
 
-def get_row_of_patient():
+def get_row_of_exercises_patient():
     excel_file_path = "Patients.xlsx"
-    df = pd.read_excel(excel_file_path)
+    df = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
 
+    print("Current dtype:", df.iloc[:, 0].dtype)
     # Convert the first column to string for comparison
     df.iloc[:, 0] = df.iloc[:, 0].astype(str)
 
@@ -843,7 +873,7 @@ class ChooseBallExercisesPage(tk.Frame):
         to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
         to_patients_list_button.place(x=30, y=30)
 
-        row_of_patient = get_row_of_patient()
+        row_of_patient = get_row_of_exercises_patient()
 
         # Create labels for videos
         self.label1 = tk.Label(self)
@@ -918,7 +948,7 @@ class ChooseBallExercisesPage(tk.Frame):
                                  "open_arms_and_forward_ball": bool(self.checkbox_var4.get()),
                                  "open_arms_above_head_ball": bool(self.checkbox_var5.get())}
 
-        Excel.find_and_change_values_Patients(new_values_ex_patient)
+        Excel.find_and_change_values_exercises(new_values_ex_patient)
 
 
 
@@ -938,7 +968,7 @@ class ChooseBallExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
             s.screen.switch_frame(PatientDisplaying)
 
 
@@ -979,7 +1009,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
         to_patients_list_button.place(x=30, y=30)
 
-        row_of_patient = get_row_of_patient()
+        row_of_patient = get_row_of_exercises_patient()
 
         # Create labels for videos
         self.label1 = tk.Label(self)
@@ -1048,7 +1078,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
             s.screen.switch_frame(PatientDisplaying)
 
 
@@ -1057,7 +1087,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
                                  "open_arms_and_up_with_band": bool(self.checkbox_var2.get()),
                                  "up_with_band_and_lean": bool(self.checkbox_var3.get())}
 
-        Excel.find_and_change_values_Patients(new_values_ex_patient)
+        Excel.find_and_change_values_exercises(new_values_ex_patient)
 
 
 
@@ -1102,7 +1132,7 @@ class ChooseStickExercisesPage(tk.Frame):
         to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
         to_patients_list_button.place(x=30, y=30)
 
-        row_of_patient=get_row_of_patient()
+        row_of_patient=get_row_of_exercises_patient()
 
         # Create labels for videos
         self.label1 = tk.Label(self)
@@ -1182,7 +1212,7 @@ class ChooseStickExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
             s.screen.switch_frame(PatientDisplaying)
 
 
@@ -1192,7 +1222,7 @@ class ChooseStickExercisesPage(tk.Frame):
                                  "arms_up_and_down_stick": bool(self.checkbox_var3.get()),
                                  "switch_with_stick": bool(self.checkbox_var4.get())}
 
-        Excel.find_and_change_values_Patients(new_values_ex_patient)
+        Excel.find_and_change_values_exercises(new_values_ex_patient)
 
 
 
@@ -1226,7 +1256,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
         backward_arrow_button.image = backward_arrow_button_photo
         backward_arrow_button.place(x=913, y=480)
 
-        row_of_patient=get_row_of_patient()
+        row_of_patient=get_row_of_exercises_patient()
 
         # Create labels for videos
         self.label1 = tk.Label(self)
@@ -1297,7 +1327,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_Patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
             s.screen.switch_frame(PatientDisplaying)
 
     def on_arrow_click_back(self):
@@ -1312,7 +1342,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
                                  "left_hand_up_and_bend_notool": bool(self.checkbox_var3.get()),
                                  "raising_hands_diagonally_notool": bool(self.checkbox_var4.get())}
 
-        Excel.find_and_change_values_Patients(new_values_ex_patient)
+        Excel.find_and_change_values_exercises(new_values_ex_patient)
 
 
 
@@ -1553,13 +1583,16 @@ class Fail(tk.Frame):
 
 
 ################################################# Categories Screens ##############################################
-class StartingOfTraining(tk.Frame):
+class StartOfTraining(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
         image = Image.open('Pictures//hello.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("welcome")
+
+def wait_until_waving():
+    s.req_exercise="hello_waving"
 
 class Ball(tk.Frame):
     def __init__(self, master):
@@ -1568,7 +1601,7 @@ class Ball(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("Ball")
-        self.after(6000,lambda: master.wait_until_waving())
+        self.after(6000,lambda: wait_until_waving())
 
 
 class Stick(tk.Frame):
@@ -1578,7 +1611,7 @@ class Stick(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("Stick")
-        self.after(6000,lambda: master.wait_until_waving())
+        self.after(6000,lambda: wait_until_waving())
 
 
 class Rubber_Band(tk.Frame):
@@ -1588,7 +1621,7 @@ class Rubber_Band(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("Band")
-        self.after(6000,lambda: master.wait_until_waving())
+        self.after(6000,lambda: wait_until_waving())
 
 
 class NoTool(tk.Frame):
@@ -1598,7 +1631,7 @@ class NoTool(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("NoTool")
-        self.after(6000,lambda: master.wait_until_waving())
+        self.after(6000,lambda: wait_until_waving())
 
 
 ######################################### Counting Pages #############################################################
@@ -1867,7 +1900,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= '314808981'
-    s.screen.switch_frame(EntrancePage)
+    s.screen.switch_frame(PatientRegistration)
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

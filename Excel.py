@@ -10,6 +10,8 @@ import numpy as np
 import os
 import subprocess
 import platform
+import re
+
 
 
 def create_and_open_folder(folder_path):
@@ -22,16 +24,6 @@ def create_and_open_folder(folder_path):
         if not os.path.exists(folder_path):
             raise FileNotFoundError(f"Directory still not found: {folder_path}")
 
-        # Open the folder based on the operating system
-        current_os = platform.system()
-        if current_os == 'Windows':
-            os.startfile(folder_path)
-        elif current_os == 'Darwin':  # macOS
-            subprocess.run(['open', folder_path])
-        elif current_os == 'Linux':
-            subprocess.run(['xdg-open', folder_path])
-        else:
-            raise OSError(f"Unsupported operating system: {current_os}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -45,7 +37,9 @@ def create_workbook():
     s.training_workbook_path = workbook_name
     s.training_workbook_name= f"{datetime_string}.xlsx"
     s.training_workbook = xlsxwriter.Workbook(workbook_name)
-    s.training_workbook.save()
+    #s.training_workbook.save()
+
+
 
 
 #returns a specific value by ID and name of the column
@@ -156,16 +150,15 @@ def wf_joints(ex_name, list_joints):
 
         col += 1
 
-    s.training_workbook.save(s.training_workbook_path) #save the workbook
-    create_graphs(ex_name)
+    #s.training_workbook.save(s.training_workbook_path) #save the workbook
+    create_graphs(ex_name, list_joints)
 
 
-def create_graphs(exercise):
+def create_graphs(exercise, list_joints):
 
     try:
-        df = pd.read_excel(s.training_workbook_path, sheet_name=(exercise[:31]))
         if get_number_of_angles_in_exercise(exercise) == 1:
-            one_angle_graph(df, exercise)
+            one_angle_graph(exercise, list_joints)
        # if get_number_of_angles_in_exercise(exercise) == 2:
         #    two_angles_graph(df, exercise)
         #if get_number_of_angles_in_exercise(exercise) == 3:
@@ -200,29 +193,31 @@ def get_number_of_angles_in_exercise(exercise):
         print(f"An error occurred: {e}")
         return False
 
-def one_angle_graph(df, exercise):
-    worksheet_graphs = s.training_workbook.add_worksheet(("graphs_"+exercise)[:31])
+def one_angle_graph(exercise_name, list_joints):
+    #worksheet_graphs = s.training_workbook.add_worksheet(("graphs_"+exercise)[:31])
+    last_two_values = [entry[-2:] for entry in list_joints]
+    # Extract the first element from each sublist in last_four_values
+    right_angles = [sublist[0] for sublist in last_two_values]
+    left_angles = [sublist[1] for sublist in last_two_values]
 
-    first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
-    y_values_1 = df.iloc[24, :]
-    y_values_1_float = y_values_1.astype(float)
-    create_and_save_graph(df.columns, y_values_1_float, first_graph_name, worksheet_graphs, 24)
 
-    second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
-    y_values_2 = df.iloc[25, :]
-    y_values_2_float = y_values_2.astype(float)
-    create_and_save_graph(df.columns, y_values_2_float, second_graph_name, worksheet_graphs, 25)
+    first_values= list_joints[0]
+    first_6_values= first_values[6:]
+    joints_names = [str(sample).split()[0] for sample in first_6_values]
+    first_graph_name= joints_names[0]+", "+joints_names[1]+", "+joints_names[2]
+    second_graph_name= joints_names[3]+", "+joints_names[4]+", "+joints_names[5]
+
+    length= len(list_joints)
+    measurement_num = list(range(1, length + 1))
 
     data = {
-    first_graph_name: {'x': df.columns, 'y': y_values_1_float},
-    second_graph_name: {'x': df.columns, 'y': y_values_2_float}}
+    first_graph_name: {'x': measurement_num, 'y': right_angles},
+    second_graph_name: {'x': measurement_num, 'y': left_angles}}
 
-    create_and_save_graph(data, worksheet_graphs)
+    create_and_save_graph(data, exercise_name)
 
 
 def two_angles_graph(df, exercise):
-    worksheet_graphs = s.excel_workbook.add_worksheet(("graphs_"+exercise)[:31])
-
     first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
     y_values_1 = df.iloc[24, :]
     y_values_1_float = y_values_1.astype(float)
@@ -237,10 +232,10 @@ def two_angles_graph(df, exercise):
     first_graph_name: {'x': df.columns, 'y': y_values_1_float},
     second_graph_name: {'x': df.columns, 'y': y_values_2_float}}
 
-    create_and_save_graph(data, worksheet_graphs)
+    create_and_save_graph(data)
 
 
-def create_and_save_graph(data, worksheet_graphs):
+def create_and_save_graph(data, exercise):
     # Define the starting row and column for inserting the graphs
     start_row = 1
 
@@ -248,8 +243,8 @@ def create_and_save_graph(data, worksheet_graphs):
     for plot_name, plot_data in data.items():
         # Create a new plot
         plt.plot(plot_data['x'], plot_data['y'])
-        plt.xlabel('מספר מדידה')
-        plt.ylabel('זווית')
+        plt.xlabel('מספר מדידה'[::-1])
+        plt.ylabel('זווית'[::-1])
         plt.title(plot_name)
 
         # Add text box with statistics
@@ -258,22 +253,27 @@ def create_and_save_graph(data, worksheet_graphs):
         average = sum(plot_data['y']) / len(plot_data['y'])
         stdev = np.std(plot_data['y'])
 
-        text_content = f" {min_val}מינימום: \n {max_val} מקסימום: \n  {round(average, 2)} ממוצע: \n {round(stdev,2)} סטיית תקן:"
+        text = f" {min_val}מינימום: \n {max_val} מקסימום: \n  {round(average, 2)} ממוצע: \n {round(stdev,2)} סטיית תקן:"
+        hebrew_pattern = re.compile(r'[\u0590-\u05FF]+')
+        text_content= hebrew_pattern.sub(lambda match: match.group(0)[::-1], text)
+
         plt.text(0.95, 0.95, text_content, transform=plt.gca().transAxes, verticalalignment='top',
                  horizontalalignment='right', fontsize=7, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
         # Save the plot as an image file
-        plot_filename = f'temp_graph.png'
+        date_and_time_of_training= s.training_workbook_name.replace(".xlsx", "") #only the date and time of a training
+        create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}')
+        plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}/plot_name.jpeg'
         plt.savefig(plot_filename)
         plt.close()  # Close the plot to clear the figure
 
 
-        worksheet_graphs.insert_image(f"A{start_row}", plot_filename)
+        #s..insert_image(f"A{start_row}", plot_filename)
 
         # Update the starting row for the next image
         start_row += 20  # Adjust as needed
 
-    s.training_workbook.save()
+    #s.training_workbook.save()
 
 
 def success_worksheet():
@@ -409,7 +409,7 @@ def count_number_of_exercises_in_training_by_ID():
 
 
 def close_workbook():
-    s.excel_workbook.close()
+    s.training_workbook.close()
 
 
 

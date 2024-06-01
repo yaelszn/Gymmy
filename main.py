@@ -3,12 +3,8 @@ import Settings as s
 import Excel
 from Camera import Camera
 from Gymmy import Gymmy
-from Audio import Audio
 from TrainingNew import Training
 from ScreenNew import Screen, FullScreenApp, EntrancePage
-from PIL import Image, ImageTk
-import pickle
-import datetime
 
 
 
@@ -41,13 +37,13 @@ if __name__ == '__main__':
     s.waved = False
     s.success_exercise = False
     s.calibration = False
-    s.training_done = False
     s.gymmy_done = False
     s.camera_done = False
     s.robot_count = False
     s.demo_finish= False
     s.list_effort_each_exercise={}
     s.ex_in_training=[]
+    s.finish_program= False #will turn to true only when the user will press on the exit button
     #s.exercises_start=False
     s.waved_has_tool= True # True just in order to go through the loop in Gymmy
     # Excel variable

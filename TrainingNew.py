@@ -2,19 +2,13 @@ import threading
 import time
 from Camera import Camera
 from Gymmy import Gymmy
-from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartingOfTraining, GoodbyePage, \
+from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
     EffortScale, EntrancePage
 import Settings as s
 import Excel
 import random
 from Audio import say, get_wav_duration
 from datetime import datetime
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
-from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
 import Email
 
 
@@ -26,8 +20,7 @@ class Training(threading.Thread):
     def run(self):
         while True:
             self.training_session()
-            self.finish_workout()
-
+            self.finish_training()
 
     def training_session(self):
 
@@ -81,8 +74,9 @@ class Training(threading.Thread):
         else:
             s.screen.switch_frame(NoTool)
 
-    def finish_workout(self):
+    def finish_training(self):
         #time.sleep(3)
+        s.finish_workout= True
         s.finished_effort= False
         s.list_effort_each_exercise= {}
         s.screen.switch_frame(EffortScale, exercises=self.exercises_by_order)
@@ -104,7 +98,7 @@ class Training(threading.Thread):
     def run_exercise(self, name):
         time.sleep(0.1)  # wait between exercises
         s.success_exercise = False
-        s.patient_repititions_counting_in_exercise=0
+        s.patient_repetitions_counting_in_exercise=0
         s.req_exercise = name
         print("TRAINING: Exercise ", name, " start")
 
@@ -119,11 +113,10 @@ class Training(threading.Thread):
     def reset(self):
         s.rep = 10
         s.req_exercise = ""
-        s.finish_workout = False
         s.waved = False
         s.success_exercise = False
         s.calibration = False
-        s.training_done = False
+        s.finish_workout = False
         s.gymmy_done = False
         s.camera_done = False
         s.robot_count = False
@@ -160,7 +153,7 @@ class Training(threading.Thread):
             level_up = True
 
         dict_new_values={"level": s.current_level_of_patient, "points in current level": points_into_excel}
-        Excel.find_and_change_values_Patients(dict_new_values)
+        Excel.find_and_change_values_patients(dict_new_values)
 
         if level_up is True:
             Email.email_sending_level_up()
@@ -177,8 +170,9 @@ if __name__ == "__main__":
     s.waved = False
     s.finish_workout = False
     s.exercise_amount = 6
+    s.finish_program= False
     s.rep = 10
-    s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
+    s.ex_in_training=["right_hand_up_and_bend_notool"]
     s.chosen_patient_ID="314808981"
     s.req_exercise=""
     #s.demo_finish = False
