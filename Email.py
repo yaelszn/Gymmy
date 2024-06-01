@@ -40,7 +40,11 @@ def draw_a_success_graph_and_save():
     x_values, y_values = get_percentage_of_successes_in_last_10_training()
 
     # Create a new plot
-    plt.plot(x_values, y_values)
+    if len(x_values) == 1:
+        plt.scatter(x_values, y_values)  # Use scatter plot for a single data point
+    else:
+        plt.plot(x_values, y_values, marker='o')  # Add markers to ensure single points are visible
+
     plt.xlabel('תאריך'[::-1])
     plt.ylabel('אחוזי הצלחה'[::-1])
     #plt.title("גרף אחוזי הצלחה באימון"[::-1])

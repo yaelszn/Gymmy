@@ -14,8 +14,8 @@ class Gymmy(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
-        self.gymmy = PoppyTorso(camera="dummy", port= "COM3")  # for real robot
-        #self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
+        #self.gymmy = PoppyTorso(camera="dummy", port= "COM3")  # for real robot
+        self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
         print("ROBOT INITIALIZATION")
         #self.gymmy.abs_z.goto_position(0, 1, wait=True)
 
@@ -80,6 +80,7 @@ class Gymmy(threading.Thread):
                     self.random_faster()
                     said_faster+=1
                 if s.success_exercise:
+                    self.init_robot()
                     break
 
     def random_faster(self):
@@ -114,10 +115,10 @@ class Gymmy(threading.Thread):
         if i==0:
             self.gymmy.l_shoulder_y.goto_position(-50, 1, wait=False)
             self.gymmy.r_shoulder_y.goto_position(-50, 1, wait=False)
-            time.sleep(2)
-            self.gymmy.l_shoulder_x.goto_position(-10, 1, wait=False)
-            self.gymmy.r_shoulder_x.goto_position(10, 1, wait=False)
-            time.sleep(2)
+            time.sleep(1)
+            self.gymmy.l_shoulder_x.goto_position(0, 1, wait=False)
+            self.gymmy.r_shoulder_x.goto_position(0, 1, wait=False)
+            time.sleep(1)
 
 
         self.gymmy.r_elbow_y.goto_position(-135, 1, wait=False)

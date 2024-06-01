@@ -159,10 +159,10 @@ def create_graphs(exercise, list_joints):
     try:
         if get_number_of_angles_in_exercise(exercise) == 1:
             one_angle_graph(exercise, list_joints)
-       # if get_number_of_angles_in_exercise(exercise) == 2:
-        #    two_angles_graph(df, exercise)
-        #if get_number_of_angles_in_exercise(exercise) == 3:
-         #   three_angles_graph(df, exercise)
+        if get_number_of_angles_in_exercise(exercise) == 2:
+            two_angles_graph(exercise, list_joints)
+        if get_number_of_angles_in_exercise(exercise) == 3:
+            three_angles_graph(exercise, list_joints)
 
 
     except (pd.errors.ParserError, FileNotFoundError):
@@ -194,22 +194,23 @@ def get_number_of_angles_in_exercise(exercise):
         return False
 
 def one_angle_graph(exercise_name, list_joints):
-    #worksheet_graphs = s.training_workbook.add_worksheet(("graphs_"+exercise)[:31])
-    last_two_values = [entry[-2:] for entry in list_joints]
-    # Extract the first element from each sublist in last_four_values
-    right_angles = [sublist[0] for sublist in last_two_values]
-    left_angles = [sublist[1] for sublist in last_two_values]
+    last_two_values = [entry[-2:] for entry in list_joints] #extract from each record the last 2 values (the angles)
+    right_angles = [sublist[0] for sublist in last_two_values] #the right angle from each record
+    left_angles = [sublist[1] for sublist in last_two_values] #the left angle from each record
 
 
+    #extract the joints names and create graphs names
     first_values= list_joints[0]
-    first_6_values= first_values[6:]
+    first_6_values= first_values[:6]
     joints_names = [str(sample).split()[0] for sample in first_6_values]
     first_graph_name= joints_names[0]+", "+joints_names[1]+", "+joints_names[2]
     second_graph_name= joints_names[3]+", "+joints_names[4]+", "+joints_names[5]
 
+    #create a list of x values
     length= len(list_joints)
     measurement_num = list(range(1, length + 1))
 
+    #create a data dic for graph
     data = {
     first_graph_name: {'x': measurement_num, 'y': right_angles},
     second_graph_name: {'x': measurement_num, 'y': left_angles}}
@@ -217,28 +218,77 @@ def one_angle_graph(exercise_name, list_joints):
     create_and_save_graph(data, exercise_name)
 
 
-def two_angles_graph(df, exercise):
-    first_graph_name = df.iloc[0, 0] + ", " + df.iloc[4, 0] + ", " + df.iloc[8, 0]
-    y_values_1 = df.iloc[24, :]
-    y_values_1_float = y_values_1.astype(float)
-    create_and_save_graph(df.columns, y_values_1_float, first_graph_name, worksheet_graphs, 24)
+def two_angles_graph(exercise_name, list_joints):
+    last_four_values = [entry[-4:] for entry in list_joints]  # extract from each record the last 4 values (the angles)
+    right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
+    left_angles = [sublist[1] for sublist in last_four_values]  # the left angle from each record
+    right_angles2 = [sublist[2] for sublist in last_four_values]  # the second right angle from each record
+    left_angles2 = [sublist[3] for sublist in last_four_values]  # the second left angle from each record
 
-    second_graph_name = df.iloc[12, 0] + ", " + df.iloc[16, 0] + ", " + df.iloc[20, 0]
-    y_values_2 = df.iloc[25, :]
-    y_values_2_float = y_values_2.astype(float)
-    create_and_save_graph(df.columns, y_values_2_float, second_graph_name, worksheet_graphs, 25)
+    # extract the joints names and create graphs names
+    first_values = list_joints[0]
+    first_12_values = first_values[:12]
+    joints_names = [str(sample).split()[0] for sample in first_12_values]
+    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]
+    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]
+    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]
+    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]
 
+    # create a list of x values
+    length = len(list_joints)
+    measurement_num = list(range(1, length + 1))
+
+    # create a data dic for graph
     data = {
-    first_graph_name: {'x': df.columns, 'y': y_values_1_float},
-    second_graph_name: {'x': df.columns, 'y': y_values_2_float}}
+        first_graph_name: {'x': measurement_num, 'y': right_angles},
+        second_graph_name: {'x': measurement_num, 'y': left_angles},
+        third_graph_name: {'x': measurement_num, 'y': right_angles2},
+        fourth_graph_name: {'x': measurement_num, 'y': left_angles2}
+    }
 
-    create_and_save_graph(data)
+    create_and_save_graph(data, exercise_name)
+
+
+def three_angles_graph(exercise_name, list_joints):
+    last_four_values = [entry[-6:] for entry in list_joints]  # extract from each record the last 6 values (the angles)
+    right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
+    left_angles = [sublist[1] for sublist in last_four_values]  # the left angle from each record
+    right_angles2 = [sublist[2] for sublist in last_four_values]  # the second right angle from each record
+    left_angles2 = [sublist[3] for sublist in last_four_values]  # the second left angle from each record
+    right_angles3 = [sublist[4] for sublist in last_four_values]  # the third right angle from each record
+    left_angles3 = [sublist[5] for sublist in last_four_values]  # the third left angle from each record
+
+    # extract the joints names and create graphs names
+    first_values = list_joints[0]
+    first_18_values = first_values[:18]
+    joints_names = [str(sample).split()[0] for sample in first_18_values]
+    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]
+    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]
+    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]
+    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]
+    fifth_graph_name = joints_names[12] + ", " + joints_names[13] + ", " + joints_names[14]
+    sixth_graph_name = joints_names[15] + ", " + joints_names[16] + ", " + joints_names[17]
+
+    # create a list of x values
+    length = len(list_joints)
+    measurement_num = list(range(1, length + 1))
+
+    # create a data dic for graph
+    data = {
+        first_graph_name: {'x': measurement_num, 'y': right_angles},
+        second_graph_name: {'x': measurement_num, 'y': left_angles},
+        third_graph_name: {'x': measurement_num, 'y': right_angles2},
+        fourth_graph_name: {'x': measurement_num, 'y': left_angles2},
+        fifth_graph_name: {'x': measurement_num, 'y': right_angles3},
+        sixth_graph_name: {'x': measurement_num, 'y': left_angles3}
+    }
+
+    create_and_save_graph(data, exercise_name)
+
 
 
 def create_and_save_graph(data, exercise):
     # Define the starting row and column for inserting the graphs
-    start_row = 1
-
     # Iterate over each plot data
     for plot_name, plot_data in data.items():
         # Create a new plot
@@ -248,31 +298,27 @@ def create_and_save_graph(data, exercise):
         plt.title(plot_name)
 
         # Add text box with statistics
-        min_val = min(plot_data['y'])
-        max_val = max(plot_data['y'])
-        average = sum(plot_data['y']) / len(plot_data['y'])
-        stdev = np.std(plot_data['y'])
+        min_val = f"{min(plot_data['y']):.2f}"
+        max_val = f"{max(plot_data['y']):.2f}"
+        average = f"{(sum(plot_data['y']) / len(plot_data['y'])):.2f}"
+        stdev = f"{np.std(plot_data['y']):.2f}"
 
-        text = f" {min_val}מינימום: \n {max_val} מקסימום: \n  {round(average, 2)} ממוצע: \n {round(stdev,2)} סטיית תקן:"
+        text = f" {min_val} :מינימום \n {max_val} :מקסימום \n  {average} :ממוצע \n {stdev} :סטיית תקן"
         hebrew_pattern = re.compile(r'[\u0590-\u05FF]+')
         text_content= hebrew_pattern.sub(lambda match: match.group(0)[::-1], text)
 
-        plt.text(0.95, 0.95, text_content, transform=plt.gca().transAxes, verticalalignment='top',
-                 horizontalalignment='right', fontsize=7, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        plt.text(1, 1, text_content, transform=plt.gca().transAxes, verticalalignment='top',
+                 horizontalalignment='right', fontsize=10, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
         # Save the plot as an image file
         date_and_time_of_training= s.training_workbook_name.replace(".xlsx", "") #only the date and time of a training
         create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}')
-        plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}/plot_name.jpeg'
+        plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}/{plot_name}.jpeg'
         plt.savefig(plot_filename)
         plt.close()  # Close the plot to clear the figure
 
 
         #s..insert_image(f"A{start_row}", plot_filename)
-
-        # Update the starting row for the next image
-        start_row += 20  # Adjust as needed
-
     #s.training_workbook.save()
 
 
@@ -370,12 +416,17 @@ def find_and_add_training_to_patient(headers_row=1):
     for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=1):
         cell = row[0]
         if str(cell.value) == s.chosen_patient_ID:
-            # Find the next available column in the row
-            next_column = sheet.max_column + 1
+            # Initialize next_column to 1
+            next_column = 1
 
-            # Write the new value to the next available column in the row
-            sheet.cell(row=cell.row, column=next_column, value=s.training_workbook_name.replace(".xlsx", "")) #training name
-            sheet.cell(row=cell.row, column=next_column+1, value=(s.number_of_repetitions_in_training/s.max_repetitions_in_training)) #precent of the training that the patient managed to do
+            # Find the next available column in the found row
+            for col in range(1, sheet.max_column + 1):
+                if sheet.cell(row=cell.row, column=col).value is not None:
+                    next_column = col + 1
+
+            # Write the new value to the next available column in the found row
+            sheet.cell(row=cell.row, column=next_column, value=s.training_workbook_name.replace(".xlsx", ""))  # training name
+            sheet.cell(row=cell.row, column=next_column + 1, value=(s.number_of_repetitions_in_training / s.max_repetitions_in_training))  # percent of the training that the patient managed to do
 
             break  # Stop searching after finding the value
 
