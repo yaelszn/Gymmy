@@ -18,7 +18,14 @@ def get_percentage_of_successes_in_last_10_training():
     y_values = []
 
     row = filtered_rows.iloc[0]  # Get the first (and only) row
-    row_values = row.iloc[1:]  # Exclude the first value of the row
+    row_values_with_id= row.iloc[1:]
+
+    # Extracting first and second values in every group of three
+    row_values = []
+    for i in range(0, len(row_values_with_id), 3):
+        row_values.append(row_values_with_id.iloc[i])  # First value
+        if i + 1 < len(row_values_with_id):
+            row_values.append(row_values_with_id.iloc[i + 1])  # Second value
 
     if len(row_values) > 20:
         last_20_values = row_values[-20:]  # Get the last 20 values
@@ -99,7 +106,7 @@ def email_sending_level_up():
 
     # Email configuration
     sender_email = 'yaelszn@gmail.com'
-    receiver_email = 'yaelszn@gmail.com'
+    receiver_email = s.email_of_patient
     password = 'diyf cxzc tifj sotp'
 
     # Read the PNG file and add text

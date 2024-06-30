@@ -14,8 +14,8 @@ class Gymmy(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
-        #self.gymmy = PoppyTorso(camera="dummy", port= "COM3")  # for real robot
-        self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
+        self.gymmy = PoppyTorso(camera="dummy", port= "COM3")  # for real robot
+        #self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
         print("ROBOT INITIALIZATION")
         #self.gymmy.abs_z.goto_position(0, 1, wait=True)
 
@@ -25,6 +25,8 @@ class Gymmy(threading.Thread):
         self.init_robot()
 
     def init_robot(self):
+        self.gymmy.l_shoulder_x.goto_position(10, 1.5, wait=True)
+        self.gymmy.r_shoulder_x.goto_position(-10, 1.5, wait=True)
 
         for m in self.gymmy.motors:
             if not m.name == 'head_y' and not m.name == 'r_shoulder_x' and not m.name== 'l_shoulder_x':
@@ -32,8 +34,7 @@ class Gymmy(threading.Thread):
 
 
         self.gymmy.head_y.goto_position(-20, 1.5, wait=False)
-        self.gymmy.l_shoulder_x.goto_position(10, 1.5, wait=False)
-        self.gymmy.r_shoulder_x.goto_position(-10, 1.5, wait=False)
+
         time.sleep(1)
 
     ########################################################### RUN ##########################################
@@ -52,6 +53,8 @@ class Gymmy(threading.Thread):
 
                 s.req_exercise = ""
                 s.gymmy_done = True
+            else:
+                time.sleep(1)  # Prevents the MP to stuck
 
         print("Robot Done")
 
@@ -62,7 +65,7 @@ class Gymmy(threading.Thread):
             #s.demo_finish=True
             self.hello_waving()
         else:
-            audio = s.req_exercise + '_' + str(s.rep) + '_times'
+            audio = s.req_exercise
             say(audio)
             time.sleep(get_wav_duration(audio))
             s.screen.switch_frame(ExercisePage)
@@ -150,8 +153,8 @@ class Gymmy(threading.Thread):
             self.gymmy.l_shoulder_x.goto_position(-15, 1, wait=False)
             self.gymmy.r_shoulder_x.goto_position(15, 1, wait=False)
 
-        self.gymmy.l_shoulder_y.goto_position(-55, 1, wait=False)
-        self.gymmy.r_shoulder_y.goto_position(-55, 1, wait=False)
+        self.gymmy.l_shoulder_y.goto_position(-75, 1, wait=False)
+        self.gymmy.r_shoulder_y.goto_position(-75, 1, wait=False)
         self.gymmy.l_shoulder_x.goto_position(-15, 1, wait=False)
         self.gymmy.r_shoulder_x.goto_position(15, 1, wait=False)
         self.gymmy.l_arm_z.goto_position(0, 1, wait=False)
@@ -318,19 +321,19 @@ class Gymmy(threading.Thread):
         self.gymmy.r_shoulder_x.goto_position(-30, 1, wait=False)
         self.gymmy.r_elbow_y.goto_position(-20, 1, wait=False)
         self.gymmy.l_elbow_y.goto_position(-20, 1, wait=False)
-        time.sleep(1)
+        time.sleep(1.5)
         self.gymmy.l_shoulder_y.goto_position(-170, 1, wait=False)
         self.gymmy.r_shoulder_y.goto_position(-170, 1, wait=False)
-        time.sleep(1.5)
+        time.sleep(2)
 
         self.gymmy.l_shoulder_y.goto_position(-90, 1, wait=False)
         self.gymmy.r_shoulder_y.goto_position(-90, 1, wait=False)
-        time.sleep(1)
+        time.sleep(1.5)
         self.gymmy.l_shoulder_x.goto_position(-10, 1, wait=False)
         self.gymmy.r_shoulder_x.goto_position(10, 1, wait=False)
         self.gymmy.r_elbow_y.goto_position(0, 1, wait=False)
         self.gymmy.l_elbow_y.goto_position(0, 1, wait=False)
-        time.sleep(1.2)
+        time.sleep(1.5)
 
 
         if i == (s.rep - 1):
@@ -445,7 +448,7 @@ class Gymmy(threading.Thread):
         time.sleep(2)
         self.gymmy.l_shoulder_y.goto_position(-170, 1.5, wait=False)
         self.gymmy.r_shoulder_y.goto_position(-170, 1.5, wait=False)
-        time.sleep(2)
+        time.sleep(2.2)
 
 
         if i == (s.rep - 1):
@@ -645,7 +648,7 @@ if __name__ == "__main__":
     ###########################################################
     s.waved=True
     s.finish_workout=False
-    s.req_exercise="right_hand_up_and_bend_notool"
+    s.req_exercise="raise_arms_above_head_ball"
     robot = Gymmy()
     s.patient_repetitions_counting_in_exercise=0
     #mp=MP()

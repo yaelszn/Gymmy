@@ -33,7 +33,7 @@ class Training(threading.Thread):
         random.shuffle(categories)
 
         Excel.create_workbook() #create workbook in excel for this session
-        time.sleep(7)
+        #time.sleep(7)
         self.exercises_by_order=[]
 
         for i in categories:
@@ -59,10 +59,9 @@ class Training(threading.Thread):
                     while (not s.gymmy_done) or (not s.camera_done):
                         # print("not done")
                         time.sleep(0.0001)
-                    #s.gymmy_done = False
-                    #s.camera_done = False
-                    #s.demo_finish = False
-                    #time.sleep(3)
+                    time.sleep(3)
+
+            time.sleep(1.5)
 
     def show_screen_category(self, category):
         if category=="ball":
@@ -79,15 +78,15 @@ class Training(threading.Thread):
         s.finish_workout= True
         s.finished_effort= False
         s.list_effort_each_exercise= {}
-        s.screen.switch_frame(EffortScale, exercises=self.exercises_by_order)
+        s.screen.switch_frame(EffortScale)
 
         while not s.finished_effort:
             time.sleep(0.0001)
 
+
         say('goodbye')
         s.screen.switch_frame(GoodbyePage)
         Excel.success_worksheet()
-        Excel.effort_worksheet()
         Excel.find_and_add_training_to_patient()
         self.check_points_and_send_email()
         Excel.close_workbook()
@@ -132,6 +131,7 @@ class Training(threading.Thread):
 
     #A function that checks how many points did the patient get in the current level, and if he is progressing to the next level
     def check_points_and_send_email(self):
+        time.sleep(1)
         level_up = False  #has the patient progressed to another level
 
         points_in_this_training = s.number_of_repetitions_in_training - 0.5 * (
@@ -169,12 +169,13 @@ if __name__ == "__main__":
                          str(current_time.minute) + "." + str(current_time.second)
     s.waved = False
     s.finish_workout = False
-    s.exercise_amount = 6
+    #s.exercise_amount = 6
     s.finish_program= False
-    s.rep = 10
-    s.ex_in_training=["right_hand_up_and_bend_notool"]
-    s.chosen_patient_ID="314808981"
+    s.rep = 8
+    s.ex_in_training=["raising_hands_diagonally_notool"]
+    s.chosen_patient_ID="1111"
     s.req_exercise=""
+    s.ex_list = {}
     #s.demo_finish = False
     s.screen = Screen()
     s.camera = Camera()

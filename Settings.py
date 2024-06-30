@@ -12,8 +12,7 @@ def __init__():
     global training_workbook_name
     global ex_list
     global Last_workbook #the workbook of the last time the patient did every exercise
-    global success_sheet
-    global effort_sheet
+    global success_worksheet
     global number_of_repetitions_in_training #how many successful repetitions the patient did in the whole training
     global patient_repetitions_counting_in_exercise #save the repetitions so Gymmy will also be able to know the number of repetition done
     global max_repetitions_in_training
@@ -35,8 +34,9 @@ def __init__():
     global waved_has_tool #the participant has the tool in his hand and is ready to start
     #global demo_finish #the first demo of the exercise is done
     global ex_in_training
-    global list_effort_each_exercise #list of chosen effort to each exercise
+    global effort #list of chosen effort to each exercise
     global finished_effort #finished to grade the efforts of exercises
+    global email_of_patient
 
     # audio variables
     global audio_path
@@ -47,6 +47,7 @@ def __init__():
 
     global chosen_patient_ID #the id of the patient the therpist chose to enter
     global excel_file_path_Patient
+    global finished_training_adding_to_excel
 
 
 

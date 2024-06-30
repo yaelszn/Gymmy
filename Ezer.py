@@ -1,72 +1,64 @@
+data = {
+    'date': date_values,
+    'effort': effort_values
+}
 
-import threading
-import random
+df = pd.DataFrame(data)
+new_headers = {'effort': "דירוג המאמץ", 'date': "תאריך ושעת אימון"}
+df.rename(columns=new_headers, inplace=True)
 
-import serial
-from pypot.creatures import PoppyTorso
-import time
-import poppy_torso
-from serial import Serial
+# Load the background image
+image = Image.open('Pictures//scale_table.jpg')
+self.photo_image = ImageTk.PhotoImage(image)
+# Create a label to display the background image
+self.background_label = tk.Label(self, image=self.photo_image)
+self.background_label.pack(fill="both", expand=True)
 
-import Settings as s
-from Audio import say, get_wav_duration
-import pypot.dynamixel.io
-import logging, sys
+# Display the DataFrame in a Treeview widget
+self.treeview = ttk.Treeview(self, style="Treeview", show="headings")
+self.treeview["columns"] = tuple(df.columns)
 
-from MP import MP
-from ScreenNew import DemoPage, ExercisePage, Screen, EntrancePage, FullScreenApp
+# Set up a custom style for the Treeview
+style = ttk.Style(self)
+style.configure("Treeview", font=("Thaoma", 14, 'bold'), rowheight=30)  # Adjust the font size (16 in this case)
 
+# Add columns to the Treeview
+for col in df.columns:
+    self.treeview.column(col, anchor="e", width=150)  # Set the anchor to "e" (east, or right-aligned)
+    self.treeview.heading(col, text=col, anchor="e")
 
-class poppy(threading.Thread):
+# Insert data into the Treeview
+for index, row in df.iterrows():
+    values = tuple(row)
+    self.treeview.insert("", index, values=values, tags=(index,))
 
-    ################################################# INITIALIZATION ###########################################
-    def __init__(self):
-        threading.Thread.__init__(self)
+# Disable actions on Treeview clicks and selections
+self.treeview.bind("<ButtonRelease-1>", self.no_op)
+self.treeview.bind("<KeyPress>", self.no_op)
 
-        self.gymmy = PoppyTorso(camera="dummy", port= "COM3")  # for real robot
-        #self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
-        print("ROBOT INITIALIZATION")
-        #self.gymmy.abs_z.goto_position(0, 1, wait=True)
+# Pack the Treeview widget
+self.treeview.place(x=270, y=180)
 
-        #for m in self.gymmy.motors:  # motors need to be initialized, False=stiff, True=loose
-         #   m.compliant = False
+# Set up a vertical scrollbar
+scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
+self.treeview.configure(yscrollcommand=scrollbar.set)
+scrollbar.place(x=725, y=180, height=310)
 
-        #self.gymmy.r_shoulder_x.complient= False
-        for m in self.gymmy.motors:  # motors need to be initialized, False=stiff, True=loose
-            m.compliant = False
-
-
-
-        # left hand
-        self.gymmy.r_shoulder_y.goto_position(-30, 1, wait=False)
-        self.gymmy.r_elbow_y.goto_position(-60, 1, wait=False)
-        self.gymmy.l_shoulder_y.goto_position(-120, 1, wait=False)
-        self.gymmy.l_arm_z.goto_position(-90, 1, wait=False)
-        self.gymmy.abs_z.goto_position(-40, 1, wait=False)
-        time.sleep(2)
-
-        self.gymmy.r_shoulder_y.goto_position(0, 1, wait=False)
-        self.gymmy.r_elbow_y.goto_position(0, 1, wait=False)
-        self.gymmy.l_shoulder_y.goto_position(0, 1, wait=False)
-        self.gymmy.l_arm_z.goto_position(0, 1, wait=False)
-        self.gymmy.abs_z.goto_position(0, 1, wait=False)
-        time.sleep(2)
-
-        self.gymmy.l_shoulder_y.goto_position(-30, 1, wait=False)
-        self.gymmy.l_elbow_y.goto_position(-60, 1, wait=False)
-        self.gymmy.r_shoulder_y.goto_position(-120, 1, wait=False)
-        self.gymmy.r_arm_z.goto_position(90, 1, wait=False)
-        self.gymmy.abs_z.goto_position(40, 1, wait=False)
-        time.sleep(2)
-
-        self.gymmy.l_shoulder_y.goto_position(0, 1, wait=False)
-        self.gymmy.l_elbow_y.goto_position(0, 1, wait=False)
-        self.gymmy.r_shoulder_y.goto_position(0, 1, wait=False)
-        self.gymmy.r_arm_z.goto_position(0, 1, wait=False)
-        self.gymmy.abs_z.goto_position(0, 1, wait=False)
-        time.sleep(2)
+# Back button
+back_button_img = Image.open("Pictures//back_to_menu.jpg")  # Change path to your image file
+back_button_photo = ImageTk.PhotoImage(back_button_img)
+back_button = tk.Button(self, image=back_button_photo, command=self.on_click_to_physio_menu,
+                        width=back_button_img.width, height=back_button_img.height, bd=0,
+                        highlightthickness=0)  # Set border width to 0 to remove button border
+back_button.image = back_button_photo  # Store reference to image to prevent garbage collection
+back_button.place(x=30, y=30)
 
 
-if __name__ == "__main__":
-    robot = Gymmy()
-    robot.start()
+def no_op(self, event):
+    # No operation function
+    pass
+
+
+def on_click_to_physio_menu(self):
+    # Placeholder for the function to handle back button click
+    pass

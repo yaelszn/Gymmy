@@ -13,7 +13,6 @@ import platform
 import re
 
 
-
 def create_and_open_folder(folder_path):
     try:
         # Create the folder if it doesn't exist
@@ -100,33 +99,27 @@ def get_success_number(file_path, exercise):
         return None
 
 
-#returns the value of effort rate in a specific training and specific exercise
-def get_effort_number(exercise):
-    try:
-        # Load the workbook
-        workbook = openpyxl.load_workbook(s.excel_file_path_Patient)
-
-        # Check if the worksheet exists
-        if "success" not in workbook.sheetnames:
-            print(f"Worksheet success not found in the workbook.")
-            return None
-
-        # Select the worksheet
-        worksheet = workbook["effort"]
-
-        # Iterate through the rows in the first column and search for the value
-        for row in worksheet.iter_rows(values_only=True):
-            if row[0] == exercise:
-                # Return the value from the second column
-                return row[1]
-
-        # If the value is not found, return None
-        return None
-
-    except FileNotFoundError:
-        print(f"File success not found.")
-        return None
-
+# #returns the value of effort rate in a specific training and specific exercise
+# def get_effort_number(file_path, exercise):
+#     try:
+#         # Load the workbook
+#         workbook = openpyxl.load_workbook(file_path)
+#
+#         # Check if the worksheet exists
+#         if "success_and_effort" not in workbook.sheetnames:
+#             print(f"Worksheet success not found in the workbook.")
+#             return None
+#
+#         # Select the worksheet
+#         worksheet = workbook["success_and_effort"]
+#
+#         return worksheet[1,2]
+#
+#
+#     except FileNotFoundError:
+#         print(f"File success not found.")
+#         return None
+#
 
 def wf_joints(ex_name, list_joints):
     worksheet1 = s.training_workbook.add_worksheet(ex_name[:31])
@@ -203,8 +196,8 @@ def one_angle_graph(exercise_name, list_joints):
     first_values= list_joints[0]
     first_6_values= first_values[:6]
     joints_names = [str(sample).split()[0] for sample in first_6_values]
-    first_graph_name= joints_names[0]+", "+joints_names[1]+", "+joints_names[2]
-    second_graph_name= joints_names[3]+", "+joints_names[4]+", "+joints_names[5]
+    first_graph_name= joints_names[0]+", "+joints_names[1]+", "+joints_names[2]+" 1"
+    second_graph_name= joints_names[3]+", "+joints_names[4]+", "+joints_names[5]+" 2"
 
     #create a list of x values
     length= len(list_joints)
@@ -229,10 +222,10 @@ def two_angles_graph(exercise_name, list_joints):
     first_values = list_joints[0]
     first_12_values = first_values[:12]
     joints_names = [str(sample).split()[0] for sample in first_12_values]
-    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]
-    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]
-    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]
-    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]
+    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]+" 1"
+    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]+" 2"
+    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]+" 3"
+    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]+" 4"
 
     # create a list of x values
     length = len(list_joints)
@@ -262,12 +255,12 @@ def three_angles_graph(exercise_name, list_joints):
     first_values = list_joints[0]
     first_18_values = first_values[:18]
     joints_names = [str(sample).split()[0] for sample in first_18_values]
-    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]
-    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]
-    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]
-    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]
-    fifth_graph_name = joints_names[12] + ", " + joints_names[13] + ", " + joints_names[14]
-    sixth_graph_name = joints_names[15] + ", " + joints_names[16] + ", " + joints_names[17]
+    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]+" 1"
+    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]+" 2"
+    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]+" 3"
+    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]+" 4"
+    fifth_graph_name = joints_names[12] + ", " + joints_names[13] + ", " + joints_names[14]+" 5"
+    sixth_graph_name = joints_names[15] + ", " + joints_names[16] + ", " + joints_names[17]+" 6"
 
     # create a list of x values
     length = len(list_joints)
@@ -286,66 +279,61 @@ def three_angles_graph(exercise_name, list_joints):
     create_and_save_graph(data, exercise_name)
 
 
-
 def create_and_save_graph(data, exercise):
     # Define the starting row and column for inserting the graphs
     # Iterate over each plot data
     for plot_name, plot_data in data.items():
         # Create a new plot
         plt.plot(plot_data['x'], plot_data['y'])
-        plt.xlabel('מספר מדידה'[::-1])
-        plt.ylabel('זווית'[::-1])
-        plt.title(plot_name)
 
-        # Add text box with statistics
-        min_val = f"{min(plot_data['y']):.2f}"
-        max_val = f"{max(plot_data['y']):.2f}"
-        average = f"{(sum(plot_data['y']) / len(plot_data['y'])):.2f}"
-        stdev = f"{np.std(plot_data['y']):.2f}"
+        # Set the font size
+        fontsize = 16
 
-        text = f" {min_val} :מינימום \n {max_val} :מקסימום \n  {average} :ממוצע \n {stdev} :סטיית תקן"
+        plt.xlabel('מספר מדידה'[::-1], fontsize=fontsize, weight='bold')
+        plt.ylabel('זווית'[::-1], fontsize=fontsize, weight='bold')
+        plt.title(plot_name[:-2], fontsize=fontsize + 2, weight='bold')
+
+        # Filter out None values from plot_data['y']
+        y_values = [value for value in plot_data['y'] if value is not None]
+
+        # Add text box with statistics if y_values is not empty
+        if y_values:
+            min_val = f"{min(y_values):.2f}"
+            max_val = f"{max(y_values):.2f}"
+            average = f"{(sum(y_values) / len(y_values)):.2f}"
+            stdev = f"{np.std(y_values):.2f}"
+
+        text = f" {min_val} :מינימום \n {max_val} :מקסימום \n  {average} :ממוצע \n {stdev} :תקן סטיית"
         hebrew_pattern = re.compile(r'[\u0590-\u05FF]+')
-        text_content= hebrew_pattern.sub(lambda match: match.group(0)[::-1], text)
+        text_content = hebrew_pattern.sub(lambda match: match.group(0)[::-1], text)
 
         plt.text(1, 1, text_content, transform=plt.gca().transAxes, verticalalignment='top',
-                 horizontalalignment='right', fontsize=10, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+                 horizontalalignment='right', fontsize=11, weight='bold',
+                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+
 
         # Save the plot as an image file
-        date_and_time_of_training= s.training_workbook_name.replace(".xlsx", "") #only the date and time of a training
+        date_and_time_of_training = s.training_workbook_name.replace(".xlsx",
+                                                                     "")  # only the date and time of a training
         create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}')
         plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}/{plot_name}.jpeg'
         plt.savefig(plot_filename)
         plt.close()  # Close the plot to clear the figure
 
 
-        #s..insert_image(f"A{start_row}", plot_filename)
-    #s.training_workbook.save()
-
-
 def success_worksheet():
-    s.success_sheet = s.training_workbook.add_worksheet("success")
-    s.success_sheet.write(0, 0, "exercise")
-    s.success_sheet.write(0, 1, "number of successful repetitions")
+    s.success_worksheet = s.training_workbook.add_worksheet("success_worksheet")
+    s.success_worksheet.write(0, 0, "exercise")
+    s.success_worksheet.write(0, 1, "number of successful repetitions")
 
     row = 1
     for exercise, success in s.ex_list.items():
-        s.success_sheet.write(row, 0, exercise)
-        s.success_sheet.write(row, 1, success)
+        s.success_worksheet.write(row, 0, exercise)
+        s.success_worksheet.write(row, 1, success)
 
         row += 1
 
-
-def effort_worksheet():
-    s.effort_sheet = s.training_workbook.add_worksheet("effort")
-    s.effort_sheet.write(0, 0, "exercise")
-    s.effort_sheet.write(0, 1, "effort")
-
-    row = 1
-    for exercise, effort in s.list_effort_each_exercise.items():
-        s.effort_sheet.write(row, 0, exercise)
-        s.effort_sheet.write(row, 1, effort)
-
-        row += 1
 
 
 def find_and_change_values_exercises(new_values_dict, headers_row=1):
@@ -427,6 +415,7 @@ def find_and_add_training_to_patient(headers_row=1):
             # Write the new value to the next available column in the found row
             sheet.cell(row=cell.row, column=next_column, value=s.training_workbook_name.replace(".xlsx", ""))  # training name
             sheet.cell(row=cell.row, column=next_column + 1, value=(s.number_of_repetitions_in_training / s.max_repetitions_in_training))  # percent of the training that the patient managed to do
+            sheet.cell(row=cell.row, column=next_column + 2, value=s.effort)  # percent of the training that the patient managed to do
 
             break  # Stop searching after finding the value
 

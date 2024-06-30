@@ -10,6 +10,7 @@ import smtplib
 import base64
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
+import re
 
 
 def get_percentage_of_successes_in_arrays():
@@ -226,4 +227,54 @@ def email_sending_not_level_up(level):
 
 
 #email_sending_level_up("5")
-email_sending_not_level_up("5")
+#email_sending_not_level_up("5")
+
+import os
+from datetime import datetime
+
+
+def get_sorted_folders(directory):
+    # Get the list of folder names in the specified directory
+    folder_names = [f for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
+
+    # Convert folder names to datetime objects
+    folder_datetimes = []
+    for folder in folder_names:
+        try:
+            folder_datetime = datetime.strptime(folder, "%d-%m-%Y %H-%M-%S")
+            folder_datetimes.append((folder, folder_datetime))
+        except ValueError:
+            # Skip folder names that don't match the expected format
+            continue
+
+    # Sort the list of tuples by datetime in descending order
+    sorted_folders = sorted(folder_datetimes, key=lambda x: x[1], reverse=True)
+
+    # Extract just the folder names from the sorted list
+    sorted_folder_names = [folder for folder, _ in sorted_folders]
+
+    return sorted_folder_names
+
+
+# Example usage
+# directory_path = "C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/4382/Graphs/right_hand_up_and_bend_notool"  # Replace with your directory path
+# sorted_folders = get_sorted_folders(directory_path)
+#
+# print("Folders from latest to earliest:")
+# for folder in sorted_folders:
+#     print(folder)
+
+
+def find_image(directory, number):
+    # Create a regex pattern to match the files with ' ' followed by the specific number and '.jpeg'
+    pattern = re.compile(r' (\d+)\.jpeg$')
+
+    # Iterate through the files in the directory
+    for filename in os.listdir(directory):
+        match = pattern.search(filename)
+        if match and match.group(1) == str(number):
+            return os.path.join(directory, filename)
+    return None
+
+print(find_image("C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/4382/Graphs/bend_elbows_ball/01-06-2024 18-42-16", 1))
+

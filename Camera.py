@@ -53,23 +53,27 @@ class Camera(threading.Thread):
             self.zed = MP.get_zed(medaip)
 
             while not s.finish_program:
-                #time.sleep(0.0001)  # Prevents the MP to stuck
+                time.sleep(0.0001)  # Prevents the MP to stuck
                 if s.req_exercise != "":
                     ex = s.req_exercise
                     print("CAMERA: Exercise ", ex, " start")
                     if s.req_exercise!="hello_waving":
-                        audio = s.req_exercise + '_' + str(s.rep) + '_times'
+                        audio = s.req_exercise
                         time.sleep(get_wav_duration(audio) + get_wav_duration("start_ex"))
                         s.max_repetitions_in_training += s.rep #the number of repetitions that are supposed to be in this exercise
                     getattr(self, ex)()
                     print("CAMERA: Exercise ", ex, " done")
                     s.req_exercise = ""
                     s.camera_done = True
+
+
+                else:
+                    time.sleep(1)  # Prevents the MP to stuck
             print("Camera Done")
 
 
     def get_skeleton_data(self):
-            time.sleep(0.01)
+            time.sleep(0.000001)
             bodies = sl.Bodies()  # Structure containing all the detected bodies
             body_runtime_param = sl.BodyTrackingRuntimeParameters()
             body_runtime_param.detection_confidence_threshold = 40
@@ -187,12 +191,17 @@ class Camera(threading.Thread):
 
     def end_exercise(self, counter):
         if s.rep - 2 > counter:
+            time.sleep(1)
             s.screen.switch_frame(Fail)
 
+
         if (s.rep - 2) <= counter <= (s.rep - 1):
+            time.sleep(1)
             s.screen.switch_frame(AlmostExcellent)
 
+
         if counter == s.rep:
+            time.sleep(1)
             self.random_encouragement()
 
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
@@ -588,9 +597,9 @@ class Camera(threading.Thread):
         #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
 
     def open_arms_and_up_with_band(self):  # EX7
-        self.exercise_three_angles_3d("open_arms_and_up_with_band", "hip", "shoulder", "wrist", 135, 170, 60, 100,
-                                    "shoulder", "elbow", "wrist", 130,180,0,180,
-                                    "elbow", "shoulder", "shoulder", 110, 150, 70, 105, True)
+        self.exercise_three_angles_3d("open_arms_and_up_with_band", "hip", "shoulder", "wrist", 135, 170, 20, 100,
+                                    "shoulder", "elbow", "wrist", 120,180,0,180,
+                                    "elbow", "shoulder", "shoulder", 110, 160, 70, 105, True)
 
 
     def up_with_band_and_lean(self):  # EX8
@@ -611,8 +620,8 @@ class Camera(threading.Thread):
                                  "shoulder", "elbow", "wrist", 120, 170, 30, 75)
 
     def arms_up_and_down_stick(self):  # EX11
-        self.exercise_two_angles_3d("arms_up_and_down_stick", "hip", "shoulder", "elbow", 120, 150, 10, 45,
-                                    "wrist", "elbow", "shoulder", 135,180,150,180)
+        self.exercise_two_angles_3d("arms_up_and_down_stick", "hip", "shoulder", "elbow", 130, 180, 10, 45,
+                                    "wrist", "elbow", "shoulder", 130,180,130,180)
 
     ############################לבדוק זוויות כי קשה לי לעשות את התרגיל
     def switch_with_stick(self):  # EX12

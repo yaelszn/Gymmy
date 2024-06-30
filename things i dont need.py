@@ -228,3 +228,63 @@ def three_angles_graph(df, exercise):
             self.gymmy.r_shoulder_y.goto_position(0, 1.5, wait=False)
             self.gymmy.l_shoulder_x.goto_position(0, 1.5, wait=False)
             self.gymmy.r_shoulder_x.goto_position(0, 1.5, wait=False)
+
+
+#search for previous training that the exercise was in (before the last one that was found)
+def search_for_previous_graphs_of_exercise(exercise_name, last_training_exercise_was_in):
+        # Load the workbook
+        file_path = "Patients.xlsx"
+        workbook = openpyxl.load_workbook(file_path)
+
+        # Select the desired sheet
+        sheet = workbook["patients_history_of_trainings"]
+        row_of_patient=""
+
+        # Iterate through the rows to find the value in the first column
+        for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=1, max_col=1):
+            cell = row[0]
+            if str(cell.value) == s.chosen_patient_ID:
+                row_of_patient=row
+                break  # Stop searching after finding the value
+
+
+        #if this is the first page of shown exercises
+        if last_training_exercise_was_in == "":
+            # Exclude the first cell and select only the even-indexed cells
+            for cell in reversed(row_of_patient[1::2]):
+                exercise_existing = check_worksheet_exists(cell, ("graphs_" + exercise_name)[:31])
+                if exercise_existing:
+                    return cell
+
+        else:
+            #if there was one page or more with graphs shown before
+            found_previous = False
+            for cell in reversed(row_of_patient[1::2]):
+                if cell.value == last_training_exercise_was_in:
+                    found_previous=True
+
+                if found_previous:
+                    exercise_existing= check_worksheet_exists(cell, ("graphs_"+exercise_name)[:31])
+                    if exercise_existing:
+                        return cell
+
+
+
+
+def check_worksheet_exists(workbook_path, worksheet_name):
+    try:
+
+        # Load the workbook
+        workbook = openpyxl.load_workbook(f"{s.chosen_patient_ID}/{workbook_path}.xlsx")
+
+        # Check if the worksheet exists
+        if worksheet_name in workbook.sheetnames:
+            print(f"Worksheet '{worksheet_name}' exists in the workbook.")
+            return True
+        else:
+            print(f"Worksheet '{worksheet_name}' does not exist in the workbook.")
+            return False
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False

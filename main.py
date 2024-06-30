@@ -31,7 +31,7 @@ if __name__ == '__main__':
                         # str(current_time.minute) + "." + str(current_time.second)
 
     # Training variables initialization
-    s.rep = 10
+    s.rep = 5
     s.req_exercise = ""
     s.finish_workout = False
     s.waved = False
@@ -46,6 +46,7 @@ if __name__ == '__main__':
     s.finish_program= False #will turn to true only when the user will press on the exit button
     #s.exercises_start=False
     s.waved_has_tool= True # True just in order to go through the loop in Gymmy
+    s.finished_training_adding_to_excel= False
     # Excel variable
     ############################# להוריד את הסולמיות
     s.ex_list = {}
@@ -64,10 +65,7 @@ if __name__ == '__main__':
     s.training.start()
     s.robot.start()
 
-    #image1 = Image.open('Pictures//icon.jpg')
-    #s.screen.tk.call('wm', 'iconphoto', s.screen._w, ImageTk.PhotoImage(image1))
-    #app = FullScreenApp(s.screen)
-    #s.screen.mainloop()
+
     s.screen.switch_frame(EntrancePage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
