@@ -68,7 +68,7 @@ class Camera(threading.Thread):
 
 
                 else:
-                    time.sleep(1)  # Prevents the MP to stuck
+                    time.sleep(2)  # Prevents the MP to stuck
             print("Camera Done")
 
 
@@ -190,6 +190,7 @@ class Camera(threading.Thread):
         #return random.choice(enco)
 
     def end_exercise(self, counter):
+        print(" ")
         if s.rep - 2 > counter:
             time.sleep(1)
             s.screen.switch_frame(Fail)
@@ -545,6 +546,8 @@ class Camera(threading.Thread):
         Excel.wf_joints(exercise_name, list_joints)
 
     def hello_waving(self):  # check if the participant waved
+        # s.waved_has_tool = True
+        # s.req_exercise = ""
         while s.req_exercise == "hello_waving":
             joints = self.get_skeleton_data()
             if joints is not None:
@@ -558,7 +561,7 @@ class Camera(threading.Thread):
 ######################################################### First set of ball exercises
 
     def bend_elbows_ball(self):  # EX1
-        self.exercise_two_angles_3d("bend_elbows_ball", "shoulder", "elbow", "wrist",135, 180, 10, 50,
+        self.exercise_two_angles_3d("bend_elbows_ball", "shoulder", "elbow", "wrist",135, 180, 10, 55,
                                     "elbow", "shoulder", "hip", 0, 70, 0, 60)
 
     def raise_arms_above_head_ball(self):  # EX2
@@ -568,7 +571,7 @@ class Camera(threading.Thread):
 ############################לבדוק זוויות כי קשה לי לעשות את התרגיל
     def raise_arms_forward_turn_ball(self):  # EX3
         self.exercise_two_angles_3d_with_axis_check("raise_arms_forward_turn_ball", "shoulder", "elbow","wrist", 100, 180, 140, 180,
-                                    "wrist", "hip", "hip",105,140,35,60, True, True)
+                                    "wrist", "hip", "hip",95,140,35,70, True, True)
                                     #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
 
 
@@ -576,29 +579,29 @@ class Camera(threading.Thread):
 ######################################################### Second set of ball exercises
 
     def open_arms_and_forward_ball(self):  # EX4
-        self.exercise_three_angles_3d("open_arms_and_forward_ball", "hip", "shoulder", "elbow", 40, 100, 80, 110,
-                                      "shoulder", "elbow", "wrist",0,180,150,180,
-                                    "elbow", "shoulder", "shoulder", 60, 135, 160,180,True)
+        self.exercise_three_angles_3d("open_arms_and_forward_ball", "hip", "shoulder", "elbow", 40, 120, 80, 120,
+                                      "shoulder", "elbow", "wrist",0,180,140,180,
+                                    "elbow", "shoulder", "shoulder", 60, 135, 150,180,True)
                                     # "shoulder", "elbow", "wrist", 120, 180, 150, 180,
                                     #"hip", "shoulder", "elbow", 60, 90, 80, 110,
                                     #"elbow", "shoulder", "shoulder", 80, 120, 160,180,True)
 
     def open_arms_above_head_ball(self):  # EX5
-        self.exercise_two_angles_3d("open_arms_above_head_ball", "elbow", "shoulder", "hip", 150,180, 80, 110,
-                                   "shoulder", "elbow", "wrist", 140, 180, 140, 180)
+        self.exercise_two_angles_3d("open_arms_above_head_ball", "elbow", "shoulder", "hip", 145,180, 80, 110,
+                                   "shoulder", "elbow", "wrist", 130, 180, 130, 180)
 
 
 ########################################################### Set with a rubber band
 
     def open_arms_with_band(self):  # EX6
-        self.exercise_two_angles_3d("open_arms_with_band","hip", "shoulder", "wrist", 85, 110, 70, 100,
-                                    "wrist", "shoulder", "shoulder", 130,170,70,110,True)
+        self.exercise_two_angles_3d("open_arms_with_band","hip", "shoulder", "wrist", 85, 120, 70, 120,
+                                    "wrist", "shoulder", "shoulder", 135,170,70,110,True)
 
         #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
 
     def open_arms_and_up_with_band(self):  # EX7
-        self.exercise_three_angles_3d("open_arms_and_up_with_band", "hip", "shoulder", "wrist", 135, 170, 20, 100,
-                                    "shoulder", "elbow", "wrist", 120,180,0,180,
+        self.exercise_three_angles_3d("open_arms_and_up_with_band", "hip", "shoulder", "wrist", 125, 170, 20, 100,
+                                    "shoulder", "elbow", "wrist", 130,180,0,180,
                                     "elbow", "shoulder", "shoulder", 110, 160, 70, 105, True)
 
 
@@ -612,15 +615,15 @@ class Camera(threading.Thread):
 ################################################# Set with a stick ############################################################################
 
     def bend_elbows_stick(self):  # EX9
-        self.exercise_two_angles_3d("bend_elbows_stick", "shoulder", "elbow", "wrist",150, 180, 10, 50,
-                                    "elbow", "shoulder", "hip", 10, 40, 0, 30)
+        self.exercise_two_angles_3d("bend_elbows_stick", "shoulder", "elbow", "wrist",135, 180, 10, 40,
+                                    "elbow", "shoulder", "hip", 0, 35, 0, 30)
 
     def bend_elbows_and_up_stick(self):  # EX10
-        self.exercise_two_angles_3d("bend_elbows_and_up_stick", "hip", "shoulder", "elbow", 100, 170, 10, 35,
-                                 "shoulder", "elbow", "wrist", 120, 170, 30, 75)
+        self.exercise_two_angles_3d("bend_elbows_and_up_stick", "hip", "shoulder", "elbow", 110, 170, 10, 50,
+                                 "shoulder", "elbow", "wrist", 125, 180, 30, 85)
 
     def arms_up_and_down_stick(self):  # EX11
-        self.exercise_two_angles_3d("arms_up_and_down_stick", "hip", "shoulder", "elbow", 130, 180, 10, 45,
+        self.exercise_two_angles_3d("arms_up_and_down_stick", "hip", "shoulder", "elbow", 115, 180, 10, 55,
                                     "wrist", "elbow", "shoulder", 130,180,130,180)
 
     ############################לבדוק זוויות כי קשה לי לעשות את התרגיל
@@ -631,18 +634,18 @@ class Camera(threading.Thread):
     ################################################# Set of exercises without accessories ############################################################################
 
     def hands_behind_and_lean_notool(self): # EX13
-        self.exercise_two_angles_3d("hands_behind_and_lean_notool", "shoulder", "elbow", "wrist", 10,60,10,60,
-                                    "elbow", "shoulder", "hip", 30, 90, 120, 170,False, True)
+        self.exercise_two_angles_3d("hands_behind_and_lean_notool", "shoulder", "elbow", "wrist", 10,70,10,70,
+                                    "elbow", "shoulder", "hip", 30, 95, 125, 170,False, True)
 
     #def hands_behind_and_turn_both_sides(self):  # EX14
      #   self.exercise_two_angles_3d("hands_behind_and_turn_both_sides", "elbow", "shoulder", "hip", 140,180,15,100,
       #                              "elbow", "hip", "knee", 130, 115, 80, 105, False, True)
 
     def right_hand_up_and_bend_notool(self):  # EX15
-        self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 150, 0, 180, "right")
+        self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 160, 0, 180, "right")
 
     def left_hand_up_and_bend_notool(self): #EX16
-        self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 150, 0, 180, "left")
+        self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 160, 0, 180, "left")
 
     def raising_hands_diagonally_notool(self): # EX17
         self.exercise_two_angles_3d_with_axis_check("raising_hands_diagonally_notool", "wrist", "shoulder", "hip", 0, 100, 105, 135,

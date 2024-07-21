@@ -40,21 +40,22 @@ class Gymmy(threading.Thread):
     ########################################################### RUN ##########################################
     def run(self):
         print("ROBOT START")
-        while not s.finish_workout:
-            time.sleep(0.00000001)  # Prevents the MP to stuck
-            if s.req_exercise != "" and not s.req_exercise=="hello_waving":
-                ex = s.req_exercise
-                time.sleep(1)
+        while not s.finish_program:
+            while not s.finish_workout:
+                time.sleep(0.00000001)  # Prevents the MP to stuck
+                if s.req_exercise != "" and not s.req_exercise=="hello_waving":
+                    ex = s.req_exercise
+                    time.sleep(1)
 
-                print("ROBOT: Exercise ", ex, " start")
-                self.exercise_demo(ex)
-                print("ROBOT: Exercise ", ex, " done")
+                    print("ROBOT: Exercise ", ex, " start")
+                    self.exercise_demo(ex)
+                    print("ROBOT: Exercise ", ex, " done")
 
 
-                s.req_exercise = ""
-                s.gymmy_done = True
-            else:
-                time.sleep(1)  # Prevents the MP to stuck
+                    s.req_exercise = ""
+                    s.gymmy_done = True
+                else:
+                    time.sleep(2)  # Prevents the MP to stuck
 
         print("Robot Done")
 
@@ -87,6 +88,7 @@ class Gymmy(threading.Thread):
                     break
 
     def random_faster(self):
+        print(" ")
         random_faster_name = random.choice(self.faster_sayings)
         self.faster_sayings.remove(random_faster_name)
         say(random_faster_name)
@@ -237,7 +239,7 @@ class Gymmy(threading.Thread):
             # init
             self.gymmy.l_shoulder_x.goto_position(10, 2, wait=False)
             self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=False)
-            time.sleep(0.5)
+            time.sleep(2)
             self.gymmy.l_shoulder_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_shoulder_y.goto_position(0, 1.5, wait=False)
 
@@ -261,12 +263,14 @@ class Gymmy(threading.Thread):
         time.sleep(2)
 
         if i == (s.rep - 1):
-            # init
-            self.gymmy.l_shoulder_x.goto_position(10, 2, wait=False)
-            self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=False)
+            self.gymmy.r_shoulder_x.goto_position(-90, 1, wait=False)
+            self.gymmy.l_shoulder_x.goto_position(90, 1, wait=False)
             time.sleep(2)
+            # init
             self.gymmy.l_shoulder_y.goto_position(0, 3, wait=False)
             self.gymmy.r_shoulder_y.goto_position(0, 3, wait=False)
+            self.gymmy.l_shoulder_x.goto_position(10, 2, wait=False)
+            self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=False)
 
 
 
@@ -324,7 +328,7 @@ class Gymmy(threading.Thread):
         time.sleep(1.5)
         self.gymmy.l_shoulder_y.goto_position(-170, 1, wait=False)
         self.gymmy.r_shoulder_y.goto_position(-170, 1, wait=False)
-        time.sleep(2)
+        time.sleep(1.5)
 
         self.gymmy.l_shoulder_y.goto_position(-90, 1, wait=False)
         self.gymmy.r_shoulder_y.goto_position(-90, 1, wait=False)
@@ -396,12 +400,12 @@ class Gymmy(threading.Thread):
             self.gymmy.r_shoulder_x.goto_position(-10, 1, wait=False)
             time.sleep(2)
 
-        self.gymmy.r_elbow_y.goto_position(-135, 1, wait=False)
-        self.gymmy.l_elbow_y.goto_position(-135, 1, wait=False)
-        time.sleep(1.5)
-        self.gymmy.r_elbow_y.goto_position(0, 1, wait=False)
-        self.gymmy.l_elbow_y.goto_position(0, 1, wait=False)
-        time.sleep(1.5)
+        self.gymmy.r_elbow_y.goto_position(-135, 1.5, wait=False)
+        self.gymmy.l_elbow_y.goto_position(-135, 1.5, wait=False)
+        time.sleep(2)
+        self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
+        self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
+        time.sleep(2)
 
         if i == (s.rep - 1):
             # init
@@ -416,17 +420,19 @@ class Gymmy(threading.Thread):
 
     # EX10
     def bend_elbows_and_up_stick(self, i): #לא מנח כף יד טוב
-        self.gymmy.r_elbow_y.goto_position(-120, 1, wait=False)
-        self.gymmy.l_elbow_y.goto_position(-120, 1, wait=False)
-        self.gymmy.l_shoulder_y.goto_position(-20, 1, wait=False)
-        self.gymmy.r_shoulder_y.goto_position(-20, 1, wait=False)
-        time.sleep(1.5)
+        self.gymmy.r_elbow_y.goto_position(-120, 1.5, wait=False)
+        self.gymmy.l_elbow_y.goto_position(-120, 1.5, wait=False)
+        self.gymmy.l_shoulder_y.goto_position(-20, 1.5, wait=False)
+        self.gymmy.r_shoulder_y.goto_position(-20, 1.5, wait=False)
+        time.sleep(2)
 
-        self.gymmy.r_elbow_y.goto_position(-30, 1, wait=False)
-        self.gymmy.l_elbow_y.goto_position(-30, 1, wait=False)
-        self.gymmy.l_shoulder_y.goto_position(-120, 1, wait=False)
-        self.gymmy.r_shoulder_y.goto_position(-120, 1, wait=False)
-        time.sleep(1.5)
+        self.gymmy.r_elbow_y.goto_position(-10, 1.5, wait=False)
+        self.gymmy.l_elbow_y.goto_position(-10, 1.5, wait=False)
+        self.gymmy.l_shoulder_x.goto_position(20, 1.5, wait=False)
+        self.gymmy.r_shoulder_x.goto_position(-20, 1.5, wait=False)
+        self.gymmy.l_shoulder_y.goto_position(-160, 1.5, wait=False)
+        self.gymmy.r_shoulder_y.goto_position(-160, 1.5, wait=False)
+        time.sleep(2)
 
         if i == (s.rep - 1):
             # init
@@ -434,6 +440,8 @@ class Gymmy(threading.Thread):
             self.gymmy.r_shoulder_y.goto_position(0, 1.5, wait=False)
             self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
+            self.gymmy.l_shoulder_x.goto_position(10, 1, wait=False)
+            self.gymmy.r_shoulder_x.goto_position(-10, 1, wait=False)
 
     # EX11
     def arms_up_and_down_stick(self, i):
@@ -538,12 +546,13 @@ class Gymmy(threading.Thread):
             self.gymmy.l_shoulder_x.goto_position(20, 1.5, wait=False)
             self.gymmy.bust_x.goto_position(0, 1.5, wait=False)
             self.gymmy.r_shoulder_x.goto_position(-10, 1.5, wait=False)
-            self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
+            time.sleep(0.5)
+            self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
             time.sleep(2)
 
         self.gymmy.r_shoulder_x.goto_position(-60, 1, wait=False)
-        self.gymmy.r_elbow_y.goto_position(-40, 1, wait=False)
+        self.gymmy.r_elbow_y.goto_position(-60, 1, wait=False)
         self.gymmy.l_elbow_y.goto_position(-20, 1.5, wait=False)
         self.gymmy.l_shoulder_x.goto_position(160, 1.5, wait=False)
         self.gymmy.bust_x.goto_position(50, 1.5, wait=False)
@@ -552,6 +561,7 @@ class Gymmy(threading.Thread):
         if i == (s.rep - 1):
             # init
             self.gymmy.bust_x.goto_position(0, 1.5, wait=False)
+            time.sleep(0.5)
             self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_shoulder_x.goto_position(-10, 1.5, wait=False)
@@ -570,13 +580,14 @@ class Gymmy(threading.Thread):
             self.gymmy.r_shoulder_x.goto_position(-20, 2, wait=False)
             self.gymmy.bust_x.goto_position(0, 1.5, wait=False)
             self.gymmy.l_shoulder_x.goto_position(10, 1.5, wait=False)
-            self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
+            time.sleep(0.5)
+            self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
 
             time.sleep(2.5)
 
         self.gymmy.l_shoulder_x.goto_position(60, 1, wait=False)
-        self.gymmy.l_elbow_y.goto_position(-40, 1, wait=False)
+        self.gymmy.l_elbow_y.goto_position(-60, 1, wait=False)
         self.gymmy.r_elbow_y.goto_position(-20, 1.5, wait=False)
         self.gymmy.r_shoulder_x.goto_position(-160, 2, wait=False)
         self.gymmy.bust_x.goto_position(-50, 1.5, wait=False)
@@ -585,6 +596,7 @@ class Gymmy(threading.Thread):
         if i == (s.rep - 1):
             # init
             self.gymmy.bust_x.goto_position(0, 1.5, wait=False)
+            time.sleep(0.5)
             self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_shoulder_x.goto_position(-10, 1.5, wait=False)
@@ -635,7 +647,7 @@ class Gymmy(threading.Thread):
 
 
 if __name__ == "__main__":
-    s.rep = 10
+    s.rep = 5
     s.success_exercise = False
     s.finish_workout = False
 
@@ -648,9 +660,30 @@ if __name__ == "__main__":
     ###########################################################
     s.waved=True
     s.finish_workout=False
-    s.req_exercise="raise_arms_above_head_ball"
+
+    #######################################################################
+    #s.req_exercise ="bend_elbows_ball"
+    #s.req_exercise = "raise_arms_above_head_ball"
+    #s.req_exercise = "raise_arms_forward_turn_ball"
+    #s.req_exercise = "open_arms_and_forward_ball"
+    #s.req_exercise = "open_arms_above_head_ball"
+    #s.req_exercise = "open_arms_with_band"
+    #s.req_exercise = "open_arms_and_up_with_band"
+    #s.req_exercise = "up_with_band_and_lean"
+    #s.req_exercise = "bend_elbows_stick"
+    #s.req_exercise = "bend_elbows_and_up_stick"
+    #s.req_exercise = "arms_up_and_down_stick"
+    #s.req_exercise = "switch_with_stick"
+    #s.req_exercise = "hands_behind_and_lean_notool"
+    #s.req_exercise="right_hand_up_and_bend_notool"
+    # s.req_exercise = "left_hand_up_and_bend_notool"
+    s.req_exercise = "raising_hands_diagonally_notool"
+
+
+
     robot = Gymmy()
     s.patient_repetitions_counting_in_exercise=0
+    s.finish_program= False
     #mp=MP()
     #mp.start()
     robot.start()

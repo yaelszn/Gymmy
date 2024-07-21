@@ -25,7 +25,7 @@ class Training(threading.Thread):
     def training_session(self):
 
         while s.ex_in_training==[]:
-            time.sleep(0.0001)
+            time.sleep(1)
 
         print("Training: start exercises")
 
@@ -33,7 +33,7 @@ class Training(threading.Thread):
         random.shuffle(categories)
 
         Excel.create_workbook() #create workbook in excel for this session
-        #time.sleep(7)
+        time.sleep(7)
         self.exercises_by_order=[]
 
         for i in categories:
@@ -43,7 +43,6 @@ class Training(threading.Thread):
             if exercises_in_category!=[]:
                 #time.sleep(1)
                 self.show_screen_category(i)
-
                 while not s.waved_has_tool:
                     time.sleep(0.0001)
 
@@ -90,7 +89,6 @@ class Training(threading.Thread):
         Excel.find_and_add_training_to_patient()
         self.check_points_and_send_email()
         Excel.close_workbook()
-        time.sleep(8)
         print("TRAINING DONE")
         self.reset()
 
@@ -110,7 +108,6 @@ class Training(threading.Thread):
         # time.sleep(1)
 
     def reset(self):
-        s.rep = 10
         s.req_exercise = ""
         s.waved = False
         s.success_exercise = False

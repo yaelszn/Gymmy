@@ -5,8 +5,12 @@ import tkinter as tk
 from datetime import datetime
 from statistics import mean, stdev
 from tkinter import ttk
+
+import numpy as np
 import openpyxl
 import matplotlib
+from matplotlib import pyplot as plt
+
 matplotlib.use('TkAgg')  # Use the TkAgg backend
 import cv2
 import pandas as pd
@@ -49,6 +53,7 @@ class Screen(tk.Tk):
 
     def quit(self):
         self.destroy()
+
 
 
 class EntrancePage(tk.Frame):
@@ -811,7 +816,7 @@ class Tabel_Of_Effort_Ratings(tk.Frame):
         s.screen.switch_frame(PatientDisplaying)
 
 
-def play_video(cap, label, exercise, previous, scale_factor=0.35, slow_factor=1):
+def play_video(cap, label, exercise, previous, scale_factor=0.35, slow_factor=1.2):
 
     if previous is not None:
         def on_click(event):
@@ -1455,7 +1460,7 @@ class GraphPage(tk.Frame):
                                               height=self.backward_arrow_button_img.height, bd=0,
                                               highlightthickness=0)
             self.backward_arrow_button.image = self.backward_arrow_button_photo
-            self.backward_arrow_button.place(x=913, y=480)
+            self.backward_arrow_button.place(x=945, y=480)
 
         if place<len(sorted_folder)-1:
             self.forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
@@ -1466,7 +1471,7 @@ class GraphPage(tk.Frame):
                                              height=self.forward_arrow_button_img.height, bd=0,
                                              highlightthickness=0)
             self.forward_arrow_button.image = self.forward_arrow_button_photo
-            self.forward_arrow_button.place(x=50, y=480)
+            self.forward_arrow_button.place(x=20, y=480)
 
 
         back = Image.open('Pictures//empty.JPG')
@@ -1557,7 +1562,7 @@ class GraphPage(tk.Frame):
 
     def three_angles_graph(self, exercise, folder):
         # Determine the resize factor
-        resize_factor = 0.45
+        resize_factor = 0.42
 
         # Load the image
         dir1= self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 1)
@@ -1567,7 +1572,7 @@ class GraphPage(tk.Frame):
         graph1_resized = graph1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
         self.graph1 = ImageTk.PhotoImage(graph1_resized)
         self.graph1_label = tk.Label(self, image=self.graph1, bd=0)
-        self.graph1_label.place(x=20, y=90)
+        self.graph1_label.place(x=100, y=90)
 
         dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 2)
         graph2 = Image.open(dir2)
@@ -1576,16 +1581,16 @@ class GraphPage(tk.Frame):
         graph2_resized = graph2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
         self.graph2 = ImageTk.PhotoImage(graph2_resized)
         self.graph2_label = tk.Label(self, image=self.graph2, bd=0)
-        self.graph2_label.place(x=20, y=325)
+        self.graph2_label.place(x=100, y=325)
 
         dir3 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 3)
         graph3 = Image.open(dir3)
         new_width3 = int(graph3.width * resize_factor)
         new_height3 = int(graph3.height * resize_factor)
-        graph3_resized = graph1.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+        graph3_resized = graph3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
         self.graph3 = ImageTk.PhotoImage(graph3_resized)
         self.graph3_label = tk.Label(self, image=self.graph3, bd=0)
-        self.graph3_label.place(x=350, y=90)
+        self.graph3_label.place(x=380, y=90)
 
         dir4 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 4)
         graph4 = Image.open(dir4)
@@ -1594,7 +1599,7 @@ class GraphPage(tk.Frame):
         graph4_resized = graph4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
         self.graph4 = ImageTk.PhotoImage(graph4_resized)
         self.graph4_label = tk.Label(self, image=self.graph4, bd=0)
-        self.graph4_label.place(x=350, y=325)
+        self.graph4_label.place(x=380, y=325)
 
         dir5 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 5)
         graph5 = Image.open(dir5)
@@ -1603,7 +1608,7 @@ class GraphPage(tk.Frame):
         graph5_resized = graph5.resize((new_width5, new_height5), Image.Resampling.LANCZOS)
         self.graph5 = ImageTk.PhotoImage(graph5_resized)
         self.graph5_label = tk.Label(self, image=self.graph5, bd=0)
-        self.graph5_label.place(x=680, y=90)
+        self.graph5_label.place(x=660, y=90)
 
         dir6 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 6)
         graph6 = Image.open(dir6)
@@ -1612,7 +1617,7 @@ class GraphPage(tk.Frame):
         graph6_resized = graph6.resize((new_width6, new_height6), Image.Resampling.LANCZOS)
         self.graph6 = ImageTk.PhotoImage(graph6_resized)
         self.graph6_label = tk.Label(self, image=self.graph6, bd=0)
-        self.graph6_label.place(x=680, y=325)
+        self.graph6_label.place(x=660, y=325)
 
 
     def two_angles_graph(self, exercise, folder):
@@ -1641,7 +1646,7 @@ class GraphPage(tk.Frame):
         graph3 = Image.open(dir3)
         new_width3 = int(graph3.width * resize_factor)
         new_height3 = int(graph3.height * resize_factor)
-        graph3_resized = graph1.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+        graph3_resized = graph3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
         self.graph3 = ImageTk.PhotoImage(graph3_resized)
         self.graph3_label = tk.Label(self, image=self.graph3, bd=0)
         self.graph3_label.place(x=540, y=90)
@@ -1710,6 +1715,7 @@ class Very_good(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
         say('very_good')
+
 
 class Excellent(tk.Frame):
     def __init__(self, master):
@@ -2034,8 +2040,8 @@ if __name__ == "__main__":
     s.finished_effort= False
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
-    s.chosen_patient_ID= '4382'
-    s.screen.switch_frame(Tabel_Of_Effort_Ratings)
+    s.chosen_patient_ID= ''
+    s.screen.switch_frame(PatientDisplaying)
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

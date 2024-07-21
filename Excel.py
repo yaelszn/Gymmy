@@ -1,10 +1,14 @@
 import pandas as pd
 import xlsxwriter
 from datetime import datetime
+
+import ScreenNew
 from Joint import Joint
 import openpyxl
 import Settings as s
 from openpyxl import load_workbook
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -187,96 +191,99 @@ def get_number_of_angles_in_exercise(exercise):
         return False
 
 def one_angle_graph(exercise_name, list_joints):
-    last_two_values = [entry[-2:] for entry in list_joints] #extract from each record the last 2 values (the angles)
-    right_angles = [sublist[0] for sublist in last_two_values] #the right angle from each record
-    left_angles = [sublist[1] for sublist in last_two_values] #the left angle from each record
+    if (list_joints!=[]):
+        last_two_values = [entry[-2:] for entry in list_joints] #extract from each record the last 2 values (the angles)
+        right_angles = [sublist[0] for sublist in last_two_values] #the right angle from each record
+        left_angles = [sublist[1] for sublist in last_two_values] #the left angle from each record
 
 
-    #extract the joints names and create graphs names
-    first_values= list_joints[0]
-    first_6_values= first_values[:6]
-    joints_names = [str(sample).split()[0] for sample in first_6_values]
-    first_graph_name= joints_names[0]+", "+joints_names[1]+", "+joints_names[2]+" 1"
-    second_graph_name= joints_names[3]+", "+joints_names[4]+", "+joints_names[5]+" 2"
+        #extract the joints names and create graphs names
+        first_values= list_joints[0]
+        first_6_values= first_values[:6]
+        joints_names = [str(sample).split()[0] for sample in first_6_values]
+        first_graph_name= joints_names[0]+", "+joints_names[1]+", "+joints_names[2]+" 1"
+        second_graph_name= joints_names[3]+", "+joints_names[4]+", "+joints_names[5]+" 2"
 
-    #create a list of x values
-    length= len(list_joints)
-    measurement_num = list(range(1, length + 1))
+        #create a list of x values
+        length= len(list_joints)
+        measurement_num = list(range(1, length + 1))
 
-    #create a data dic for graph
-    data = {
-    first_graph_name: {'x': measurement_num, 'y': right_angles},
-    second_graph_name: {'x': measurement_num, 'y': left_angles}}
+        #create a data dic for graph
+        data = {
+        first_graph_name: {'x': measurement_num, 'y': right_angles},
+        second_graph_name: {'x': measurement_num, 'y': left_angles}}
 
-    create_and_save_graph(data, exercise_name)
+        create_and_save_graph(data, exercise_name)
 
 
 def two_angles_graph(exercise_name, list_joints):
-    last_four_values = [entry[-4:] for entry in list_joints]  # extract from each record the last 4 values (the angles)
-    right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
-    left_angles = [sublist[1] for sublist in last_four_values]  # the left angle from each record
-    right_angles2 = [sublist[2] for sublist in last_four_values]  # the second right angle from each record
-    left_angles2 = [sublist[3] for sublist in last_four_values]  # the second left angle from each record
+    if (list_joints!=[]):
+        last_four_values = [entry[-4:] for entry in list_joints]  # extract from each record the last 4 values (the angles)
+        right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
+        left_angles = [sublist[1] for sublist in last_four_values]  # the left angle from each record
+        right_angles2 = [sublist[2] for sublist in last_four_values]  # the second right angle from each record
+        left_angles2 = [sublist[3] for sublist in last_four_values]  # the second left angle from each record
 
-    # extract the joints names and create graphs names
-    first_values = list_joints[0]
-    first_12_values = first_values[:12]
-    joints_names = [str(sample).split()[0] for sample in first_12_values]
-    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]+" 1"
-    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]+" 2"
-    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]+" 3"
-    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]+" 4"
+        # extract the joints names and create graphs names
+        first_values = list_joints[0]
+        first_12_values = first_values[:12]
+        joints_names = [str(sample).split()[0] for sample in first_12_values]
+        first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]+" 1"
+        second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]+" 2"
+        third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]+" 3"
+        fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]+" 4"
 
-    # create a list of x values
-    length = len(list_joints)
-    measurement_num = list(range(1, length + 1))
+        # create a list of x values
+        length = len(list_joints)
+        measurement_num = list(range(1, length + 1))
 
-    # create a data dic for graph
-    data = {
-        first_graph_name: {'x': measurement_num, 'y': right_angles},
-        second_graph_name: {'x': measurement_num, 'y': left_angles},
-        third_graph_name: {'x': measurement_num, 'y': right_angles2},
-        fourth_graph_name: {'x': measurement_num, 'y': left_angles2}
-    }
+        # create a data dic for graph
+        data = {
+            first_graph_name: {'x': measurement_num, 'y': right_angles},
+            second_graph_name: {'x': measurement_num, 'y': left_angles},
+            third_graph_name: {'x': measurement_num, 'y': right_angles2},
+            fourth_graph_name: {'x': measurement_num, 'y': left_angles2}
+        }
 
-    create_and_save_graph(data, exercise_name)
+        create_and_save_graph(data, exercise_name)
 
 
 def three_angles_graph(exercise_name, list_joints):
-    last_four_values = [entry[-6:] for entry in list_joints]  # extract from each record the last 6 values (the angles)
-    right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
-    left_angles = [sublist[1] for sublist in last_four_values]  # the left angle from each record
-    right_angles2 = [sublist[2] for sublist in last_four_values]  # the second right angle from each record
-    left_angles2 = [sublist[3] for sublist in last_four_values]  # the second left angle from each record
-    right_angles3 = [sublist[4] for sublist in last_four_values]  # the third right angle from each record
-    left_angles3 = [sublist[5] for sublist in last_four_values]  # the third left angle from each record
+    if (list_joints!=[]):
+        last_four_values = [entry[-6:] for entry in list_joints]  # extract from each record the last 6 values (the angles)
+        right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
+        left_angles = [sublist[1] for sublist in last_four_values]  # the left angle from each record
+        right_angles2 = [sublist[2] for sublist in last_four_values]  # the second right angle from each record
+        left_angles2 = [sublist[3] for sublist in last_four_values]  # the second left angle from each record
+        right_angles3 = [sublist[4] for sublist in last_four_values]  # the third right angle from each record
+        left_angles3 = [sublist[5] for sublist in last_four_values]  # the third left angle from each record
 
-    # extract the joints names and create graphs names
-    first_values = list_joints[0]
-    first_18_values = first_values[:18]
-    joints_names = [str(sample).split()[0] for sample in first_18_values]
-    first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]+" 1"
-    second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]+" 2"
-    third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]+" 3"
-    fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]+" 4"
-    fifth_graph_name = joints_names[12] + ", " + joints_names[13] + ", " + joints_names[14]+" 5"
-    sixth_graph_name = joints_names[15] + ", " + joints_names[16] + ", " + joints_names[17]+" 6"
+        # extract the joints names and create graphs names
+        first_values = list_joints[0]
+        first_18_values = first_values[:18]
+        joints_names = [str(sample).split()[0] for sample in first_18_values]
+        first_graph_name = joints_names[0] + ", " + joints_names[1] + ", " + joints_names[2]+" 1"
+        second_graph_name = joints_names[3] + ", " + joints_names[4] + ", " + joints_names[5]+" 2"
+        third_graph_name = joints_names[6] + ", " + joints_names[7] + ", " + joints_names[8]+" 3"
+        fourth_graph_name = joints_names[9] + ", " + joints_names[10] + ", " + joints_names[11]+" 4"
+        fifth_graph_name = joints_names[12] + ", " + joints_names[13] + ", " + joints_names[14]+" 5"
+        sixth_graph_name = joints_names[15] + ", " + joints_names[16] + ", " + joints_names[17]+" 6"
 
-    # create a list of x values
-    length = len(list_joints)
-    measurement_num = list(range(1, length + 1))
+        # create a list of x values
+        length = len(list_joints)
+        measurement_num = list(range(1, length + 1))
 
-    # create a data dic for graph
-    data = {
-        first_graph_name: {'x': measurement_num, 'y': right_angles},
-        second_graph_name: {'x': measurement_num, 'y': left_angles},
-        third_graph_name: {'x': measurement_num, 'y': right_angles2},
-        fourth_graph_name: {'x': measurement_num, 'y': left_angles2},
-        fifth_graph_name: {'x': measurement_num, 'y': right_angles3},
-        sixth_graph_name: {'x': measurement_num, 'y': left_angles3}
-    }
+        # create a data dic for graph
+        data = {
+            first_graph_name: {'x': measurement_num, 'y': right_angles},
+            second_graph_name: {'x': measurement_num, 'y': left_angles},
+            third_graph_name: {'x': measurement_num, 'y': right_angles2},
+            fourth_graph_name: {'x': measurement_num, 'y': left_angles2},
+            fifth_graph_name: {'x': measurement_num, 'y': right_angles3},
+            sixth_graph_name: {'x': measurement_num, 'y': left_angles3}
+        }
 
-    create_and_save_graph(data, exercise_name)
+        create_and_save_graph(data, exercise_name)
 
 
 def create_and_save_graph(data, exercise):
