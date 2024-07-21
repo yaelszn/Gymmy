@@ -3,7 +3,7 @@ import time
 from Camera import Camera
 from Gymmy import Gymmy
 from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
-    EffortScale, EntrancePage
+    EffortScale, EntrancePage, ExplanationPage
 import Settings as s
 import Excel
 import random
@@ -98,7 +98,7 @@ class Training(threading.Thread):
         s.patient_repetitions_counting_in_exercise=0
         s.req_exercise = name
         print("TRAINING: Exercise ", name, " start")
-
+        s.screen.switch_frame(ExplanationPage, name)
         while s.req_exercise == name:
             time.sleep(0.00000001)
 

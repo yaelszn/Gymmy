@@ -147,36 +147,36 @@ class Camera(threading.Thread):
 ##############self.zed.disable_body_tracking()
 ##############self.zed.close()
 
-    def change_count_screen(self, count):
-        if count == 1:
-            s.screen.switch_frame(OnePage)
-
-        if count == 2:
-            s.screen.switch_frame(TwoPage)
-
-        if count == 3:
-            s.screen.switch_frame(ThreePage)
-
-        if count == 4:
-            s.screen.switch_frame(FourPage)
-
-        if count == 5:
-            s.screen.switch_frame(FivePage)
-
-        if count == 6:
-            s.screen.switch_frame(SixPage)
-
-        if count == 7:
-            s.screen.switch_frame(SevenPage)
-
-        if count == 8:
-            s.screen.switch_frame(EightPage)
-
-        if count == 9:
-            s.screen.switch_frame(NinePage)
-
-        if count == 10:
-            s.screen.switch_frame(TenPage)
+    # def change_count_screen(self, count):
+    #     if count == 1:
+    #         s.screen.switch_frame(OnePage)
+    #
+    #     if count == 2:
+    #         s.screen.switch_frame(TwoPage)
+    #
+    #     if count == 3:
+    #         s.screen.switch_frame(ThreePage)
+    #
+    #     if count == 4:
+    #         s.screen.switch_frame(FourPage)
+    #
+    #     if count == 5:
+    #         s.screen.switch_frame(FivePage)
+    #
+    #     if count == 6:
+    #         s.screen.switch_frame(SixPage)
+    #
+    #     if count == 7:
+    #         s.screen.switch_frame(SevenPage)
+    #
+    #     if count == 8:
+    #         s.screen.switch_frame(EightPage)
+    #
+    #     if count == 9:
+    #         s.screen.switch_frame(NinePage)
+    #
+    #     if count == 10:
+    #         s.screen.switch_frame(TenPage)
 
     def random_encouragement(self):
         enco = ["Well_done", "Very_good", "Excellent"]

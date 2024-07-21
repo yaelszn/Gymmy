@@ -1687,14 +1687,27 @@ class GraphPage(tk.Frame):
 
 
 ############################################### Exercises Pages ########################################################
-class DemoPage(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//demo.jpg')
+class ExplanationPage(tk.Frame):
+    def __init__(self, master, exercise, **kwargs):
+        tk.Frame.__init__(self, master, **kwargs)
+        image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
-        say('robot_demo')
 
+        self.label = tk.Label(self)
+        self.label.place(x=400, y=120)  # Adjust x and y coordinates for the first video
+        video_file = f'Videos//{exercise}_vid.mp4'
+        video_path = os.path.join(os.getcwd(), video_file)
+        self.cap = cv2.VideoCapture(video_path)
+
+        if not (self.cap.isOpened()):
+            print("Error opening video streams or files")
+
+        else:
+            # Play videos
+            play_video(self.cap, self.label, exercise, None, 0.5, 0.8)
+
+        say(f'{exercise}')
 
 class ExercisePage(tk.Frame):
     def __init__(self, master):
@@ -1756,7 +1769,7 @@ class Fail(tk.Frame):
 class StartOfTraining(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//hello.jpg')
+        image = Image.open('Pictures//face.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("welcome")
@@ -2041,7 +2054,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= ''
-    s.screen.switch_frame(PatientDisplaying)
+    s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
     #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
