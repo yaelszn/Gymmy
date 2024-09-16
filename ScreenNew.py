@@ -5,6 +5,8 @@ import tkinter as tk
 from datetime import datetime
 from statistics import mean, stdev
 from tkinter import ttk
+import random
+from datetime import datetime
 
 import numpy as np
 import openpyxl
@@ -69,9 +71,9 @@ class EntrancePage(tk.Frame):
         s.chosen_patient_ID = None
 
         # Load images for buttons
-        therapist_image = Image.open("Pictures//therapist_enterence_button.jpg")
+        therapist_image = Image.open("Pictures//therapist_entrance_button.jpg")
         therapist_photo = ImageTk.PhotoImage(therapist_image)
-        patient_image = Image.open("Pictures//patient_enterence_button.jpg")
+        patient_image = Image.open("Pictures//patient_entrance_button.jpg")
         patient_photo = ImageTk.PhotoImage(patient_image)
 
         # Store references to prevent garbage collection
@@ -719,101 +721,8 @@ class PatientDisplaying(tk.Frame):
             print("Selected Row:", selected_row)
 
             s.chosen_patient_ID=selected_row[0]
-            s.screen.switch_frame(ChooseBallExercisesPage)
-
-
-class Tabel_Of_Effort_Ratings(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        # Load background image
-        background_image = Image.open('Pictures//scale_table.jpg')
-        self.background_photo = ImageTk.PhotoImage(background_image)
-        self.background_label = tk.Label(self, image=self.background_photo)
-        self.background_label.pack(fill="both", expand=True)
-        self.create_table()
-
-    def create_lists_to_table(self):
-        df = pd.read_excel("Patients.xlsx", sheet_name="patients_history_of_trainings")
-        df.iloc[:, 0] = df.iloc[:, 0].astype(str)
-        filtered_rows = df[df.iloc[:, 0] == s.chosen_patient_ID]
-
-        effort_values = []
-        date_values = []
-
-        row = filtered_rows.iloc[0]  # Get the first (and only) row
-        row_values_without_id = row.iloc[1:]  # Exclude the first value of the row
-
-        row_values = []
-        for i in range(0, len(row_values_without_id), 3):  # excluding the second value out of each threesome
-            row_values.append(row_values_without_id[i])  # Add the first element of the group
-            if i + 2 < len(row_values_without_id):
-                row_values.append(row_values_without_id[i + 2])  # Add the third element of the group if it exists
-
-        for index, cell_value in enumerate(row_values):
-            if index % 2 == 0:  # Check if index is even
-                date_values.append(cell_value)
-            else:
-                effort_values.append(cell_value)
-
-        return effort_values, date_values
-
-    def create_table(self):
-        effort_values, date_values = self.create_lists_to_table()
-
-        data = {
-            'effort': effort_values,
-            'date': date_values
-        }
-
-        df = pd.DataFrame(data)
-        new_headers = {'date': "תאריך ושעת אימון", 'effort': "דירוג המאמץ"}
-        df.rename(columns=new_headers, inplace=True)
-
-        # Display the DataFrame in a Treeview widget
-        self.treeview = ttk.Treeview(self, style="Treeview", show="headings")
-        self.treeview["columns"] = tuple(df.columns)
-
-        # Set up a custom style for the Treeview
-        style = ttk.Style(self)
-        style.configure("Treeview", font=("Thaoma", 14, 'bold'), rowheight=30)  # Adjust the font size (16 in this case)
-
-        # Add columns to the Treeview
-        for col in df.columns:
-            self.treeview.column(col, anchor="e", width=220)  # Set the anchor to "e" (east, or right-aligned)
-            self.treeview.heading(col, text=col, anchor="e")
-
-        # Insert data into the Treeview
-        for index, row in df.iterrows():
-            values = tuple(row)
-            self.treeview.insert("", index, values=values, tags=(index,))
-
-        # Disable actions on Treeview clicks and selections
-        self.treeview.bind("<ButtonRelease-1>", self.no_op)
-        self.treeview.bind("<KeyPress>", self.no_op)
-
-        # Pack the Treeview widget
-        self.treeview.place(x=270, y=180)
-
-        # Set up a vertical scrollbar
-        scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
-        self.treeview.configure(yscrollcommand=scrollbar.set)
-        scrollbar.place(x=715, y=180, height=325)
-
-        # Back button
-        back_button_img = Image.open("Pictures//back_to_menu.jpg")  # Change path to your image file
-        back_button_photo = ImageTk.PhotoImage(back_button_img)
-        back_button = tk.Button(self, image=back_button_photo, command=self.on_click_to_physio_menu,
-                                width=back_button_img.width, height=back_button_img.height, bd=0,
-                                highlightthickness=0)  # Set border width to 0 to remove button border
-        back_button.image = back_button_photo  # Store reference to image to prevent garbage collection
-        back_button.place(x=30, y=30)
-
-    def no_op(self, event):
-        # No operation function
-        pass
-
-    def on_click_to_physio_menu(self):
-        s.screen.switch_frame(PatientDisplaying)
+            #s.screen.switch_frame(ChooseBallExercisesPage)
+            s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
 def play_video(cap, label, exercise, previous, scale_factor=0.35, slow_factor=1.2):
@@ -882,6 +791,44 @@ def get_row_of_exercises_patient():
 
     return row_of_patient
 
+def which_image_to_put (row_of_patient, ex):
+
+    if ex_in_training_or_not(row_of_patient, ex)==True:
+        return "vi"
+    else:
+        return "empty"
+
+    # A function that check which image to put as a checkbox on each checkbox click
+
+
+def which_checkbox(button1, ex):
+    row_of_patient = get_row_of_exercises_patient()
+
+    # Retrieve the current checkbox value
+    current_value = ex_in_training_or_not(row_of_patient, ex)
+
+    # Toggle the value in the underlying data
+    new_value_ex_patient = {ex: (not current_value)}
+    Excel.find_and_change_values_exercises(new_value_ex_patient)
+
+    # Retrieve the new current value after the update to ensure it has been toggled
+    updated_value = not current_value
+
+    # Choose the new image based on the updated value
+    if updated_value:
+        image1 = Image.open('Pictures//vi.png')  # True = checked (vi)
+    else:
+        image1 = Image.open('Pictures//empty.png')  # False = empty
+
+    # Convert to PhotoImage
+    button1_photo = ImageTk.PhotoImage(image1)
+
+    # Update the button's image
+    button1.config(image=button1_photo)
+
+    # Store a reference to prevent garbage collection
+    button1.image = button1_photo  # Keep a reference to the image
+
 
 class ChooseBallExercisesPage(tk.Frame):
     def __init__(self, master):
@@ -901,9 +848,9 @@ class ChooseBallExercisesPage(tk.Frame):
         forward_arrow_button.place(x=50, y=480)
 
 
-        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
+        to_patients_list_button_img = Image.open("Pictures//previous.jpg")
         to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
-        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo, command=lambda: self.to_patients_list_button_click(),
+        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo, command=lambda: self.to_previous_button_click(),
                                    width=to_patients_list_button_img.width, height=to_patients_list_button_img.height, bd=0,
                                    highlightthickness=0)  # Set border width to 0 to remove button border
         to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
@@ -914,33 +861,62 @@ class ChooseBallExercisesPage(tk.Frame):
         # Create labels for videos
         self.label1 = tk.Label(self)
         self.label1.place(x=30, y=100)  # Adjust x and y coordinates for the first video
-        self.checkbox_var1 = tk.BooleanVar(value= ex_in_training_or_not(row_of_patient, "bend_elbows_ball"))
-        self.checkbox1 = ttk.Checkbutton(self, variable= self.checkbox_var1)
-        self.checkbox1.place(x=110, y=430)
+
+        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_ball")}.png')
+        button1_photo = ImageTk.PhotoImage(button1_image)
+        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "bend_elbows_ball"),
+                            width=button1_photo.width(), height=button1_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button1.image = button1_photo  # Store reference to image to prevent garbage collection
+        button1.place(x=95, y=425)
+
 
         self.label2 = tk.Label(self)
         self.label2.place(x=230, y=100)  # Adjust x and y coordinates for the second video
-        self.checkbox_var2 = tk.BooleanVar(value= ex_in_training_or_not(row_of_patient, "raise_arms_above_head_ball"))
-        self.checkbox2 = ttk.Checkbutton(self, variable=self.checkbox_var2)
-        self.checkbox2.place(x=310, y=430)
+
+        button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "raise_arms_above_head_ball")}.png')
+        button2_photo = ImageTk.PhotoImage(button2_image)
+        button2 = tk.Button(self, image=button2_photo, command=lambda: which_checkbox(button2, "raise_arms_above_head_ball"),
+                            width=button2_photo.width(), height=button2_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button2.image = button2_photo  # Store reference to image to prevent garbage collection
+        button2.place(x=295, y=425)
+
 
         self.label3 = tk.Label(self)
         self.label3.place(x=430, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var3 = tk.BooleanVar(value= ex_in_training_or_not(row_of_patient, "raise_arms_forward_turn_ball"))
-        self.checkbox3 = ttk.Checkbutton(self, variable=self.checkbox_var3)
-        self.checkbox3.place(x=510, y=430)
+        button3_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "raise_arms_forward_turn_ball")}.png')
+        button3_photo = ImageTk.PhotoImage(button3_image)
+        button3 = tk.Button(self, image=button3_photo, command=lambda: which_checkbox(button3, "raise_arms_forward_turn_ball"),
+                            width=button3_photo.width(), height=button3_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button3.image = button3_photo  # Store reference to image to prevent garbage collection
+        button3.place(x=495, y=425)
+
+
 
         self.label4 = tk.Label(self)
         self.label4.place(x=630, y=100)  # Adjust x and y coordinates for the fourth video
-        self.checkbox_var4 = tk.BooleanVar(value= ex_in_training_or_not(row_of_patient, "open_arms_and_forward_ball"))
-        self.checkbox4 = ttk.Checkbutton(self, variable=self.checkbox_var4)
-        self.checkbox4.place(x=710, y=430)
+        button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "open_arms_and_forward_ball")}.png')
+        button4_photo = ImageTk.PhotoImage(button4_image)
+        button4 = tk.Button(self, image=button4_photo,  command=lambda: which_checkbox(button4, "open_arms_and_forward_ball"),
+                            width=button4_photo.width(), height=button4_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button4.image = button4_photo  # Store reference to image to prevent garbage collection
+        button4.place(x=695, y=425)
+
+
 
         self.label5 = tk.Label(self)
         self.label5.place(x=830, y=100)  # Adjust x and y coordinates for the fifth video
-        self.checkbox_var5 = tk.BooleanVar(value= ex_in_training_or_not(row_of_patient, "open_arms_above_head_ball"))
-        self.checkbox5 = ttk.Checkbutton(self, variable=self.checkbox_var5)
-        self.checkbox5.place(x=910, y=430)
+        button5_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "open_arms_above_head_ball")}.png')
+        button5_photo = ImageTk.PhotoImage(button5_image)
+        button5 = tk.Button(self, image=button5_photo,  command=lambda: which_checkbox(button5, "open_arms_above_head_ball"),
+                            width=button5_photo.width(), height=button5_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button5.image = button5_photo  # Store reference to image to prevent garbage collection
+        button5.place(x=895, y=425)
+
 
         # Video paths
         video_file1 = 'Videos//bend_elbows_ball_vid.mp4'
@@ -977,23 +953,12 @@ class ChooseBallExercisesPage(tk.Frame):
             play_video(self.cap5, self.label5, "open_arms_above_head_ball", "ball")  # Change "Page5" to the name of the page you want to switch to
 
 
-    def save_changes(self):
-        new_values_ex_patient = {"bend_elbows_ball": bool(self.checkbox_var1.get()),
-                                 "raise_arms_above_head_ball": bool(self.checkbox_var2.get()),
-                                 "raise_arms_forward_turn_ball": bool(self.checkbox_var3.get()),
-                                 "open_arms_and_forward_ball": bool(self.checkbox_var4.get()),
-                                 "open_arms_above_head_ball": bool(self.checkbox_var5.get())}
-
-        Excel.find_and_change_values_exercises(new_values_ex_patient)
-
 
 
     def on_arrow_click(self):
-        self.save_changes()
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
-    def to_patients_list_button_click(self):
-        self.save_changes()
+    def to_previous_button_click(self):
         num_of_exercises_in_training=Excel.count_number_of_exercises_in_training_by_ID()
         if num_of_exercises_in_training<5:
             back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
@@ -1005,7 +970,7 @@ class ChooseBallExercisesPage(tk.Frame):
 
         else:
             Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
-            s.screen.switch_frame(PatientDisplaying)
+            s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
 
@@ -1035,10 +1000,10 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         backward_arrow_button.image = backward_arrow_button_photo
         backward_arrow_button.place(x=913, y=480)
 
-        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
+        to_patients_list_button_img = Image.open("Pictures//previous.jpg")
         to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
         to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo,
-                                   command=lambda: self.to_patients_list_button_click(),
+                                   command=lambda: self.to_previous_button_click(),
                                    width=to_patients_list_button_img.width, height=to_patients_list_button_img.height,
                                    bd=0,
                                    highlightthickness=0)  # Set border width to 0 to remove button border
@@ -1047,24 +1012,42 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
         row_of_patient = get_row_of_exercises_patient()
 
-        # Create labels for videos
+        #create labels for videos
+
         self.label1 = tk.Label(self)
         self.label1.place(x=230, y=100)  # Adjust x and y coordinates for the first video
-        self.checkbox_var1 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "open_arms_with_band"))
-        self.checkbox1 = ttk.Checkbutton(self, variable=self.checkbox_var1)
-        self.checkbox1.place(x=310, y=430)
+        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_ball")}.png')
+        button1_photo = ImageTk.PhotoImage(button1_image)
+        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "bend_elbows_ball"),
+                            width=button1_photo.width(), height=button1_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button1.image = button1_photo  # Store reference to image to prevent garbage collection
+        button1.place(x=295, y=425)
 
         self.label2 = tk.Label(self)
         self.label2.place(x=430, y=100)  # Adjust x and y coordinates for the second video
-        self.checkbox_var2 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "open_arms_and_up_with_band"))
-        self.checkbox2 = ttk.Checkbutton(self, variable=self.checkbox_var2)
-        self.checkbox2.place(x=510, y=430)
+
+        button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "open_arms_and_up_with_band")}.png')
+        button2_photo = ImageTk.PhotoImage(button2_image)
+        button2 = tk.Button(self, image=button2_photo,
+                            command=lambda: which_checkbox(button2, "open_arms_and_up_with_band"),
+                            width=button2_photo.width(), height=button2_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button2.image = button2_photo  # Store reference to image to prevent garbage collection
+        button2.place(x=495, y=425)
 
         self.label3 = tk.Label(self)
         self.label3.place(x=630, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var3 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "up_with_band_and_lean"))
-        self.checkbox3 = ttk.Checkbutton(self, variable=self.checkbox_var3)
-        self.checkbox3.place(x=710, y=430)
+        button3_image = Image.open(
+            f'Pictures//{which_image_to_put(row_of_patient, "up_with_band_and_lean")}.png')
+        button3_photo = ImageTk.PhotoImage(button3_image)
+        button3 = tk.Button(self, image=button3_photo,
+                            command=lambda: which_checkbox(button3, "up_with_band_and_lean"),
+                            width=button3_photo.width(), height=button3_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button3.image = button3_photo  # Store reference to image to prevent garbage collection
+        button3.place(x=695, y=425)
+
 
 
         # Video paths
@@ -1095,15 +1078,12 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
-        self.save_changes()
         s.screen.switch_frame(ChooseStickExercisesPage)
 
     def on_arrow_click_back(self):
-        self.save_changes()
         s.screen.switch_frame(ChooseBallExercisesPage)
 
-    def to_patients_list_button_click(self):
-        self.save_changes()
+    def to_previous_button_click(self):
         num_of_exercises_in_training = Excel.count_number_of_exercises_in_training_by_ID()
         if num_of_exercises_in_training < 5:
             back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
@@ -1115,15 +1095,10 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
         else:
             Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
-            s.screen.switch_frame(PatientDisplaying)
+            s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
-    def save_changes(self):
-        new_values_ex_patient = {"open_arms_with_band": bool(self.checkbox_var1.get()),
-                                 "open_arms_and_up_with_band": bool(self.checkbox_var2.get()),
-                                 "up_with_band_and_lean": bool(self.checkbox_var3.get())}
 
-        Excel.find_and_change_values_exercises(new_values_ex_patient)
 
 
 
@@ -1157,10 +1132,10 @@ class ChooseStickExercisesPage(tk.Frame):
         backward_arrow_button.image = backward_arrow_button_photo
         backward_arrow_button.place(x=913, y=480)
 
-        to_patients_list_button_img = Image.open("Pictures//back_to_patient_list.jpg")
+        to_patients_list_button_img = Image.open("Pictures//previous.jpg")
         to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
         to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo,
-                                            command=lambda: self.to_patients_list_button_click(),
+                                            command=lambda: self.to_previous_button_click(),
                                             width=to_patients_list_button_img.width,
                                             height=to_patients_list_button_img.height,
                                             bd=0,
@@ -1173,27 +1148,52 @@ class ChooseStickExercisesPage(tk.Frame):
         # Create labels for videos
         self.label1 = tk.Label(self)
         self.label1.place(x=125, y=100)  # Adjust x and y coordinates for the first video
-        self.checkbox_var1 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "bend_elbows_stick"))
-        self.checkbox1 = ttk.Checkbutton(self, variable=self.checkbox_var1)
-        self.checkbox1.place(x=205, y=430)
+        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_stick")}.png')
+        button1_photo = ImageTk.PhotoImage(button1_image)
+        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "bend_elbows_stick"),
+                            width=button1_photo.width(), height=button1_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button1.image = button1_photo  # Store reference to image to prevent garbage collection
+        button1.place(x=190, y=425)
+
 
         self.label2 = tk.Label(self)
         self.label2.place(x=325, y=100)  # Adjust x and y coordinates for the second video
-        self.checkbox_var2 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "bend_elbows_and_up_stick"))
-        self.checkbox2 = ttk.Checkbutton(self, variable=self.checkbox_var2)
-        self.checkbox2.place(x=405, y=430)
+        button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_and_up_stick")}.png')
+        button2_photo = ImageTk.PhotoImage(button2_image)
+        button2 = tk.Button(self, image=button2_photo,
+                            command=lambda: which_checkbox(button2, "bend_elbows_and_up_stick"),
+                            width=button2_photo.width(), height=button2_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button2.image = button2_photo  # Store reference to image to prevent garbage collection
+        button2.place(x=390, y=425)
+
 
         self.label3 = tk.Label(self)
         self.label3.place(x=525, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var3 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "arms_up_and_down_stick"))
-        self.checkbox3 = ttk.Checkbutton(self, variable=self.checkbox_var3)
-        self.checkbox3.place(x=605, y=430)
+        button3_image = Image.open(
+            f'Pictures//{which_image_to_put(row_of_patient, "arms_up_and_down_stick")}.png')
+        button3_photo = ImageTk.PhotoImage(button3_image)
+        button3 = tk.Button(self, image=button3_photo,
+                            command=lambda: which_checkbox(button3, "arms_up_and_down_stick"),
+                            width=button3_photo.width(), height=button3_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button3.image = button3_photo  # Store reference to image to prevent garbage collection
+        button3.place(x=590, y=425)
+
 
         self.label4 = tk.Label(self)
         self.label4.place(x=725, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var4 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "switch_with_stick"))
-        self.checkbox4 = ttk.Checkbutton(self, variable=self.checkbox_var4)
-        self.checkbox4.place(x=805, y=430)
+        button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "switch_with_stick")}.png')
+        button4_photo = ImageTk.PhotoImage(button4_image)
+        button4 = tk.Button(self, image=button4_photo,
+                            command=lambda: which_checkbox(button4, "switch_with_stick"),
+                            width=button4_photo.width(), height=button4_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button4.image = button4_photo  # Store reference to image to prevent garbage collection
+        button4.place(x=790, y=425)
+
+
 
 
         # Video paths
@@ -1229,15 +1229,12 @@ class ChooseStickExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
-        self.save_changes()
         s.screen.switch_frame(ChooseNoToolExercisesPage)
 
     def on_arrow_click_back(self):
-        self.save_changes()
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
-    def to_patients_list_button_click(self):
-        self.save_changes()
+    def to_previous_button_click(self):
         num_of_exercises_in_training = Excel.count_number_of_exercises_in_training_by_ID()
         if num_of_exercises_in_training < 5:
             back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
@@ -1249,16 +1246,10 @@ class ChooseStickExercisesPage(tk.Frame):
 
         else:
             Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
-            s.screen.switch_frame(PatientDisplaying)
+            s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
-    def save_changes(self):
-        new_values_ex_patient = {"bend_elbows_stick": bool(self.checkbox_var1.get()),
-                                 "bend_elbows_and_up_stick": bool(self.checkbox_var2.get()),
-                                 "arms_up_and_down_stick": bool(self.checkbox_var3.get()),
-                                 "switch_with_stick": bool(self.checkbox_var4.get())}
 
-        Excel.find_and_change_values_exercises(new_values_ex_patient)
 
 
 
@@ -1297,27 +1288,50 @@ class ChooseNoToolExercisesPage(tk.Frame):
         # Create labels for videos
         self.label1 = tk.Label(self)
         self.label1.place(x=125, y=100)  # Adjust x and y coordinates for the first video
-        self.checkbox_var1 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "hands_behind_and_lean_notool"))
-        self.checkbox1 = ttk.Checkbutton(self, variable=self.checkbox_var1)
-        self.checkbox1.place(x=205, y=430)
+        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "hands_behind_and_lean_notool")}.png')
+        button1_photo = ImageTk.PhotoImage(button1_image)
+        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "hands_behind_and_lean_notool"),
+                            width=button1_photo.width(), height=button1_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button1.image = button1_photo  # Store reference to image to prevent garbage collection
+        button1.place(x=190, y=425)
 
         self.label2 = tk.Label(self)
         self.label2.place(x=325, y=100)  # Adjust x and y coordinates for the second video
-        self.checkbox_var2 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "right_hand_up_and_bend_notool"))
-        self.checkbox2 = ttk.Checkbutton(self, variable=self.checkbox_var2)
-        self.checkbox2.place(x=405, y=430)
+        button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "right_hand_up_and_bend_notool")}.png')
+        button2_photo = ImageTk.PhotoImage(button2_image)
+        button2 = tk.Button(self, image=button2_photo,
+                            command=lambda: which_checkbox(button2, "right_hand_up_and_bend_notool"),
+                            width=button2_photo.width(), height=button2_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button2.image = button2_photo  # Store reference to image to prevent garbage collection
+        button2.place(x=390, y=425)
 
         self.label3 = tk.Label(self)
         self.label3.place(x=525, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var3 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "left_hand_up_and_bend_notool"))
-        self.checkbox3 = ttk.Checkbutton(self, variable=self.checkbox_var3)
-        self.checkbox3.place(x=605, y=430)
+        button3_image = Image.open(
+            f'Pictures//{which_image_to_put(row_of_patient, "left_hand_up_and_bend_notool")}.png')
+        button3_photo = ImageTk.PhotoImage(button3_image)
+        button3 = tk.Button(self, image=button3_photo,
+                            command=lambda: which_checkbox(button3, "left_hand_up_and_bend_notool"),
+                            width=button3_photo.width(), height=button3_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button3.image = button3_photo  # Store reference to image to prevent garbage collection
+        button3.place(x=590, y=425)
 
         self.label4 = tk.Label(self)
         self.label4.place(x=725, y=100)  # Adjust x and y coordinates for the third video
-        self.checkbox_var4 = tk.BooleanVar(value=ex_in_training_or_not(row_of_patient, "raising_hands_diagonally_notool"))
-        self.checkbox4 = ttk.Checkbutton(self, variable=self.checkbox_var4)
-        self.checkbox4.place(x=805, y=430)
+        button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "raising_hands_diagonally_notool")}.png')
+        button4_photo = ImageTk.PhotoImage(button4_image)
+        button4 = tk.Button(self, image=button4_photo,
+                            command=lambda: which_checkbox(button4, "raising_hands_diagonally_notool"),
+                            width=button4_photo.width(), height=button4_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button4.image = button4_photo  # Store reference to image to prevent garbage collection
+        button4.place(x=790, y=425)
+
+
+
 
 
         # Video paths
@@ -1352,7 +1366,6 @@ class ChooseNoToolExercisesPage(tk.Frame):
 
 
     def on_end_click(self):
-        self.save_changes()
         num_of_exercises_in_training = Excel.count_number_of_exercises_in_training_by_ID()
         if num_of_exercises_in_training < 5:
             back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
@@ -1364,21 +1377,12 @@ class ChooseNoToolExercisesPage(tk.Frame):
 
         else:
             Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
-            s.screen.switch_frame(PatientDisplaying)
+            s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
     def on_arrow_click_back(self):
-        self.save_changes()
         s.screen.switch_frame(ChooseStickExercisesPage)
 
 
-
-    def save_changes(self):
-        new_values_ex_patient = {"hands_behind_and_lean_notool": bool(self.checkbox_var1.get()),
-                                 "right_hand_up_and_bend_notool": bool(self.checkbox_var2.get()),
-                                 "left_hand_up_and_bend_notool": bool(self.checkbox_var3.get()),
-                                 "raising_hands_diagonally_notool": bool(self.checkbox_var4.get())}
-
-        Excel.find_and_change_values_exercises(new_values_ex_patient)
 
 
 
@@ -1405,16 +1409,521 @@ def get_sorted_folders(directory):
     return sorted_folder_names
 
 
+def convert_white_to_transparent(image_path, tolerance=100):
+    img = Image.open(image_path)
+    img = img.convert("RGBA")
+    datas = img.getdata()
 
-class GraphPage(tk.Frame):
+    newData = []
+    for item in datas:
+        # Check if the pixel is near-white by allowing a tolerance range
+        if item[0] >= 255 - tolerance and item[1] >= 255 - tolerance and item[2] >= 255 - tolerance:
+            # Replace near-white with transparent
+            newData.append((255, 255, 255, 0))  # Make it fully transparent
+        else:
+            newData.append(item)
+
+    img.putdata(newData)
+    return img
+
+#Page that appears when there is an exercise
+class ExercisePage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+
+        #The subjects from which the algorithm can choose
+        subjects = ["butterflies", "galaxy", "garden"]
+        random.shuffle(subjects)
+        chosen_subject = subjects[0]
+
+        # Create a canvas for layering background and transparent image
+        self.canvas = tk.Canvas(self, width=1000, height=600)
+        self.canvas.pack(fill="both", expand=True)
+
+        # Load background image
+        background_image = Image.open(f'Pictures//{chosen_subject}//background.jpg')
+        self.background_photo = ImageTk.PhotoImage(background_image)
+
+        # Place background image on canvas
+        self.canvas.create_image(0, 0, image=self.background_photo, anchor="nw")
+
+        # List to hold references to the images (to avoid garbage collection)
+        self.image_references = []
+
+        # Predetermined positions (you can adjust these to your liking)
+        self.positions = [
+            (10, 10), (180, 10), (350, 10), (520, 10), (690, 10), (860, 10),
+            (10, 190), (180, 190), (350, 190), (520, 190), (690, 190), (860, 190),
+            (10, 370), (180, 370), (350, 370), (520, 370), (690, 370), (860, 370)
+        ]
+
+        # Shuffle the positions to make their selection random
+        random.shuffle(self.positions)
+        count=1 #An auxiliary variable. We ue it to follow a change with the patient_repetitions_counting_in_exercise variable
+
+        # Create s.rep (number chosen) images with non-overlapping positions (one per predetermined position)
+        while (not s.gymmy_done) or (not s.camera_done): # While the exercise still running
+
+            if count == s.patient_repetitions_counting_in_exercise:
+                # Get the next random position from the shuffled list
+                x_image, y_image = self.positions[s.patient_repetitions_counting_in_exercise]
+
+                # Path to a random image in the chosen category
+                image_num = random.randint(1, 27)
+                image_path = f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Pictures/{chosen_subject}/{image_num}.png'
+
+                # Convert near-white background to transparent (adjust tolerance as needed)
+                transparent_image = convert_white_to_transparent(image_path, tolerance=30)
+
+                # Load the image with transparent background into Tkinter
+                exercise_photo = ImageTk.PhotoImage(transparent_image)
+
+                # Place the transparent image on top of the background
+                self.canvas.create_image(x_image, y_image, image=exercise_photo, anchor="nw")
+
+                # Append each image reference to the list to prevent garbage collection
+                self.image_references.append(exercise_photo)
+
+                #Add one to count in order to tell the algorithm to wait until the next succesful repetition
+                count=+1
+
+            else:
+                time.sleep(0.001) #Prevent MP to stuck
+
+# class GraphPage(tk.Frame):
+#     def __init__(self, master, exercise, previous, **kwargs):
+#         tk.Frame.__init__(self, master, **kwargs)
+#         self.queue = queue.Queue()
+#         self.exercise = exercise
+#         self.forward_arrow_button = None
+#         self.backward_arrow_button = None
+#         self.label1=None
+#         self.label2= None
+#         image = Image.open('Pictures//background.jpg')
+#         self.photo_image = ImageTk.PhotoImage(image)
+#         tk.Label(self, image=self.photo_image).pack()
+#
+        # if previous=="ball":
+        #     previous_page=ChooseBallExercisesPage
+        # elif previous=="band":
+        #     previous_page=ChooseRubberBandExercisesPage
+        # elif previous=="stick":
+        #     previous_page=ChooseStickExercisesPage
+        # elif previous=="no_tool":
+        #     previous_page=ChooseNoToolExercisesPage
+        #
+        # previous_page_button_img = Image.open("Pictures//previous.jpg")
+        # previous_page_button_photo = ImageTk.PhotoImage(previous_page_button_img)
+        # previous_page_category = tk.Button(self, image=previous_page_button_photo,
+        #                                   command=lambda: s.screen.switch_frame(previous_page),
+        #                                   width=previous_page_button_img.width,
+        #                                   height=previous_page_button_img.height, bd=0,
+        #                                   highlightthickness=0)
+        # previous_page_category.image = previous_page_button_photo
+        # previous_page_category.place(x=30, y=30)
+#
+#
+#         sorted_folders= get_sorted_folders(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}')
+#         if len(sorted_folders)==0:
+#             did_before = Image.open('Pictures//patient_didnt_do.jpg')
+#             self.did_before = ImageTk.PhotoImage(did_before)
+#             self.did_before_label = tk.Label(self, image=self.did_before, bd=0)
+#             self.did_before_label.place(x=270, y=75)
+#
+#         else:
+#             num_of_angles= self.get_number_of_angles_in_exercise(exercise)
+#             self.show_graphs(sorted_folders, 0, num_of_angles, exercise)
+#
+#     def show_graphs(self, sorted_folder, place, num_of_angles, exercise):
+#         if place>0:
+#             self.backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
+#             self.backward_arrow_button_photo = ImageTk.PhotoImage(self.backward_arrow_button_img)
+#             self.backward_arrow_button = tk.Button(self, image=self.backward_arrow_button_photo,
+#                                               command=lambda: self.help_function(sorted_folder, place-1, num_of_angles, exercise),
+#                                               width=self.backward_arrow_button_img.width,
+#                                               height=self.backward_arrow_button_img.height, bd=0,
+#                                               highlightthickness=0)
+#             self.backward_arrow_button.image = self.backward_arrow_button_photo
+#             self.backward_arrow_button.place(x=945, y=480)
+#
+#         if place<len(sorted_folder)-1:
+#             self.forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
+#             self.forward_arrow_button_photo = ImageTk.PhotoImage(self.forward_arrow_button_img)
+#             self.forward_arrow_button = tk.Button(self, image=self.forward_arrow_button_photo,
+#                                              command=lambda: self.help_function(sorted_folder, place+1, num_of_angles, exercise),
+#                                              width=self.forward_arrow_button_img.width,
+#                                              height=self.forward_arrow_button_img.height, bd=0,
+#                                              highlightthickness=0)
+#             self.forward_arrow_button.image = self.forward_arrow_button_photo
+#             self.forward_arrow_button.place(x=20, y=480)
+#
+#
+#         back = Image.open('Pictures//empty.JPG')
+#         background_img = ImageTk.PhotoImage(back)
+#
+#
+#         directory= f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/{sorted_folder[place]}.xlsx'
+#         print(directory)
+#
+#         success_number = Excel.get_success_number(directory, exercise)
+#         #effort_number = Excel.get_effort_number(directory, exercise)
+#
+#
+#         self.label1 = tk.Label(self, text=f'{sorted_folder[place]}',
+#                               image=background_img, compound=tk.CENTER, font=("Thaoma", 20, 'bold'), width=350,
+#                               height=30)
+#         self.label1.place(x=160, y=15)
+#         self.label1.image = background_img
+#
+#         if success_number is not None:
+#             self.label2 = tk.Label(self, text= "מספר חזרות מוצלחות: "+ str(success_number),
+#                                   image=background_img, compound=tk.CENTER, font=("Thaoma", 11, 'bold'), width=350,
+#                                   height=30)
+#             self.label2.place(x=155, y=50)
+#             self.label2.image = background_img
+#
+#         # if effort_number is not None:
+#         #     self.label = tk.Label(self,
+#         #                           text=str(effort_number) + "דירוג קושי התרגיל על ידי המתאמן: ",
+#         #                           image=background_img, compound=tk.CENTER, font=("Thaoma", 11, 'bold'), width=350,
+#         #                           height=30)
+#         #     self.label.place(x=155, y=40)
+#         #     self.label.image = background_img
+#
+#
+#         if num_of_angles == 1:
+#             self.one_angle_graph(exercise, sorted_folder[place])
+#         if num_of_angles == 2:
+#             self.two_angles_graph(exercise, sorted_folder[place])
+#         if num_of_angles == 3:
+#             self.three_angles_graph(exercise, sorted_folder[place])
+#
+#     def help_function(self, sorted_folder, place_to_put, num_of_angles, exercise):
+#         if self.label1:
+#             self.label1.place_forget()
+#         if self.label2:
+#             self.label2.place_forget()
+#         if self.forward_arrow_button:
+#             self.forward_arrow_button.destroy()
+#             self.forward_arrow_button = None
+#         if self.backward_arrow_button:
+#             self.backward_arrow_button.destroy()
+#             self.backward_arrow_button = None
+#         self.show_graphs(sorted_folder, place_to_put, num_of_angles, exercise)
+#
+#     def find_image(self, directory, number):
+#         # Create a regex pattern to match the files with ' ' followed by the specific number and '.jpeg'
+#         pattern = re.compile(r' (\d+)\.jpeg$')
+#
+#         # Iterate through the files in the directory
+#         for filename in os.listdir(directory):
+#             match = pattern.search(filename)
+#             if match and match.group(1) == str(number):
+#                 return os.path.join(directory, filename)
+#         return None
+#
+#
+#
+#     def get_number_of_angles_in_exercise(self, exercise):
+#         try:
+#             # Load the workbook
+#             workbook = openpyxl.load_workbook("exercises_table.xlsx")
+#
+#             # Select the desired sheet
+#             sheet = workbook[workbook.sheetnames[0]]
+#
+#             # Iterate through rows starting from the specified row
+#             for row_number in range(1,sheet.max_row + 1):
+#                 first_cell_value = sheet.cell(row=row_number, column=1).value
+#
+#                 if first_cell_value == exercise:
+#                     return sheet.cell(row=row_number, column=2).value
+#
+#
+#         except Exception as e:
+#             print(f"An error occurred: {e}")
+#             return False
+#
+#     def three_angles_graph(self, exercise, folder):
+#         # Determine the resize factor
+#         resize_factor = 0.42
+#
+#         # Load the image
+#         dir1= self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 1)
+#         graph1 = Image.open(dir1)
+#         new_width1 = int(graph1.width * resize_factor)
+#         new_height1 = int(graph1.height * resize_factor)
+#         graph1_resized = graph1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+#         self.graph1 = ImageTk.PhotoImage(graph1_resized)
+#         self.graph1_label = tk.Label(self, image=self.graph1, bd=0)
+#         self.graph1_label.place(x=100, y=90)
+#
+#         dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 2)
+#         graph2 = Image.open(dir2)
+#         new_width2 = int(graph2.width * resize_factor)
+#         new_height2 = int(graph2.height * resize_factor)
+#         graph2_resized = graph2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+#         self.graph2 = ImageTk.PhotoImage(graph2_resized)
+#         self.graph2_label = tk.Label(self, image=self.graph2, bd=0)
+#         self.graph2_label.place(x=100, y=325)
+#
+#         dir3 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 3)
+#         graph3 = Image.open(dir3)
+#         new_width3 = int(graph3.width * resize_factor)
+#         new_height3 = int(graph3.height * resize_factor)
+#         graph3_resized = graph3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+#         self.graph3 = ImageTk.PhotoImage(graph3_resized)
+#         self.graph3_label = tk.Label(self, image=self.graph3, bd=0)
+#         self.graph3_label.place(x=380, y=90)
+#
+#         dir4 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 4)
+#         graph4 = Image.open(dir4)
+#         new_width4 = int(graph4.width * resize_factor)
+#         new_height4 = int(graph4.height * resize_factor)
+#         graph4_resized = graph4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+#         self.graph4 = ImageTk.PhotoImage(graph4_resized)
+#         self.graph4_label = tk.Label(self, image=self.graph4, bd=0)
+#         self.graph4_label.place(x=380, y=325)
+#
+#         dir5 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 5)
+#         graph5 = Image.open(dir5)
+#         new_width5 = int(graph5.width * resize_factor)
+#         new_height5 = int(graph5.height * resize_factor)
+#         graph5_resized = graph5.resize((new_width5, new_height5), Image.Resampling.LANCZOS)
+#         self.graph5 = ImageTk.PhotoImage(graph5_resized)
+#         self.graph5_label = tk.Label(self, image=self.graph5, bd=0)
+#         self.graph5_label.place(x=660, y=90)
+#
+#         dir6 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 6)
+#         graph6 = Image.open(dir6)
+#         new_width6 = int(graph6.width * resize_factor)
+#         new_height6 = int(graph6.height * resize_factor)
+#         graph6_resized = graph6.resize((new_width6, new_height6), Image.Resampling.LANCZOS)
+#         self.graph6 = ImageTk.PhotoImage(graph6_resized)
+#         self.graph6_label = tk.Label(self, image=self.graph6, bd=0)
+#         self.graph6_label.place(x=660, y=325)
+#
+#
+#     def two_angles_graph(self, exercise, folder):
+#         # Determine the resize factor
+#         resize_factor = 0.45
+#
+#         dir1 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 1)
+#         graph1 = Image.open(dir1)
+#         new_width1 = int(graph1.width * resize_factor)
+#         new_height1 = int(graph1.height * resize_factor)
+#         graph1_resized = graph1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+#         self.graph1 = ImageTk.PhotoImage(graph1_resized)
+#         self.graph1_label = tk.Label(self, image=self.graph1, bd=0)
+#         self.graph1_label.place(x=190, y=90)
+#
+#         dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 2)
+#         graph2 = Image.open(dir2)
+#         new_width2 = int(graph2.width * resize_factor)
+#         new_height2 = int(graph2.height * resize_factor)
+#         graph2_resized = graph2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+#         self.graph2 = ImageTk.PhotoImage(graph2_resized)
+#         self.graph2_label = tk.Label(self, image=self.graph2, bd=0)
+#         self.graph2_label.place(x=190, y=325)
+#
+#         dir3 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 3)
+#         graph3 = Image.open(dir3)
+#         new_width3 = int(graph3.width * resize_factor)
+#         new_height3 = int(graph3.height * resize_factor)
+#         graph3_resized = graph3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+#         self.graph3 = ImageTk.PhotoImage(graph3_resized)
+#         self.graph3_label = tk.Label(self, image=self.graph3, bd=0)
+#         self.graph3_label.place(x=540, y=90)
+#
+#         dir4 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 4)
+#         graph4 = Image.open(dir4)
+#         new_width4 = int(graph4.width * resize_factor)
+#         new_height4 = int(graph4.height * resize_factor)
+#         graph4_resized = graph4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+#         self.graph4 = ImageTk.PhotoImage(graph4_resized)
+#         self.graph4_label = tk.Label(self, image=self.graph4, bd=0)
+#         self.graph4_label.place(x=540, y=325)
+#
+#
+#
+#     def one_angle_graph(self, exercise, folder):
+#         # Determine the resize factor
+#         resize_factor = 0.45
+#
+#         dir1 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 1)
+#         graph1 = Image.open(dir1)
+#         new_width1 = int(graph1.width * resize_factor)
+#         new_height1 = int(graph1.height * resize_factor)
+#         graph1_resized = graph1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+#         self.graph1 = ImageTk.PhotoImage(graph1_resized)
+#         self.graph1_label = tk.Label(self, image=self.graph1, bd=0)
+#         self.graph1_label.place(x=350, y=90)
+#
+#         dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 2)
+#         graph2 = Image.open(dir2)
+#         new_width2 = int(graph2.width * resize_factor)
+#         new_height2 = int(graph2.height * resize_factor)
+#         graph2_resized = graph2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+#         self.graph2 = ImageTk.PhotoImage(graph2_resized)
+#         self.graph2_label = tk.Label(self, image=self.graph2, bd=0)
+#         self.graph2_label.place(x=350, y=325)
+
+
+
+############################################### Exercises Pages ########################################################
+
+class ChooseTrainingOrExerciseInformation(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+
+        image = Image.open('Pictures//background.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+
+
+
+        # Load images for buttons
+        training_image = Image.open("Pictures//information_training_button.jpg")
+        training_photo = ImageTk.PhotoImage(training_image)
+        exercise_image = Image.open("Pictures//to_information_exercises_button.jpg")
+        exercise_photo = ImageTk.PhotoImage(exercise_image)
+
+        # Store references to prevent garbage collection
+        self.training_photo = training_photo
+        self.patient_photo = exercise_photo
+
+        # Create buttons with images
+        enter_trainings = tk.Button(self, image=training_photo,
+                                              command=self.on_click_training_chosen,
+                                              width=training_image.width, height=training_image.height,
+                                              bg='#50a6ad', bd=0, highlightthickness=0)
+        enter_trainings.place(x=160, y=130)
+
+        enter_exercises = tk.Button(self, image=exercise_photo,
+                                            command=self.on_click_exercise_chosen,
+                                            width=exercise_image.width, height=exercise_image.height,
+                                            bg='#50a6ad', bd=0, highlightthickness=0)
+        enter_exercises.place(x=540, y=130)
+
+
+    def on_click_training_chosen(self):
+        s.screen.switch_frame(InformationAboutTrainingPage)
+
+    def on_click_exercise_chosen(self):
+        s.screen.switch_frame(ChooseBallExercisesPage)
+
+
+
+class InformationAboutTrainingPage (tk.Frame):
+    def __init__(self, master):
+
+        tk.Frame.__init__(self, master)
+        dates, percent_success, exertion_rate, time_in_training = self.create_data()
+        df = pd.DataFrame({
+            'זמן באימון (שניות)': time_in_training,
+            'דירוג מאמץ על ידי המטופל': exertion_rate,
+            'אחוז הצלחה באימון': percent_success,
+            'תאריך ושעה': dates
+        })
+
+
+        # Load the background image
+        image = Image.open('Pictures//Patient_list.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        # Create a label to display the background image
+        self.background_label = tk.Label(self, image=self.photo_image)
+        self.background_label.pack(fill="both", expand=True)
+
+        # Display the DataFrame in a Treeview widget
+        self.treeview = ttk.Treeview(self, style="Treeview", show="headings")
+        self.treeview["columns"] = tuple(df.columns)
+
+        # Set up a custom style for the Treeview
+        style = ttk.Style(self)
+        style.configure("Treeview", font=("Thaoma", 14, 'bold'), rowheight=30)
+
+        # Add columns to the Treeview
+        for col in df.columns:
+            self.treeview.column(col, anchor="e", width=150)
+            self.treeview.heading(col, text=col, anchor="e")
+
+        self.treeview.column("תאריך ושעה", anchor="e", width=200)
+
+        # Insert data into the Treeview
+        for index, row in df.iterrows():
+            values = tuple(row)
+            self.treeview.insert("", index, values=values)
+
+        # Remove event handling for row selection
+        self.treeview.unbind("<ButtonRelease-1>")  # Disables row selection on click
+        self.treeview.config(height=10)
+
+        # Pack the Treeview widget
+        self.treeview.place(x=150, y=180)
+
+        # Set up a vertical scrollbar
+        scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
+        self.treeview.configure(yscrollcommand=scrollbar.set)
+        scrollbar.place(x=800, y=180, height=310)
+
+        back_button_img = Image.open("Pictures//previous.jpg")
+        back_button_photo = ImageTk.PhotoImage(back_button_img)
+        back_button = tk.Button(self, image=back_button_photo, command=lambda: self.on_click_to_previous(),
+                                width=back_button_img.width, height=back_button_img.height, bd=0,
+                                highlightthickness=0)
+        back_button.image = back_button_photo
+        back_button.place(x=30, y=30)
+
+    def on_click_to_previous(self):
+        s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
+
+    def create_data(self):
+        df = pd.read_excel("Patients.xlsx", sheet_name="patients_history_of_trainings")
+        df.iloc[:, 0] = df.iloc[:, 0].astype(str)
+        filtered_rows = df[df.iloc[:, 0] == s.chosen_patient_ID]
+
+        row = filtered_rows.iloc[0]  # Get the first (and only) row
+        row_values_without_id = row.iloc[1:]
+
+        dates = []
+        percent_success = []
+        exertion_rate = []
+        time_in_training = []
+
+        for i in range(0, len(row_values_without_id), 4):
+            date_value = row_values_without_id.iloc[i]
+            if pd.notna(date_value):  # Check if not NaN
+                try:
+                    # Convert the string to datetime
+                    dt = datetime.strptime(date_value, "%d-%m-%Y %H-%M-%S")
+                    # Format the date and time with slashes and colons
+                    formatted_date = dt.strftime("%d/%m/%Y %H:%M:%S")
+                    dates.append(formatted_date)  # Append formatted date
+                except ValueError:
+                    # Handle cases where the date format is unexpected
+                    dates.append(date_value)
+
+            if i + 1 < len(row_values_without_id):
+                success_value = row_values_without_id.iloc[i + 1]
+                if pd.notna(success_value):  # Check if not NaN
+                    percent_success.append(int(success_value))  # Append as int
+
+            if i + 2 < len(row_values_without_id):
+                exertion_value = row_values_without_id.iloc[i + 2]
+                if pd.notna(exertion_value):  # Check if not NaN
+                    exertion_rate.append(int(exertion_value))  # Append as int
+
+            if i + 3 < len(row_values_without_id):
+                training_time_value = row_values_without_id.iloc[i + 3]
+                if pd.notna(training_time_value):  # Check if not NaN
+                    time_in_training.append(int(training_time_value))  # Append as int
+
+        return dates, percent_success, exertion_rate, time_in_training
+
+
+class InformationAboutExercisePage (tk.Frame):
     def __init__(self, master, exercise, previous, **kwargs):
         tk.Frame.__init__(self, master, **kwargs)
-        self.queue = queue.Queue()
-        self.exercise = exercise
-        self.forward_arrow_button = None
-        self.backward_arrow_button = None
-        self.label1=None
-        self.label2= None
         image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
@@ -1439,254 +1948,15 @@ class GraphPage(tk.Frame):
         previous_page_category.place(x=30, y=30)
 
 
-        sorted_folders= get_sorted_folders(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}')
-        if len(sorted_folders)==0:
-            did_before = Image.open('Pictures//patient_didnt_do.jpg')
-            self.did_before = ImageTk.PhotoImage(did_before)
-            self.did_before_label = tk.Label(self, image=self.did_before, bd=0)
-            self.did_before_label.place(x=270, y=75)
-
-        else:
-            num_of_angles= self.get_number_of_angles_in_exercise(exercise)
-            self.show_graphs(sorted_folders, 0, num_of_angles, exercise)
-
-    def show_graphs(self, sorted_folder, place, num_of_angles, exercise):
-        if place>0:
-            self.backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
-            self.backward_arrow_button_photo = ImageTk.PhotoImage(self.backward_arrow_button_img)
-            self.backward_arrow_button = tk.Button(self, image=self.backward_arrow_button_photo,
-                                              command=lambda: self.help_function(sorted_folder, place-1, num_of_angles, exercise),
-                                              width=self.backward_arrow_button_img.width,
-                                              height=self.backward_arrow_button_img.height, bd=0,
-                                              highlightthickness=0)
-            self.backward_arrow_button.image = self.backward_arrow_button_photo
-            self.backward_arrow_button.place(x=945, y=480)
-
-        if place<len(sorted_folder)-1:
-            self.forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
-            self.forward_arrow_button_photo = ImageTk.PhotoImage(self.forward_arrow_button_img)
-            self.forward_arrow_button = tk.Button(self, image=self.forward_arrow_button_photo,
-                                             command=lambda: self.help_function(sorted_folder, place+1, num_of_angles, exercise),
-                                             width=self.forward_arrow_button_img.width,
-                                             height=self.forward_arrow_button_img.height, bd=0,
-                                             highlightthickness=0)
-            self.forward_arrow_button.image = self.forward_arrow_button_photo
-            self.forward_arrow_button.place(x=20, y=480)
-
-
-        back = Image.open('Pictures//empty.JPG')
-        background_img = ImageTk.PhotoImage(back)
-
-
-        directory= f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/{sorted_folder[place]}.xlsx'
-        print(directory)
-
-        success_number = Excel.get_success_number(directory, exercise)
-        #effort_number = Excel.get_effort_number(directory, exercise)
-
-
-        self.label1 = tk.Label(self, text=f'{sorted_folder[place]}',
-                              image=background_img, compound=tk.CENTER, font=("Thaoma", 20, 'bold'), width=350,
-                              height=30)
-        self.label1.place(x=160, y=15)
-        self.label1.image = background_img
-
-        if success_number is not None:
-            self.label2 = tk.Label(self, text= "מספר חזרות מוצלחות: "+ str(success_number),
-                                  image=background_img, compound=tk.CENTER, font=("Thaoma", 11, 'bold'), width=350,
-                                  height=30)
-            self.label2.place(x=155, y=50)
-            self.label2.image = background_img
-
-        # if effort_number is not None:
-        #     self.label = tk.Label(self,
-        #                           text=str(effort_number) + "דירוג קושי התרגיל על ידי המתאמן: ",
-        #                           image=background_img, compound=tk.CENTER, font=("Thaoma", 11, 'bold'), width=350,
-        #                           height=30)
-        #     self.label.place(x=155, y=40)
-        #     self.label.image = background_img
-
-
-        if num_of_angles == 1:
-            self.one_angle_graph(exercise, sorted_folder[place])
-        if num_of_angles == 2:
-            self.two_angles_graph(exercise, sorted_folder[place])
-        if num_of_angles == 3:
-            self.three_angles_graph(exercise, sorted_folder[place])
-
-    def help_function(self, sorted_folder, place_to_put, num_of_angles, exercise):
-        if self.label1:
-            self.label1.place_forget()
-        if self.label2:
-            self.label2.place_forget()
-        if self.forward_arrow_button:
-            self.forward_arrow_button.destroy()
-            self.forward_arrow_button = None
-        if self.backward_arrow_button:
-            self.backward_arrow_button.destroy()
-            self.backward_arrow_button = None
-        self.show_graphs(sorted_folder, place_to_put, num_of_angles, exercise)
-
-    def find_image(self, directory, number):
-        # Create a regex pattern to match the files with ' ' followed by the specific number and '.jpeg'
-        pattern = re.compile(r' (\d+)\.jpeg$')
-
-        # Iterate through the files in the directory
-        for filename in os.listdir(directory):
-            match = pattern.search(filename)
-            if match and match.group(1) == str(number):
-                return os.path.join(directory, filename)
-        return None
 
 
 
-    def get_number_of_angles_in_exercise(self, exercise):
-        try:
-            # Load the workbook
-            workbook = openpyxl.load_workbook("exercises_table.xlsx")
-
-            # Select the desired sheet
-            sheet = workbook[workbook.sheetnames[0]]
-
-            # Iterate through rows starting from the specified row
-            for row_number in range(1,sheet.max_row + 1):
-                first_cell_value = sheet.cell(row=row_number, column=1).value
-
-                if first_cell_value == exercise:
-                    return sheet.cell(row=row_number, column=2).value
-
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return False
-
-    def three_angles_graph(self, exercise, folder):
-        # Determine the resize factor
-        resize_factor = 0.42
-
-        # Load the image
-        dir1= self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 1)
-        graph1 = Image.open(dir1)
-        new_width1 = int(graph1.width * resize_factor)
-        new_height1 = int(graph1.height * resize_factor)
-        graph1_resized = graph1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
-        self.graph1 = ImageTk.PhotoImage(graph1_resized)
-        self.graph1_label = tk.Label(self, image=self.graph1, bd=0)
-        self.graph1_label.place(x=100, y=90)
-
-        dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 2)
-        graph2 = Image.open(dir2)
-        new_width2 = int(graph2.width * resize_factor)
-        new_height2 = int(graph2.height * resize_factor)
-        graph2_resized = graph2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
-        self.graph2 = ImageTk.PhotoImage(graph2_resized)
-        self.graph2_label = tk.Label(self, image=self.graph2, bd=0)
-        self.graph2_label.place(x=100, y=325)
-
-        dir3 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 3)
-        graph3 = Image.open(dir3)
-        new_width3 = int(graph3.width * resize_factor)
-        new_height3 = int(graph3.height * resize_factor)
-        graph3_resized = graph3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
-        self.graph3 = ImageTk.PhotoImage(graph3_resized)
-        self.graph3_label = tk.Label(self, image=self.graph3, bd=0)
-        self.graph3_label.place(x=380, y=90)
-
-        dir4 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 4)
-        graph4 = Image.open(dir4)
-        new_width4 = int(graph4.width * resize_factor)
-        new_height4 = int(graph4.height * resize_factor)
-        graph4_resized = graph4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
-        self.graph4 = ImageTk.PhotoImage(graph4_resized)
-        self.graph4_label = tk.Label(self, image=self.graph4, bd=0)
-        self.graph4_label.place(x=380, y=325)
-
-        dir5 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 5)
-        graph5 = Image.open(dir5)
-        new_width5 = int(graph5.width * resize_factor)
-        new_height5 = int(graph5.height * resize_factor)
-        graph5_resized = graph5.resize((new_width5, new_height5), Image.Resampling.LANCZOS)
-        self.graph5 = ImageTk.PhotoImage(graph5_resized)
-        self.graph5_label = tk.Label(self, image=self.graph5, bd=0)
-        self.graph5_label.place(x=660, y=90)
-
-        dir6 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 6)
-        graph6 = Image.open(dir6)
-        new_width6 = int(graph6.width * resize_factor)
-        new_height6 = int(graph6.height * resize_factor)
-        graph6_resized = graph6.resize((new_width6, new_height6), Image.Resampling.LANCZOS)
-        self.graph6 = ImageTk.PhotoImage(graph6_resized)
-        self.graph6_label = tk.Label(self, image=self.graph6, bd=0)
-        self.graph6_label.place(x=660, y=325)
-
-
-    def two_angles_graph(self, exercise, folder):
-        # Determine the resize factor
-        resize_factor = 0.45
-
-        dir1 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 1)
-        graph1 = Image.open(dir1)
-        new_width1 = int(graph1.width * resize_factor)
-        new_height1 = int(graph1.height * resize_factor)
-        graph1_resized = graph1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
-        self.graph1 = ImageTk.PhotoImage(graph1_resized)
-        self.graph1_label = tk.Label(self, image=self.graph1, bd=0)
-        self.graph1_label.place(x=190, y=90)
-
-        dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 2)
-        graph2 = Image.open(dir2)
-        new_width2 = int(graph2.width * resize_factor)
-        new_height2 = int(graph2.height * resize_factor)
-        graph2_resized = graph2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
-        self.graph2 = ImageTk.PhotoImage(graph2_resized)
-        self.graph2_label = tk.Label(self, image=self.graph2, bd=0)
-        self.graph2_label.place(x=190, y=325)
-
-        dir3 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 3)
-        graph3 = Image.open(dir3)
-        new_width3 = int(graph3.width * resize_factor)
-        new_height3 = int(graph3.height * resize_factor)
-        graph3_resized = graph3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
-        self.graph3 = ImageTk.PhotoImage(graph3_resized)
-        self.graph3_label = tk.Label(self, image=self.graph3, bd=0)
-        self.graph3_label.place(x=540, y=90)
-
-        dir4 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 4)
-        graph4 = Image.open(dir4)
-        new_width4 = int(graph4.width * resize_factor)
-        new_height4 = int(graph4.height * resize_factor)
-        graph4_resized = graph4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
-        self.graph4 = ImageTk.PhotoImage(graph4_resized)
-        self.graph4_label = tk.Label(self, image=self.graph4, bd=0)
-        self.graph4_label.place(x=540, y=325)
 
 
 
-    def one_angle_graph(self, exercise, folder):
-        # Determine the resize factor
-        resize_factor = 0.45
-
-        dir1 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 1)
-        graph1 = Image.open(dir1)
-        new_width1 = int(graph1.width * resize_factor)
-        new_height1 = int(graph1.height * resize_factor)
-        graph1_resized = graph1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
-        self.graph1 = ImageTk.PhotoImage(graph1_resized)
-        self.graph1_label = tk.Label(self, image=self.graph1, bd=0)
-        self.graph1_label.place(x=350, y=90)
-
-        dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{folder}', 2)
-        graph2 = Image.open(dir2)
-        new_width2 = int(graph2.width * resize_factor)
-        new_height2 = int(graph2.height * resize_factor)
-        graph2_resized = graph2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
-        self.graph2 = ImageTk.PhotoImage(graph2_resized)
-        self.graph2_label = tk.Label(self, image=self.graph2, bd=0)
-        self.graph2_label.place(x=350, y=325)
 
 
 
-############################################### Exercises Pages ########################################################
 class ExplanationPage(tk.Frame):
     def __init__(self, master, exercise, **kwargs):
         tk.Frame.__init__(self, master, **kwargs)
@@ -1695,7 +1965,7 @@ class ExplanationPage(tk.Frame):
         tk.Label(self, image=self.photo_image).pack()
 
         self.label = tk.Label(self)
-        self.label.place(x=400, y=120)  # Adjust x and y coordinates for the first video
+        self.label.place(x=400, y=120)  # Adjust x and y coordinates for the video
         video_file = f'Videos//{exercise}_vid.mp4'
         video_path = os.path.join(os.getcwd(), video_file)
         self.cap = cv2.VideoCapture(video_path)
@@ -1706,16 +1976,15 @@ class ExplanationPage(tk.Frame):
         else:
             # Play videos
             play_video(self.cap, self.label, exercise, None, 0.5, 0.8)
+            say(f'{exercise}')
 
-        say(f'{exercise}')
-
-class ExercisePage(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//exercise.jpg')
-        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
-        tk.Label(self, image = self.photo_image).pack()
-        say("start_ex")
+# class ExercisePage(tk.Frame):
+#     def __init__(self, master):
+#         tk.Frame.__init__(self, master)
+#         image = Image.open('Pictures//exercise.jpg')
+#         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+#         tk.Label(self, image = self.photo_image).pack()
+#         say("start_ex")
 
 
 
@@ -2054,7 +2323,7 @@ if __name__ == "__main__":
     s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     s.list_effort_each_exercise= {}
     s.chosen_patient_ID= ''
-    s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
-    #s.screen.switch_frame(EffortScale,exercises= s.ex_in_training)
+    #s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
+    s.screen.switch_frame(ExercisePage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

@@ -1,14 +1,11 @@
-
-
 import pyzed.sl as sl
 import threading
 import cv2
-import mediapipe as mp
 import Settings as s
 import sys
 
 
-class MP(threading.Thread):
+class PyZedWrapper(threading.Thread):
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -108,5 +105,5 @@ class MP(threading.Thread):
 if __name__ == ('__main__'):
     s.stop = False
     s.finish_workout = False
-    mediap = MP()
+    mediap = ()
     mediap.start()

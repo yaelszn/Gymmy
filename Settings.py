@@ -49,6 +49,8 @@ def __init__():
     global excel_file_path_Patient
     global finished_training_adding_to_excel
 
+    global start_time
+
 
 
 

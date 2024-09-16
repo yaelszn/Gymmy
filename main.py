@@ -1,6 +1,4 @@
-import time
 import Settings as s
-import Excel
 from Camera import Camera
 from Gymmy import Gymmy
 from TrainingNew import Training
@@ -25,13 +23,10 @@ if __name__ == '__main__':
     gender = 'Male'
     s.audio_path = 'audio files/' + language + '/' + gender + '/'
     s.picture_path = 'audio files/' + language + '/' + gender + '/'
-    # s.str_to_say = ""
-    #current_time = datetime.datetime.now()
-    #s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
-                        # str(current_time.minute) + "." + str(current_time.second)
+
 
     # Training variables initialization
-    s.rep = 5
+    s.rep = 10
     s.req_exercise = ""
     s.finish_workout = False
     s.waved = False

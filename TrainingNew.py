@@ -3,7 +3,7 @@ import time
 from Camera import Camera
 from Gymmy import Gymmy
 from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
-    EffortScale, EntrancePage, ExplanationPage
+    EffortScale, EntrancePage, ExplanationPage, ExercisePage
 import Settings as s
 import Excel
 import random
@@ -28,6 +28,7 @@ class Training(threading.Thread):
             time.sleep(1)
 
         print("Training: start exercises")
+        s.start_time = time.time()
 
         categories = ["ball", "stick", "notool", "band"]
         random.shuffle(categories)
@@ -74,6 +75,7 @@ class Training(threading.Thread):
 
     def finish_training(self):
         #time.sleep(3)
+        s.time_in_training=time.time()-s.start_time
         s.finish_workout= True
         s.finished_effort= False
         s.list_effort_each_exercise= {}
@@ -98,7 +100,9 @@ class Training(threading.Thread):
         s.patient_repetitions_counting_in_exercise=0
         s.req_exercise = name
         print("TRAINING: Exercise ", name, " start")
-        s.screen.switch_frame(ExplanationPage, name)
+        s.screen.switch_frame(ExplanationPage, exercise= name)
+        time.sleep(5)
+        s.screen.switch_frame(ExercisePage)
         while s.req_exercise == name:
             time.sleep(0.00000001)
 
