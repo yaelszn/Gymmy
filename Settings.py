@@ -9,7 +9,7 @@ def __init__():
     global participant_code
     global training_workbook
     global training_workbook_path
-    global training_workbook_name
+    global start_dt
     global ex_list
     global Last_workbook #the workbook of the last time the patient did every exercise
     global success_worksheet
@@ -37,6 +37,9 @@ def __init__():
     global effort #list of chosen effort to each exercise
     global finished_effort #finished to grade the efforts of exercises
     global email_of_patient
+    global is_second_repetition_or_more #is it the second time or more of the training in the same session?
+    global stop_requested
+    global starts_and_ends_of_stops #variables that has the times of the starts and the ends of the stops
 
     # audio variables
     global audio_path

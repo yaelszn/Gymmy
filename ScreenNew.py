@@ -112,6 +112,14 @@ class ID_patient_fill_page(tk.Frame):
         self.user_id_entry_patient.place(x=400, y=260)
         self.labels = []
 
+        to_previous_button_img = Image.open("Pictures//previous.jpg")
+        to_previous_button_photo = ImageTk.PhotoImage(to_previous_button_img)
+        to_previous_button = tk.Button(self, image=to_previous_button_photo, command=lambda: self.to_previous_button_click(),
+                                   width=to_previous_button_img.width, height=to_previous_button_img.height, bd=0,
+                                   highlightthickness=0)  # Set border width to 0 to remove button border
+        to_previous_button.image = to_previous_button_photo  # Store reference to image to prevent garbage collection
+        to_previous_button.place(x=30, y=30)
+
         # Load image for the submit button
         submit_image = Image.open("Pictures//enter.jpg")
         submit_photo = ImageTk.PhotoImage(submit_image)
@@ -125,7 +133,8 @@ class ID_patient_fill_page(tk.Frame):
         submit_button.place(x=460, y=300)  # Adjust x and y coordinates as needed
 
 
-
+    def to_previous_button_click(self):
+        s.screen.switch_frame(EntrancePage)
 
     def on_submit_patient(self):
         self.delete_all_labels()
@@ -228,6 +237,14 @@ class ID_therapist_fill_page(tk.Frame):
         self.labels=[]
 
 
+        to_previous_button_img = Image.open("Pictures//previous.jpg")
+        to_previous_button_photo = ImageTk.PhotoImage(to_previous_button_img)
+        to_previous_button = tk.Button(self, image=to_previous_button_photo, command=lambda: self.to_previous_button_click(),
+                                   width=to_previous_button_img.width, height=to_previous_button_img.height, bd=0,
+                                   highlightthickness=0)  # Set border width to 0 to remove button border
+        to_previous_button.image = to_previous_button_photo  # Store reference to image to prevent garbage collection
+        to_previous_button.place(x=30, y=30)
+
         # Load image for the submit button
         submit_image = Image.open("Pictures//enter.jpg")  # Change path to your image file
         submit_photo = ImageTk.PhotoImage(submit_image)
@@ -240,6 +257,8 @@ class ID_therapist_fill_page(tk.Frame):
         submit_button.image = submit_photo  # Store reference to image to prevent garbage collection
         submit_button.place(x=460, y=300)  # Adjust x and y coordinates as needed
 
+    def to_previous_button_click(self):
+        s.screen.switch_frame(EntrancePage)
 
     def on_submit_physio(self):
         self.delete_all_labels()
@@ -616,6 +635,7 @@ class PatientRegistration(tk.Frame):
     def create_folders_when_insert_patient(self):
         Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}")  # open folder for patient
         Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Graphs")  # open graphs folder
+        Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Tables")  # open graphs folder
 
         df = pd.read_excel("Patients.xlsx", sheet_name="patients_exercises", header=None)
 
@@ -730,7 +750,7 @@ def play_video(cap, label, exercise, previous, scale_factor=0.35, slow_factor=1.
     if previous is not None:
         def on_click(event):
             # Call the Graph function with the exercise name
-            s.screen.switch_frame(GraphPage, exercise=exercise, previous=previous)
+            s.screen.switch_frame(TablesPage, exercise=exercise, previous=previous)
             print("video clicked!")
 
     else:
@@ -839,6 +859,8 @@ class ChooseBallExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
+        name_label(self)
+
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
         forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
         forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo, command=lambda: self.on_arrow_click(),
@@ -860,7 +882,7 @@ class ChooseBallExercisesPage(tk.Frame):
 
         # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=30, y=100)  # Adjust x and y coordinates for the first video
+        self.label1.place(x=30, y=125)  # Adjust x and y coordinates for the first video
 
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_ball")}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
@@ -868,11 +890,15 @@ class ChooseBallExercisesPage(tk.Frame):
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=95, y=425)
+        button1.place(x=95, y=440)
+        text_image_1 = Image.open('Pictures//bend_elbows_ball.jpg')
+        self.text_image_1_photo = ImageTk.PhotoImage(text_image_1)
+        self.text_image_1_label = tk.Label(self, image=self.text_image_1_photo, bd=0, highlightthickness=0)
+        self.text_image_1_label.place(x=35, y=90)
 
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=230, y=100)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=230, y=125)  # Adjust x and y coordinates for the second video
 
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "raise_arms_above_head_ball")}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
@@ -880,42 +906,58 @@ class ChooseBallExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=295, y=425)
+        button2.place(x=295, y=440)
+        text_image_2 = Image.open('Pictures//raise_arms_above_head_ball.jpg')
+        self.text_image_2_photo = ImageTk.PhotoImage(text_image_2)
+        self.text_image_2_label = tk.Label(self, image=self.text_image_2_photo, bd=0, highlightthickness=0)
+        self.text_image_2_label.place(x=235, y=90)
 
 
         self.label3 = tk.Label(self)
-        self.label3.place(x=430, y=100)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=430, y=125)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "raise_arms_forward_turn_ball")}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
         button3 = tk.Button(self, image=button3_photo, command=lambda: which_checkbox(button3, "raise_arms_forward_turn_ball"),
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=495, y=425)
+        button3.place(x=495, y=440)
+        text_image_3 = Image.open('Pictures//raise_arms_forward_turn_ball.jpg')
+        self.text_image_3_photo = ImageTk.PhotoImage(text_image_3)
+        self.text_image_3_label = tk.Label(self, image=self.text_image_3_photo, bd=0, highlightthickness=0)
+        self.text_image_3_label.place(x=435, y=90)
 
 
 
         self.label4 = tk.Label(self)
-        self.label4.place(x=630, y=100)  # Adjust x and y coordinates for the fourth video
+        self.label4.place(x=630, y=125)  # Adjust x and y coordinates for the fourth video
         button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "open_arms_and_forward_ball")}.png')
         button4_photo = ImageTk.PhotoImage(button4_image)
         button4 = tk.Button(self, image=button4_photo,  command=lambda: which_checkbox(button4, "open_arms_and_forward_ball"),
                             width=button4_photo.width(), height=button4_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=695, y=425)
+        button4.place(x=695, y=440)
+        text_image_4 = Image.open('Pictures//open_arms_and_forward_ball.jpg')
+        self.text_image_4_photo = ImageTk.PhotoImage(text_image_4)
+        self.text_image_4_label = tk.Label(self, image=self.text_image_4_photo, bd=0, highlightthickness=0)
+        self.text_image_4_label.place(x=635, y=90)
 
 
 
         self.label5 = tk.Label(self)
-        self.label5.place(x=830, y=100)  # Adjust x and y coordinates for the fifth video
+        self.label5.place(x=830, y=125)  # Adjust x and y coordinates for the fifth video
         button5_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "open_arms_above_head_ball")}.png')
         button5_photo = ImageTk.PhotoImage(button5_image)
         button5 = tk.Button(self, image=button5_photo,  command=lambda: which_checkbox(button5, "open_arms_above_head_ball"),
                             width=button5_photo.width(), height=button5_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button5.image = button5_photo  # Store reference to image to prevent garbage collection
-        button5.place(x=895, y=425)
+        button5.place(x=895, y=440)
+        text_image_5 = Image.open('Pictures//open_arms_above_head_ball.jpg')
+        self.text_image_5_photo = ImageTk.PhotoImage(text_image_5)
+        self.text_image_5_label = tk.Label(self, image=self.text_image_5_photo, bd=0, highlightthickness=0)
+        self.text_image_5_label.place(x=835, y=90)
 
 
         # Video paths
@@ -984,6 +1026,8 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
+        name_label(self)
+
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
         forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
         forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo, command=lambda: self.on_arrow_click_forward(),
@@ -1015,17 +1059,22 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         #create labels for videos
 
         self.label1 = tk.Label(self)
-        self.label1.place(x=230, y=100)  # Adjust x and y coordinates for the first video
-        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_ball")}.png')
+        self.label1.place(x=230, y=125)  # Adjust x and y coordinates for the first video
+        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "open_arms_with_band")}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
-        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "bend_elbows_ball"),
+        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "open_arms_with_band"),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=295, y=425)
+        button1.place(x=295, y=440)
+        text_image_1 = Image.open('Pictures//open_arms_with_band.jpg')
+        self.text_image_1_photo = ImageTk.PhotoImage(text_image_1)
+        self.text_image_1_label = tk.Label(self, image=self.text_image_1_photo, bd=0, highlightthickness=0)
+        self.text_image_1_label.place(x=235, y=90)
+
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=430, y=100)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=430, y=125)  # Adjust x and y coordinates for the second video
 
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "open_arms_and_up_with_band")}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
@@ -1034,10 +1083,14 @@ class ChooseRubberBandExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=495, y=425)
+        button2.place(x=495, y=440)
+        text_image_2 = Image.open('Pictures//open_arms_and_up_with_band.jpg')
+        self.text_image_2_photo = ImageTk.PhotoImage(text_image_2)
+        self.text_image_2_label = tk.Label(self, image=self.text_image_2_photo, bd=0, highlightthickness=0)
+        self.text_image_2_label.place(x=435, y=90)
 
         self.label3 = tk.Label(self)
-        self.label3.place(x=630, y=100)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=630, y=125)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(
             f'Pictures//{which_image_to_put(row_of_patient, "up_with_band_and_lean")}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
@@ -1046,7 +1099,11 @@ class ChooseRubberBandExercisesPage(tk.Frame):
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=695, y=425)
+        button3.place(x=695, y=440)
+        text_image_3 = Image.open('Pictures//up_with_band_and_lean.jpg')
+        self.text_image_3_photo = ImageTk.PhotoImage(text_image_3)
+        self.text_image_3_label = tk.Label(self, image=self.text_image_3_photo, bd=0, highlightthickness=0)
+        self.text_image_3_label.place(x=635, y=90)
 
 
 
@@ -1112,6 +1169,8 @@ class ChooseStickExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
+        name_label(self)
+
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
         forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
         forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo,
@@ -1147,18 +1206,22 @@ class ChooseStickExercisesPage(tk.Frame):
 
         # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=125, y=100)  # Adjust x and y coordinates for the first video
+        self.label1.place(x=125, y=125)  # Adjust x and y coordinates for the first video
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_stick")}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
         button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "bend_elbows_stick"),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=190, y=425)
+        button1.place(x=190, y=440)
+        text_image_1 = Image.open('Pictures//bend_elbows_stick.jpg')
+        self.text_image_1_photo = ImageTk.PhotoImage(text_image_1)
+        self.text_image_1_label = tk.Label(self, image=self.text_image_1_photo, bd=0, highlightthickness=0)
+        self.text_image_1_label.place(x=130, y=90)
 
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=325, y=100)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=325, y=125)  # Adjust x and y coordinates for the second video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "bend_elbows_and_up_stick")}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
         button2 = tk.Button(self, image=button2_photo,
@@ -1166,11 +1229,15 @@ class ChooseStickExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=390, y=425)
+        button2.place(x=390, y=440)
+        text_image_2 = Image.open('Pictures//bend_elbows_and_up_stick.jpg')
+        self.text_image_2_photo = ImageTk.PhotoImage(text_image_2)
+        self.text_image_2_label = tk.Label(self, image=self.text_image_2_photo, bd=0, highlightthickness=0)
+        self.text_image_2_label.place(x=330, y=90)
 
 
         self.label3 = tk.Label(self)
-        self.label3.place(x=525, y=100)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=525, y=125)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(
             f'Pictures//{which_image_to_put(row_of_patient, "arms_up_and_down_stick")}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
@@ -1179,11 +1246,15 @@ class ChooseStickExercisesPage(tk.Frame):
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=590, y=425)
+        button3.place(x=590, y=440)
+        text_image_3 = Image.open('Pictures//arms_up_and_down_stick.jpg')
+        self.text_image_3_photo = ImageTk.PhotoImage(text_image_3)
+        self.text_image_3_label = tk.Label(self, image=self.text_image_3_photo, bd=0, highlightthickness=0)
+        self.text_image_3_label.place(x=530, y=90)
 
 
         self.label4 = tk.Label(self)
-        self.label4.place(x=725, y=100)  # Adjust x and y coordinates for the third video
+        self.label4.place(x=725, y=125)  # Adjust x and y coordinates for the third video
         button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "switch_with_stick")}.png')
         button4_photo = ImageTk.PhotoImage(button4_image)
         button4 = tk.Button(self, image=button4_photo,
@@ -1191,7 +1262,11 @@ class ChooseStickExercisesPage(tk.Frame):
                             width=button4_photo.width(), height=button4_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=790, y=425)
+        button4.place(x=790, y=440)
+        text_image_4 = Image.open('Pictures//switch_with_stick.jpg')
+        self.text_image_4_photo = ImageTk.PhotoImage(text_image_4)
+        self.text_image_4_label = tk.Label(self, image=self.text_image_4_photo, bd=0, highlightthickness=0)
+        self.text_image_4_label.place(x=730, y=90)
 
 
 
@@ -1248,11 +1323,6 @@ class ChooseStickExercisesPage(tk.Frame):
             Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
-
-
-
-
-
 class ChooseNoToolExercisesPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
@@ -1262,6 +1332,8 @@ class ChooseNoToolExercisesPage(tk.Frame):
         self.background_photo = ImageTk.PhotoImage(background_image)
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
+
+        name_label(self)
 
         end_button_img = Image.open("Pictures//end_button.jpg")
         end_button_photo = ImageTk.PhotoImage(end_button_img)
@@ -1287,17 +1359,21 @@ class ChooseNoToolExercisesPage(tk.Frame):
 
         # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=125, y=100)  # Adjust x and y coordinates for the first video
+        self.label1.place(x=125, y=125)  # Adjust x and y coordinates for the first video
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "hands_behind_and_lean_notool")}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
         button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, "hands_behind_and_lean_notool"),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=190, y=425)
+        button1.place(x=190, y=440)
+        text_image_1 = Image.open('Pictures//hands_behind_and_lean_notool.jpg')
+        self.text_image_1_photo = ImageTk.PhotoImage(text_image_1)
+        self.text_image_1_label = tk.Label(self, image=self.text_image_1_photo, bd=0, highlightthickness=0)
+        self.text_image_1_label.place(x=130, y=90)
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=325, y=100)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=325, y=125)  # Adjust x and y coordinates for the second video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "right_hand_up_and_bend_notool")}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
         button2 = tk.Button(self, image=button2_photo,
@@ -1305,10 +1381,15 @@ class ChooseNoToolExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=390, y=425)
+        button2.place(x=390, y=440)
+        text_image_2 = Image.open('Pictures//right_hand_up_and_bend_notool.jpg')
+        self.text_image_2_photo = ImageTk.PhotoImage(text_image_2)
+        self.text_image_2_label = tk.Label(self, image=self.text_image_2_photo, bd=0, highlightthickness=0)
+        self.text_image_2_label.place(x=330, y=90)
+
 
         self.label3 = tk.Label(self)
-        self.label3.place(x=525, y=100)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=525, y=125)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(
             f'Pictures//{which_image_to_put(row_of_patient, "left_hand_up_and_bend_notool")}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
@@ -1317,10 +1398,14 @@ class ChooseNoToolExercisesPage(tk.Frame):
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=590, y=425)
+        button3.place(x=590, y=440)
+        text_image_3 = Image.open('Pictures//left_hand_up_and_bend_notool.jpg')
+        self.text_image_3_photo = ImageTk.PhotoImage(text_image_3)
+        self.text_image_3_label = tk.Label(self, image=self.text_image_3_photo, bd=0, highlightthickness=0)
+        self.text_image_3_label.place(x=530, y=90)
 
         self.label4 = tk.Label(self)
-        self.label4.place(x=725, y=100)  # Adjust x and y coordinates for the third video
+        self.label4.place(x=725, y=125)  # Adjust x and y coordinates for the third video
         button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, "raising_hands_diagonally_notool")}.png')
         button4_photo = ImageTk.PhotoImage(button4_image)
         button4 = tk.Button(self, image=button4_photo,
@@ -1328,7 +1413,11 @@ class ChooseNoToolExercisesPage(tk.Frame):
                             width=button4_photo.width(), height=button4_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=790, y=425)
+        button4.place(x=790, y=440)
+        text_image_4 = Image.open('Pictures//raising_hands_diagonally_notool.jpg')
+        self.text_image_4_photo = ImageTk.PhotoImage(text_image_4)
+        self.text_image_4_label = tk.Label(self, image=self.text_image_4_photo, bd=0, highlightthickness=0)
+        self.text_image_4_label.place(x=730, y=90)
 
 
 
@@ -1431,18 +1520,34 @@ class ExercisePage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
 
-        #The subjects from which the algorithm can choose
+        # The subjects from which the algorithm can choose
         subjects = ["butterflies", "galaxy", "garden"]
         random.shuffle(subjects)
-        chosen_subject = subjects[0]
+        self.chosen_subject = subjects[0]  # Instance variable for later use
 
         # Create a canvas for layering background and transparent image
         self.canvas = tk.Canvas(self, width=1000, height=600)
         self.canvas.pack(fill="both", expand=True)
 
         # Load background image
-        background_image = Image.open(f'Pictures//{chosen_subject}//background.jpg')
+        background_image = Image.open(f'Pictures//{self.chosen_subject}//background.jpg')
         self.background_photo = ImageTk.PhotoImage(background_image)
+
+        stop_training_button_img = Image.open("Pictures//stop_training_button.jpg")
+        stop_training_button_photo = ImageTk.PhotoImage(stop_training_button_img)
+        stop_training_button = tk.Button(self, image=stop_training_button_photo,
+                                         command=self.stop_training_button_click,
+                                         bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        stop_training_button.image = stop_training_button_photo  # Prevent garbage collection
+        stop_training_button.place(x=15, y=10)
+
+        pause_training_button_img = Image.open("Pictures//pause_training_button.jpg")
+        pause_training_button_photo = ImageTk.PhotoImage(pause_training_button_img)
+        pause_training_button = tk.Button(self, image=pause_training_button_photo,
+                                         command=self.pause_training_button_click,
+                                         bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        pause_training_button.image = pause_training_button_photo  # Prevent garbage collection
+        pause_training_button.place(x=95, y=10)
 
         # Place background image on canvas
         self.canvas.create_image(0, 0, image=self.background_photo, anchor="nw")
@@ -1452,25 +1557,32 @@ class ExercisePage(tk.Frame):
 
         # Predetermined positions (you can adjust these to your liking)
         self.positions = [
-            (10, 10), (180, 10), (350, 10), (520, 10), (690, 10), (860, 10),
+            (180, 10), (350, 10), (520, 10), (690, 10), (860, 10),
             (10, 190), (180, 190), (350, 190), (520, 190), (690, 190), (860, 190),
             (10, 370), (180, 370), (350, 370), (520, 370), (690, 370), (860, 370)
         ]
 
+
         # Shuffle the positions to make their selection random
         random.shuffle(self.positions)
-        count=1 #An auxiliary variable. We ue it to follow a change with the patient_repetitions_counting_in_exercise variable
 
-        # Create s.rep (number chosen) images with non-overlapping positions (one per predetermined position)
-        while (not s.gymmy_done) or (not s.camera_done): # While the exercise still running
+        # Track count for patient repetitions
+        self.count = 1
 
-            if count == s.patient_repetitions_counting_in_exercise:
+        # Start the loop using after()
+        self.update_exercise()
+
+    def update_exercise(self):
+        # Non-blocking exercise loop using after()
+
+        if (not s.gymmy_done) or (not s.camera_done):  # While the exercise is still running
+            if self.count == s.patient_repetitions_counting_in_exercise:
                 # Get the next random position from the shuffled list
                 x_image, y_image = self.positions[s.patient_repetitions_counting_in_exercise]
 
                 # Path to a random image in the chosen category
                 image_num = random.randint(1, 27)
-                image_path = f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Pictures/{chosen_subject}/{image_num}.png'
+                image_path = f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Pictures/{self.chosen_subject}/{image_num}.png'
 
                 # Convert near-white background to transparent (adjust tolerance as needed)
                 transparent_image = convert_white_to_transparent(image_path, tolerance=30)
@@ -1484,11 +1596,72 @@ class ExercisePage(tk.Frame):
                 # Append each image reference to the list to prevent garbage collection
                 self.image_references.append(exercise_photo)
 
-                #Add one to count in order to tell the algorithm to wait until the next succesful repetition
-                count=+1
+                # Increment the count to wait for the next successful repetition
+                self.count += 1
 
-            else:
-                time.sleep(0.001) #Prevent MP to stuck
+            # Schedule next iteration to keep updating the screen
+            self.after(1, self.update_exercise)  # Call the function every 1ms
+        else:
+            print("Exercise complete")
+
+    def stop_training_button_click(self):
+        s.req_exercise = ""
+        s.stop_requested=True
+        print("Stop training button clicked")
+
+    def pause_training_button_click(self):
+        s.starts_and_ends_of_stops.append(datetime.now())
+        # Define what happens when the button is clicked
+        print("Stop training button clicked")
+
+class ChooseTrainingOrExerciseInformation(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+
+        image = Image.open('Pictures//background.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+        name_label(self)
+
+        to_previous_button_img = Image.open("Pictures//previous.jpg")
+        to_previous_button_photo = ImageTk.PhotoImage(to_previous_button_img)
+        to_previous_button = tk.Button(self, image=to_previous_button_photo, command=lambda: self.to_previous_button_click(),
+                                   width=to_previous_button_img.width, height=to_previous_button_img.height, bd=0,
+                                   highlightthickness=0)  # Set border width to 0 to remove button border
+        to_previous_button.image = to_previous_button_photo  # Store reference to image to prevent garbage collection
+        to_previous_button.place(x=30, y=30)
+
+        # Load images for buttons
+        training_image = Image.open("Pictures//information_training_button.jpg")
+        training_photo = ImageTk.PhotoImage(training_image)
+        exercise_image = Image.open("Pictures//to_information_exercises_button.jpg")
+        exercise_photo = ImageTk.PhotoImage(exercise_image)
+
+        # Store references to prevent garbage collection
+        self.training_photo = training_photo
+        self.patient_photo = exercise_photo
+
+        # Create buttons with images
+        enter_trainings = tk.Button(self, image=training_photo,
+                                              command=self.on_click_training_chosen,
+                                              width=training_image.width, height=training_image.height,
+                                              bg='#50a6ad', bd=0, highlightthickness=0)
+        enter_trainings.place(x=160, y=130)
+
+        enter_exercises = tk.Button(self, image=exercise_photo,
+                                            command=self.on_click_exercise_chosen,
+                                            width=exercise_image.width, height=exercise_image.height,
+                                            bg='#50a6ad', bd=0, highlightthickness=0)
+        enter_exercises.place(x=540, y=130)
+
+    def to_previous_button_click(self):
+        s.screen.switch_frame(PatientDisplaying)
+
+    def on_click_training_chosen(self):
+        s.screen.switch_frame(InformationAboutTrainingPage)
+
+    def on_click_exercise_chosen(self):
+        s.screen.switch_frame(ChooseBallExercisesPage)
 
 # class GraphPage(tk.Frame):
 #     def __init__(self, master, exercise, previous, **kwargs):
@@ -1770,48 +1943,341 @@ class ExercisePage(tk.Frame):
 
 
 
-############################################### Exercises Pages ########################################################
 
-class ChooseTrainingOrExerciseInformation(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
+class TablesPage(tk.Frame):
+    def __init__(self, master, exercise, previous, **kwargs):
+        tk.Frame.__init__(self, master, **kwargs)
+        self.queue = queue.Queue()
+        self.exercise = exercise
+        self.forward_arrow_button = None
+        self.backward_arrow_button = None
+        self.label1 = None
+        self.label2 = None
+        self.background_color = "#deeaf7"  # Set the background color to light blue
 
+        # Set the background color for the Frame
+        self.configure(bg=self.background_color)
+
+        # Load background image
         image = Image.open('Pictures//background.jpg')
-        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
-        tk.Label(self, image = self.photo_image).pack()
+        self.photo_image = ImageTk.PhotoImage(image)
+
+        # Add a label with the background image and set the background to match the window
+        tk.Label(self, image=self.photo_image, bg=self.background_color).pack(fill='both', expand=True)
+
+        # Define previous page navigation based on tool used
+        if previous == "ball":
+            previous_page = ChooseBallExercisesPage
+        elif previous == "band":
+            previous_page = ChooseRubberBandExercisesPage
+        elif previous == "stick":
+            previous_page = ChooseStickExercisesPage
+        elif previous == "no_tool":
+            previous_page = ChooseNoToolExercisesPage
+
+        # Load the previous page button image and set background
+        previous_page_button_img = Image.open("Pictures//previous.jpg")
+        previous_page_button_photo = ImageTk.PhotoImage(previous_page_button_img)
+        previous_page_category = tk.Button(self, image=previous_page_button_photo,
+                                           command=lambda: s.screen.switch_frame(previous_page),
+                                           width=previous_page_button_img.width,
+                                           height=previous_page_button_img.height, bd=0,
+                                           highlightthickness=0, bg=self.background_color)
+        previous_page_category.image = previous_page_button_photo
+        previous_page_category.place(x=30, y=30)
+
+        # Fetch sorted folders
+        sorted_folders = get_sorted_folders(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}')
+        if len(sorted_folders) == 0:
+            didnt_do_before = Image.open('Pictures//patient_didnt_do.jpg')
+            self.didnt_do_before = ImageTk.PhotoImage(didnt_do_before)
+            self.didnt_do_before_label = tk.Label(self, image=self.didnt_do_before, bd=0, bg=self.background_color)
+            self.didnt_do_before_label.place(x=270, y=75)
+        else:
+            num_of_angles = self.get_number_of_angles_in_exercise(exercise)
+            self.show_tables(sorted_folders, 0, num_of_angles, exercise)
+
+    def show_tables(self, sorted_folder, place, num_of_angles, exercise):
+        if place > 0:
+            self.backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
+            self.backward_arrow_button_photo = ImageTk.PhotoImage(self.backward_arrow_button_img)
+            self.backward_arrow_button = tk.Button(self, image=self.backward_arrow_button_photo,
+                                                   command=lambda: self.help_function(sorted_folder, place-1, num_of_angles, exercise),
+                                                   width=self.backward_arrow_button_img.width,
+                                                   height=self.backward_arrow_button_img.height, bd=0,
+                                                   highlightthickness=0, bg=self.background_color)
+            self.backward_arrow_button.image = self.backward_arrow_button_photo
+            self.backward_arrow_button.place(x=945, y=480)
+
+        if place < len(sorted_folder) - 1:
+            self.forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
+            self.forward_arrow_button_photo = ImageTk.PhotoImage(self.forward_arrow_button_img)
+            self.forward_arrow_button = tk.Button(self, image=self.forward_arrow_button_photo,
+                                                  command=lambda: self.help_function(sorted_folder, place+1, num_of_angles, exercise),
+                                                  width=self.forward_arrow_button_img.width,
+                                                  height=self.forward_arrow_button_img.height, bd=0,
+                                                  highlightthickness=0, bg=self.background_color)
+            self.forward_arrow_button.image = self.forward_arrow_button_photo
+            self.forward_arrow_button.place(x=20, y=480)
+
+        back = Image.open('Pictures//empty.JPG')
+        background_img = ImageTk.PhotoImage(back)
+
+        # Directory path
+        directory = f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/{sorted_folder[place]}.xlsx'
+        print(directory)
+
+        # Fetch success numbers
+
+        first_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details", s.chosen_patient_ID, "first name")
+        last_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details", s.chosen_patient_ID, "last name")
+
+        self.label1 = tk.Label(self, text=f'{last_name_of_patient} {first_name_of_patient}', image=background_img, compound=tk.CENTER,
+                               font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
+        self.label1.place(x=160, y=5)
+        self.label1.image = background_img
+
+
+        # Format the date and time from the folder name
+        date_part, time_part = sorted_folder[place].split(' ')
+        formatted_date = date_part.replace('-', '/')
+        formatted_time = time_part.replace('-', ':')
+        formatted_text = f'{formatted_date} {formatted_time}'
+
+        # Display date and time with custom background color
+        self.label2 = tk.Label(self, text=f'{formatted_text}', image=background_img, compound=tk.CENTER,
+                               font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
+        self.label2.place(x=160, y=30)
+        self.label2.image = background_img
+
+        success_number = Excel.get_success_number(directory, exercise)
+
+        if success_number is not None:
+            self.label3 = tk.Label(self, text="מספר חזרות מוצלחות: " + str(success_number), image=background_img,
+                                   compound=tk.CENTER, font=("Thaoma", 16, 'bold'), width=350,
+                                   height=15, bg=self.background_color)
+            self.label3.place(x=155, y=55)
+            self.label3.image = background_img
+
+        # Handle different number of angles
+        if num_of_angles == 1:
+            self.one_angle_graph(exercise, sorted_folder[place])
+        if num_of_angles == 2:
+            self.two_angles_graph(exercise, sorted_folder[place])
+        if num_of_angles == 3:
+            self.three_angles_graph(exercise, sorted_folder[place])
+
+    def help_function(self, sorted_folder, place_to_put, num_of_angles, exercise):
+        # Clean up previous labels and buttons
+        if self.label1:
+            self.label1.place_forget()
+        if self.label2:
+            self.label2.place_forget()
+        if self.forward_arrow_button:
+            self.forward_arrow_button.destroy()
+            self.forward_arrow_button = None
+        if self.backward_arrow_button:
+            self.backward_arrow_button.destroy()
+            self.backward_arrow_button = None
+        self.show_tables(sorted_folder, place_to_put, num_of_angles, exercise)
+
+    def find_image(self, directory, number):
+        # Create a regex pattern to match files with ' ' followed by the specific number and either '.jpeg', '.jpg', or '.png'
+        pattern = re.compile(r' (\d+)\.(?:jpeg|jpg|png)$')
+
+        # Iterate through the files in the directory
+        for filename in os.listdir(directory):
+            match = pattern.search(filename)
+            if match and match.group(1) == str(number):
+                return os.path.join(directory, filename)
+        return None
 
 
 
-        # Load images for buttons
-        training_image = Image.open("Pictures//information_training_button.jpg")
-        training_photo = ImageTk.PhotoImage(training_image)
-        exercise_image = Image.open("Pictures//to_information_exercises_button.jpg")
-        exercise_photo = ImageTk.PhotoImage(exercise_image)
+    def get_number_of_angles_in_exercise(self, exercise):
+        try:
+            # Load the workbook
+            workbook = openpyxl.load_workbook("exercises_table.xlsx")
 
-        # Store references to prevent garbage collection
-        self.training_photo = training_photo
-        self.patient_photo = exercise_photo
+            # Select the desired sheet
+            sheet = workbook[workbook.sheetnames[0]]
 
-        # Create buttons with images
-        enter_trainings = tk.Button(self, image=training_photo,
-                                              command=self.on_click_training_chosen,
-                                              width=training_image.width, height=training_image.height,
-                                              bg='#50a6ad', bd=0, highlightthickness=0)
-        enter_trainings.place(x=160, y=130)
+            # Iterate through rows starting from the specified row
+            for row_number in range(1,sheet.max_row + 1):
+                first_cell_value = sheet.cell(row=row_number, column=1).value
 
-        enter_exercises = tk.Button(self, image=exercise_photo,
-                                            command=self.on_click_exercise_chosen,
-                                            width=exercise_image.width, height=exercise_image.height,
-                                            bg='#50a6ad', bd=0, highlightthickness=0)
-        enter_exercises.place(x=540, y=130)
+                if first_cell_value == exercise:
+                    return sheet.cell(row=row_number, column=2).value
 
 
-    def on_click_training_chosen(self):
-        s.screen.switch_frame(InformationAboutTrainingPage)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return False
 
-    def on_click_exercise_chosen(self):
-        s.screen.switch_frame(ChooseBallExercisesPage)
+    def three_angles_graph(self, exercise, folder):
+        # Determine the resize factor
+        resize_factor_width = 0.55
+        resize_factor_height = 0.4
 
+        # Load the image for table 1
+        dir1 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
+        table1 = Image.open(dir1)
+        new_width1 = int(table1.width * resize_factor_width)
+        new_height1 = int(table1.height * resize_factor_height)
+        table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+        self.table1 = ImageTk.PhotoImage(table1_resized)
+        self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
+        self.table1_label.place(x=100, y=90)
+
+        # Load the image for table 2
+        dir2 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
+        table2 = Image.open(dir2)
+        new_width2 = int(table2.width * resize_factor_width)
+        new_height2 = int(table2.height * resize_factor_height)
+        table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+        self.table2 = ImageTk.PhotoImage(table2_resized)
+        self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
+        self.table2_label.place(x=100, y=325)
+
+        # Load the image for table 3
+        dir3 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 3)
+        table3 = Image.open(dir3)
+        new_width3 = int(table3.width * resize_factor_width)
+        new_height3 = int(table3.height * resize_factor_height)
+        table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+        self.table3 = ImageTk.PhotoImage(table3_resized)
+        self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
+        self.table3_label.place(x=380, y=90)
+
+        # Load the image for table 4
+        dir4 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 4)
+        table4 = Image.open(dir4)
+        new_width4 = int(table4.width * resize_factor_width)
+        new_height4 = int(table4.height * resize_factor_height)
+        table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+        self.table4 = ImageTk.PhotoImage(table4_resized)
+        self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
+        self.table4_label.place(x=380, y=325)
+
+        # Load the image for table 5
+        dir5 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 5)
+        table5 = Image.open(dir5)
+        new_width5 = int(table5.width * resize_factor_width)
+        new_height5 = int(table5.height * resize_factor_height)
+        table5_resized = table5.resize((new_width5, new_height5), Image.Resampling.LANCZOS)
+        self.table5 = ImageTk.PhotoImage(table5_resized)
+        self.table5_label = tk.Label(self, image=self.table5, bd=0, bg='#deeaf7')  # Set background color here
+        self.table5_label.place(x=660, y=90)
+
+        # Load the image for table 6
+        dir6 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 6)
+        table6 = Image.open(dir6)
+        new_width6 = int(table6.width * resize_factor_width)
+        new_height6 = int(table6.height * resize_factor_height)
+        table6_resized = table6.resize((new_width6, new_height6), Image.Resampling.LANCZOS)
+        self.table6 = ImageTk.PhotoImage(table6_resized)
+        self.table6_label = tk.Label(self, image=self.table6, bd=0, bg='#deeaf7')  # Set background color here
+        self.table6_label.place(x=660, y=325)
+
+    def two_angles_graph(self, exercise, folder):
+        # Determine the resize factor
+        resize_factor_width = 0.55
+        resize_factor_height = 0.4
+
+        # Load the image for table 1
+        dir1 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
+        table1 = Image.open(dir1)
+        new_width1 = int(table1.width * resize_factor_width)
+        new_height1 = int(table1.height * resize_factor_height)
+        table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+        self.table1 = ImageTk.PhotoImage(table1_resized)
+        self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
+        self.table1_label.place(x=230, y=90)
+
+        # Load the image for table 2
+        dir2 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
+        table2 = Image.open(dir2)
+        new_width2 = int(table2.width * resize_factor_width)
+        new_height2 = int(table2.height * resize_factor_height)
+        table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+        self.table2 = ImageTk.PhotoImage(table2_resized)
+        self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
+        self.table2_label.place(x=230, y=325)
+
+        # Load the image for table 3
+        dir3 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 3)
+        table3 = Image.open(dir3)
+        new_width3 = int(table3.width * resize_factor_width)
+        new_height3 = int(table3.height * resize_factor_height)
+        table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+        self.table3 = ImageTk.PhotoImage(table3_resized)
+        self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
+        self.table3_label.place(x=510, y=90)
+
+        # Load the image for table 4
+        dir4 = self.find_image(
+            f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 4)
+        table4 = Image.open(dir4)
+        new_width4 = int(table4.width * resize_factor_width)
+        new_height4 = int(table4.height * resize_factor_height)
+        table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+        self.table4 = ImageTk.PhotoImage(table4_resized)
+        self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
+        self.table4_label.place(x=510, y=325)
+
+
+
+    def one_angle_graph(self, exercise, folder):
+        # Determine the resize factor
+        resize_factor_width = 0.15
+        resize_factor_height = 0.4
+
+        # Load the image for table 1
+        dir1 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
+        table1 = Image.open(dir1)
+        new_width1 = int(table1.width * resize_factor_width)
+        new_height1 = int(table1.height * resize_factor_height)
+        table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+        self.table1 = ImageTk.PhotoImage(table1_resized)
+        self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
+        self.table1_label.place(x=370, y=90)
+
+        # Load the image for table 2
+        dir2 = self.find_image(f'C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
+        table2 = Image.open(dir2)
+        new_width2 = int(table2.width * resize_factor_width)
+        new_height2 = int(table2.height * resize_factor_height)
+        table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+        self.table2 = ImageTk.PhotoImage(table2_resized)
+        self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
+        self.table2_label.place(x=370, y=325)
+
+
+
+
+def name_label(self):
+    back = Image.open('Pictures//empty.JPG')
+    background_img = ImageTk.PhotoImage(back)
+    first_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details",
+                                                                   s.chosen_patient_ID, "first name")
+    last_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details",
+                                                                  s.chosen_patient_ID, "last name")
+    self.background_color = "#deeaf7"  # Set the background color to light blue
+
+    self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
+                           compound=tk.CENTER,
+                           font=("Thaoma", 26, 'bold'), width=350, height=50, bg=self.background_color)
+    self.label1.place(x=160, y=27)
+    self.label1.image = background_img
 
 
 class InformationAboutTrainingPage (tk.Frame):
@@ -1826,13 +2292,14 @@ class InformationAboutTrainingPage (tk.Frame):
             'תאריך ושעה': dates
         })
 
-
         # Load the background image
-        image = Image.open('Pictures//Patient_list.jpg')
+        image = Image.open('Pictures//training_list.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         # Create a label to display the background image
         self.background_label = tk.Label(self, image=self.photo_image)
         self.background_label.pack(fill="both", expand=True)
+
+        name_label(self)
 
         # Display the DataFrame in a Treeview widget
         self.treeview = ttk.Treeview(self, style="Treeview", show="headings")
@@ -1895,10 +2362,7 @@ class InformationAboutTrainingPage (tk.Frame):
             if pd.notna(date_value):  # Check if not NaN
                 try:
                     # Convert the string to datetime
-                    dt = datetime.strptime(date_value, "%d-%m-%Y %H-%M-%S")
-                    # Format the date and time with slashes and colons
-                    formatted_date = dt.strftime("%d/%m/%Y %H:%M:%S")
-                    dates.append(formatted_date)  # Append formatted date
+                    dates.append(date_value)  # Append formatted date
                 except ValueError:
                     # Handle cases where the date format is unexpected
                     dates.append(date_value)
@@ -1921,41 +2385,6 @@ class InformationAboutTrainingPage (tk.Frame):
         return dates, percent_success, exertion_rate, time_in_training
 
 
-class InformationAboutExercisePage (tk.Frame):
-    def __init__(self, master, exercise, previous, **kwargs):
-        tk.Frame.__init__(self, master, **kwargs)
-        image = Image.open('Pictures//background.jpg')
-        self.photo_image = ImageTk.PhotoImage(image)
-        tk.Label(self, image=self.photo_image).pack()
-
-        if previous=="ball":
-            previous_page=ChooseBallExercisesPage
-        elif previous=="band":
-            previous_page=ChooseRubberBandExercisesPage
-        elif previous=="stick":
-            previous_page=ChooseStickExercisesPage
-        elif previous=="no_tool":
-            previous_page=ChooseNoToolExercisesPage
-
-        previous_page_button_img = Image.open("Pictures//previous.jpg")
-        previous_page_button_photo = ImageTk.PhotoImage(previous_page_button_img)
-        previous_page_category = tk.Button(self, image=previous_page_button_photo,
-                                          command=lambda: s.screen.switch_frame(previous_page),
-                                          width=previous_page_button_img.width,
-                                          height=previous_page_button_img.height, bd=0,
-                                          highlightthickness=0)
-        previous_page_category.image = previous_page_button_photo
-        previous_page_category.place(x=30, y=30)
-
-
-
-
-
-
-
-
-
-
 
 class ExplanationPage(tk.Frame):
     def __init__(self, master, exercise, **kwargs):
@@ -1970,13 +2399,15 @@ class ExplanationPage(tk.Frame):
         video_path = os.path.join(os.getcwd(), video_file)
         self.cap = cv2.VideoCapture(video_path)
 
+
         if not (self.cap.isOpened()):
             print("Error opening video streams or files")
 
         else:
             # Play videos
             play_video(self.cap, self.label, exercise, None, 0.5, 0.8)
-            say(f'{exercise}')
+            say(exercise)
+
 
 # class ExercisePage(tk.Frame):
 #     def __init__(self, master):
@@ -2317,13 +2748,16 @@ class FullScreenApp(object):
 
 
 if __name__ == "__main__":
-    s.audio_path = 'audio files/Hebrew/Male/'
+    # s.audio_path = 'audio files/Hebrew/Male/'
     s.screen = Screen()
-    s.finished_effort= False
-    s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
-    s.list_effort_each_exercise= {}
-    s.chosen_patient_ID= ''
+    # s.finished_effort= False
+    # s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
+    # s.list_effort_each_exercise= {}
+    s.chosen_patient_ID='314808981'
     #s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
+    s.gymmy_done=False
+    s.camera_done= False
+    s.patient_repetitions_counting_in_exercise = 1
     s.screen.switch_frame(ExercisePage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

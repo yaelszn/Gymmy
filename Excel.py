@@ -34,13 +34,12 @@ def create_and_open_folder(folder_path):
 
 
 #creats a new workbook to each training
-def create_workbook():
+def create_workbook_for_training():
     datetime_string = datetime.now().strftime("%d-%m-%Y %H-%M-%S")
     workbook_name = f"Patients/{s.chosen_patient_ID}/{datetime_string}.xlsx"
     s.training_workbook_path = workbook_name
-    s.training_workbook_name= f"{datetime_string}.xlsx"
+    s.start_dt= f"{datetime_string}"
     s.training_workbook = xlsxwriter.Workbook(workbook_name)
-    #s.training_workbook.save()
 
 
 
@@ -148,18 +147,18 @@ def wf_joints(ex_name, list_joints):
         col += 1
 
     #s.training_workbook.save(s.training_workbook_path) #save the workbook
-    create_graphs(ex_name, list_joints)
+    create_graphs_and_tables(ex_name, list_joints)
 
 
-def create_graphs(exercise, list_joints):
+def create_graphs_and_tables(exercise, list_joints):
 
     try:
         if get_number_of_angles_in_exercise(exercise) == 1:
-            one_angle_graph(exercise, list_joints)
+            one_angle_graph_and_table(exercise, list_joints)
         if get_number_of_angles_in_exercise(exercise) == 2:
-            two_angles_graph(exercise, list_joints)
+            two_angles_graph_and_table(exercise, list_joints)
         if get_number_of_angles_in_exercise(exercise) == 3:
-            three_angles_graph(exercise, list_joints)
+            three_angles_graph_and_table(exercise, list_joints)
 
 
     except (pd.errors.ParserError, FileNotFoundError):
@@ -190,7 +189,7 @@ def get_number_of_angles_in_exercise(exercise):
         print(f"An error occurred: {e}")
         return False
 
-def one_angle_graph(exercise_name, list_joints):
+def one_angle_graph_and_table(exercise_name, list_joints):
     if (list_joints!=[]):
         last_two_values = [entry[-2:] for entry in list_joints] #extract from each record the last 2 values (the angles)
         right_angles = [sublist[0] for sublist in last_two_values] #the right angle from each record
@@ -214,9 +213,10 @@ def one_angle_graph(exercise_name, list_joints):
         second_graph_name: {'x': measurement_num, 'y': left_angles}}
 
         create_and_save_graph(data, exercise_name)
+        create_and_save_table_with_calculations(data, exercise_name)
 
 
-def two_angles_graph(exercise_name, list_joints):
+def two_angles_graph_and_table(exercise_name, list_joints):
     if (list_joints!=[]):
         last_four_values = [entry[-4:] for entry in list_joints]  # extract from each record the last 4 values (the angles)
         right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
@@ -246,9 +246,10 @@ def two_angles_graph(exercise_name, list_joints):
         }
 
         create_and_save_graph(data, exercise_name)
+        create_and_save_table_with_calculations(data, exercise_name)
 
 
-def three_angles_graph(exercise_name, list_joints):
+def three_angles_graph_and_table(exercise_name, list_joints):
     if (list_joints!=[]):
         last_four_values = [entry[-6:] for entry in list_joints]  # extract from each record the last 6 values (the angles)
         right_angles = [sublist[0] for sublist in last_four_values]  # the right angle from each record
@@ -284,6 +285,7 @@ def three_angles_graph(exercise_name, list_joints):
         }
 
         create_and_save_graph(data, exercise_name)
+        create_and_save_table_with_calculations(data, exercise_name)
 
 
 def create_and_save_graph(data, exercise):
@@ -321,10 +323,8 @@ def create_and_save_graph(data, exercise):
 
 
         # Save the plot as an image file
-        date_and_time_of_training = s.training_workbook_name.replace(".xlsx",
-                                                                     "")  # only the date and time of a training
-        create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}')
-        plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{date_and_time_of_training}/{plot_name}.jpeg'
+        create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{s.start_dt}')
+        plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{s.start_dt}/{plot_name}.jpeg'
         plt.savefig(plot_filename)
         plt.close()  # Close the plot to clear the figure
 
@@ -420,7 +420,7 @@ def find_and_add_training_to_patient(headers_row=1):
                     next_column = col + 1
 
             # Write the new value to the next available column in the found row
-            sheet.cell(row=cell.row, column=next_column, value=s.training_workbook_name.replace(".xlsx", ""))  # training name
+            sheet.cell(row=cell.row, column=next_column, value=s.start_dt)  # training name
             sheet.cell(row=cell.row, column=next_column + 1, value=(s.number_of_repetitions_in_training / s.max_repetitions_in_training))  # percent of the training that the patient managed to do
             sheet.cell(row=cell.row, column=next_column + 2, value=s.effort)  # percent of the training that the patient managed to do
 
@@ -454,6 +454,110 @@ def count_number_of_exercises_in_training_by_ID():
     return true_count
 
 
+# def create_summary_workbook():
+#         workbook_name = f"Patients/{s.chosen_patient_ID}/summary.xlsx"
+#
+#         # Create a new workbook
+#         workbook = xlsxwriter.Workbook(workbook_name)
+#
+#         # Add a worksheet
+#         workbook.add_worksheet("Sheet1")
+#
+#         # Close the workbook to save it
+#         workbook.close()
+
+
+# def add_exercise_to_summary(exercise_name, avg, sd, min_val, max_val, time_val):
+#     # Load the existing workbook
+#     file_path = f"Patients/{s.chosen_patient_ID}/summary.xlsx"
+#     workbook = openpyxl.load_workbook(file_path)
+#
+#     # Check if "Sheet1" exists and rename it to the exercise name
+#     if "Sheet1" in workbook.sheetnames:
+#         sheet = workbook["Sheet1"]
+#         sheet.title = exercise_name
+#     # Check if the exercise sheet already exists, if not, create it
+#     elif exercise_name not in workbook.sheetnames:
+#         sheet = workbook.create_sheet(title=exercise_name)
+#
+#     # Add headers if it's a new or renamed sheet
+#     if sheet.max_row == 1 and sheet.cell(row=1, column=1).value is None:  # Check if it's an empty sheet
+#         sheet.append(["Date Time", "Average", "Standard Deviation", "Minimum", "Maximum", "Time"])
+#
+#     # Find the next empty row (last row + 1)
+#     next_row = sheet.max_row + 1
+#
+#     # Add data to the next available row, with the first column being the datetime
+#     sheet.cell(row=next_row, column=1, value=s.start_dt)  # Datetime from s.start_dt
+#     sheet.cell(row=next_row, column=2, value=avg)  # Average
+#     sheet.cell(row=next_row, column=3, value=sd)  # Standard Deviation
+#     sheet.cell(row=next_row, column=4, value=min_val)  # Minimum
+#     sheet.cell(row=next_row, column=5, value=max_val)  # Maximum
+#     sheet.cell(row=next_row, column=6, value=time_val)  # Time
+#
+#     # Save the workbook
+#     workbook.save(file_path)
+
+
+def create_and_save_table_with_calculations(data, exercise):
+    # Define the directory for saving the table image
+    date_and_time_of_training = s.start_dt  # Extract date and time of training
+    # Create and open the folder to save the tables
+    create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{date_and_time_of_training}')
+
+    # Iterate over each table data (in case you have multiple tables)
+    for table_name, table_data in data.items():
+        # Perform calculations (min, max, avg, std)
+        y_values = [value for value in table_data['y'] if value is not None]  # Remove None values from 'y' data
+        if y_values:
+            min_val = f"{min(y_values):.2f}"
+            max_val = f"{max(y_values):.2f}"
+            average = f"{(sum(y_values) / len(y_values)):.2f}"
+            stdev = f"{np.std(y_values):.2f}"
+
+        # Prepare data for the table
+        calculation_data = {
+            'ערכים'[::-1]: [min_val, max_val, average, stdev],  # Reverse Hebrew labels
+            'מדדים'[::-1]: [s[::-1] for s in ['מינימום', 'מקסימום', 'ממוצע', 'סטיית תקן']]  # Reverse Hebrew labels
+        }
+
+        # Create a pandas DataFrame
+        df = pd.DataFrame(calculation_data)
+
+        # Create a new figure for the table only and set the background color
+        fig, ax = plt.subplots(figsize=(2, 2))  # Adjust figure size to accommodate both table and header
+        fig.patch.set_facecolor('#deeaf7')  # Set the background color of the figure
+
+        # Hide axes completely (ensures no space around the table)
+        ax.axis('off')
+
+        # Add the table name as a header to the top of the figure
+        ax.text(0.5, 1, table_name[:-2], ha='center', fontsize=16, weight='bold', transform=ax.transAxes)
+
+        # Add the table to the figure with bold headers
+        table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
+
+        # Style the table
+        table.auto_set_font_size(False)
+        table.set_fontsize(12)
+        table.scale(0.8, 1.2)  # Make the columns narrower by reducing the width scaling
+
+        # Optionally, set the column width manually (you can remove this if not needed)
+        table.auto_set_column_width([0, 1])  # Adjust columns 0 and 1 to be narrower
+
+        # Set the background color for the cells and the text properties
+        for (i, j), cell in table.get_celld().items():
+            if i == 0:  # Header row
+                cell.set_text_props(weight='bold', fontsize=14)  # Set bold and increase font size
+                cell.set_facecolor('#ffffff')  # White background for header cells
+            else:
+                cell.set_fontsize(12)  # Set a slightly smaller font for data rows
+                cell.set_facecolor('#ffffff')  # White background for data cells
+
+        # Save the table as an image with the background color and no transparency
+        table_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{date_and_time_of_training}/{table_name}.png'
+        plt.savefig(table_filename, bbox_inches='tight', pad_inches=0, dpi=300)  # Removed transparent=True
+        plt.close()  # Close the figure to clear memory
 
 def close_workbook():
     s.training_workbook.close()
@@ -464,32 +568,14 @@ def close_workbook():
 
 
 if __name__ == "__main__":
-
-
-    find_value_by_colName_and_userID("314808981", "email")
-
-    s.chosen_patient_ID="315454"
-    create_workbook()
-    s.excel_workbook.add_worksheet("graphs_1")
-
-    worksheet = s.excel_workbook.get_worksheet_by_name("graphs_1")
-
-    x_values=(1,2,3,4)
-    y_values=(5,6,7,8)
     data = {
-        "graph_1":{'x': x_values, 'y': y_values}}
+        'aaa 4': {
+            'x': [1, 2, 3, 4, 5],
+            'y': [10, 15, 20, 25, 30]  # Example data for y-values
+        }
+    }
 
-
-    create_and_save_graph(data, worksheet)
-    s.excel_workbook.close()
-
-
-
-
-    s.chosen_patient_ID='314808981'
-    # Example usage:
-    input_str = "315454 09-04-2024 13-42-08"
-    result = extract_string_between_spaces(input_str)
-    print(result)  # Output: "is"
-
-    find_and_add_training_to_patient()
+    s.start_dt= "11-02-1999 12-13-45"
+    s.chosen_patient_ID="1111"
+    # Example usage
+    create_and_save_table_with_calculations(data, 'exercise_name')

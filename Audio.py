@@ -46,7 +46,7 @@ def get_wav_duration(str_to_say):
         # Calculate the duration in seconds
         duration = num_frames / float(frame_rate)
 
-        return duration
+        return int(duration)
 
 if __name__ == '__main__':
     language = 'Hebrew'

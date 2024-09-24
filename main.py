@@ -1,18 +1,11 @@
+import threading
+
 import Settings as s
 from Camera import Camera
 from Gymmy import Gymmy
 from TrainingNew import Training
 from ScreenNew import Screen, FullScreenApp, EntrancePage
 
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hello, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-# TODO add more exercises
-# TODO adaptive framework
-# TODO GUI
-# delay between exercises
 
 
 if __name__ == '__main__':
@@ -45,7 +38,9 @@ if __name__ == '__main__':
     # Excel variable
     ############################# להוריד את הסולמיות
     s.ex_list = {}
-
+    s.starts_and_ends_of_stops =[]
+    s.stop_requested = False
+    s.is_second_repetition_or_more=False
     # Create all components
     s.camera = Camera()
     s.training = Training()
@@ -53,7 +48,6 @@ if __name__ == '__main__':
 
     s.screen = Screen()
     #s.screen.switch_frame(HelloPage)
-
 
     # Start all threads
     s.camera.start()

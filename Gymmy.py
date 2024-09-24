@@ -66,16 +66,14 @@ class Gymmy(threading.Thread):
             #s.demo_finish=True
             self.hello_waving()
         else:
-            audio = s.req_exercise
-            #say(audio)
-            time.sleep(get_wav_duration(audio))
-            #s.screen.switch_frame(ExercisePage)
-            #say('start_ex')
-            #time.sleep(get_wav_duration("start_ex"))
             self.faster_sayings = ['pick_up_pace', 'faster']
             said_faster= 0 #how many times the robot said faster encouragement
             for i in range(s.rep):
-                getattr(self, ex)(i, "slow")
+                if s.stop_requested:
+                    break
+
+                getattr(self, ex)(i, "moderate")
+                #getattr(self, ex)(i)
                 print("robot count: "+str(i+1))
                 if i-3>= s.patient_repetitions_counting_in_exercise and said_faster==0 and i!=s.rep-1: #-1 because i starts from 0
                     self.random_faster()
@@ -121,8 +119,8 @@ class Gymmy(threading.Thread):
             self.gymmy.l_shoulder_y.goto_position(-50, 1, wait=False)
             self.gymmy.r_shoulder_y.goto_position(-50, 1, wait=False)
             time.sleep(1)
-            self.gymmy.l_shoulder_x.goto_position(0, 1, wait=False)
-            self.gymmy.r_shoulder_x.goto_position(0, 1, wait=False)
+            self.gymmy.l_shoulder_x.goto_position(5, 1, wait=False)
+            self.gymmy.r_shoulder_x.goto_position(-5, 1, wait=False)
             time.sleep(1)
 
         if (rate=="fast"):
@@ -132,6 +130,7 @@ class Gymmy(threading.Thread):
             self.gymmy.r_elbow_y.goto_position(0, 1, wait=False)
             self.gymmy.l_elbow_y.goto_position(0, 1, wait=True)
             time.sleep(0.5)
+
         elif (rate=="moderate"):
             self.gymmy.r_elbow_y.goto_position(-135, 1.5, wait=False)
             self.gymmy.l_elbow_y.goto_position(-135, 1.5, wait=True)
@@ -139,6 +138,7 @@ class Gymmy(threading.Thread):
             self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
             self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=True)
             time.sleep(0.5)
+
         else:
             self.gymmy.r_elbow_y.goto_position(-135, 2, wait=False)
             self.gymmy.l_elbow_y.goto_position(-135, 2, wait=True)
@@ -911,6 +911,44 @@ class Gymmy(threading.Thread):
             self.gymmy.r_arm_z.goto_position(0, 1.5, wait=False)
 
 
+    def hands_up_and_bend_backwards(self, i, rate):
+        if i == 0:
+            self.gymmy.r_shoulder_y.goto_position(-190, 2, wait=False)
+            self.gymmy.l_shoulder_y.goto_position(-190, 2, wait=False)
+            time.sleep(2)
+
+        if (rate=="fast"):
+            self.gymmy.r_elbow_y.goto_position(-135, 1, wait=False)
+            self.gymmy.l_elbow_y.goto_position(-135, 1, wait=True)
+            time.sleep(0.5)
+            self.gymmy.r_elbow_y.goto_position(0, 1, wait=False)
+            self.gymmy.l_elbow_y.goto_position(0, 1, wait=True)
+            time.sleep(0.5)
+        elif (rate=="moderate"):
+            self.gymmy.r_elbow_y.goto_position(-135, 1.5, wait=False)
+            self.gymmy.l_elbow_y.goto_position(-135, 1.5, wait=True)
+            time.sleep(1)
+            self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=False)
+            self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=True)
+            time.sleep(1)
+        else:
+            self.gymmy.r_elbow_y.goto_position(-135, 2, wait=False)
+            self.gymmy.l_elbow_y.goto_position(-135, 2, wait=True)
+            time.sleep(1.5)
+            self.gymmy.r_elbow_y.goto_position(0, 2, wait=False)
+            self.gymmy.l_elbow_y.goto_position(0, 2, wait=True)
+            time.sleep(1.5)
+
+        if i == (s.rep - 1):
+            self.gymmy.r_shoulder_y.goto_position(0, 2, wait=False)
+            self.gymmy.l_shoulder_y.goto_position(0, 2, wait=False)
+
+    def help(self, i, rate):
+        if (rate=="moderate"):
+            self.gymmy.head_z.goto_position(30, 2, wait=False)
+
+
+
 
 if __name__ == "__main__":
     s.rep = 7
@@ -931,7 +969,7 @@ if __name__ == "__main__":
     #s.req_exercise ="bend_elbows_ball"
     #s.req_exercise = "raise_arms_above_head_ball"
     #s.req_exercise = "raise_arms_forward_turn_ball"
-    #s.req_exercise = "open_arms_and_forward_ball"
+    s.req_exercise = "open_arms_and_forward_ball"
     #s.req_exercise = "open_arms_above_head_ball"
     #s.req_exercise = "open_arms_with_band"
     #s.req_exercise = "open_arms_and_up_with_band"
@@ -939,11 +977,13 @@ if __name__ == "__main__":
     #s.req_exercise = "bend_elbows_stick"
     #s.req_exercise = "bend_elbows_and_up_stick"
     #s.req_exercise = "arms_up_and_down_stick"
-    s.req_exercise = "switch_with_stick"
+    #s.req_exercise = "switch_with_stick"
     #s.req_exercise = "hands_behind_and_lean_notool"
     #s.req_exercise="right_hand_up_and_bend_notool"
     # s.req_exercise = "left_hand_up_and_bend_notool"
     #s.req_exercise = "raising_hands_diagonally_notool"
+    #s.req_exercise = "hands_up_and_bend_backwards"
+    #s.req_exercise = "help"
 
 
 

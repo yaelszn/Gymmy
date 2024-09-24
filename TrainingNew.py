@@ -1,5 +1,9 @@
+import os
 import threading
 import time
+
+import cv2
+
 from Camera import Camera
 from Gymmy import Gymmy
 from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
@@ -24,8 +28,17 @@ class Training(threading.Thread):
 
     def training_session(self):
 
+
         while s.ex_in_training==[]:
             time.sleep(1)
+
+        s.start_dt = datetime.now()
+
+        s.stop_requested = False
+        time.sleep(1) #wait another second so that s.ex_in_training will contain all of the exercises
+        if not s.is_second_repetition_or_more:
+            selected_exercises = random.sample(s.ex_in_training, min(8, len(s.ex_in_training))) # select 8 random strings, or all of them if there are fewer than 8
+            s.ex_in_training = selected_exercises
 
         print("Training: start exercises")
         s.start_time = time.time()
@@ -33,11 +46,14 @@ class Training(threading.Thread):
         categories = ["ball", "stick", "notool", "band"]
         random.shuffle(categories)
 
-        Excel.create_workbook() #create workbook in excel for this session
+        Excel.create_workbook_for_training() #create workbook in excel for this session
         time.sleep(7)
         self.exercises_by_order=[]
 
         for i in categories:
+            if s.stop_requested:
+                break
+
             exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
             random.shuffle(exercises_in_category)
             s.waved_has_tool= False
@@ -59,7 +75,14 @@ class Training(threading.Thread):
                     while (not s.gymmy_done) or (not s.camera_done):
                         # print("not done")
                         time.sleep(0.0001)
+
+                    if s.stop_requested:
+                        break
+
                     time.sleep(3)
+
+                if s.stop_requested:
+                    break
 
             time.sleep(1.5)
 
@@ -95,13 +118,16 @@ class Training(threading.Thread):
         self.reset()
 
     def run_exercise(self, name):
+
         time.sleep(0.1)  # wait between exercises
         s.success_exercise = False
         s.patient_repetitions_counting_in_exercise=0
-        s.req_exercise = name
+
         print("TRAINING: Exercise ", name, " start")
         s.screen.switch_frame(ExplanationPage, exercise= name)
-        time.sleep(5)
+        time.sleep(min(get_wav_duration(name), self.get_video_duration(name))) #wait the time of the audio
+        s.req_exercise = name
+        time.sleep(abs(self.get_video_duration(name)-get_wav_duration(name))) #wait the time of the video minus the time it already wated
         s.screen.switch_frame(ExercisePage)
         while s.req_exercise == name:
             time.sleep(0.00000001)
@@ -110,6 +136,17 @@ class Training(threading.Thread):
         print("TRAINING: Exercise ", name, " done")
         time.sleep(3)
         # time.sleep(1)
+
+    def get_video_duration(self, exercise):
+        video_file = f'Videos//{exercise}_vid.mp4'
+        video_path = os.path.join(os.getcwd(), video_file)
+        self.cap = cv2.VideoCapture(video_path)
+
+        fps = self.cap.get(cv2.CAP_PROP_FPS)  # Get the frame rate of the video
+        total_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)  # Get the total number of frames
+        duration = total_frames / fps  # Duration in seconds
+
+        return duration
 
     def reset(self):
         s.req_exercise = ""
@@ -127,6 +164,8 @@ class Training(threading.Thread):
         s.waved_has_tool = True  # True just in order to go through the loop in Gymmy
         # Excel variable
         s.ex_list = {}
+        s.stop_requested = False
+
         s.screen.switch_frame(EntrancePage)
 
 
