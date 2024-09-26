@@ -744,7 +744,7 @@ if __name__ == '__main__':
     # Excel variable
     ############################# להוריד את הסולמיות
     s.ex_list = {}
-    s.req_exercise = "help_function"
+    s.req_exercise = "bend_elbows_ball"
     time.sleep(2)
     # Create all components
     s.camera = Camera()

@@ -1,280 +1,130 @@
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
-from email.mime.base import MIMEBase
-from email import encoders
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import smtplib
-import base64
-from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
-import re
+import time
+import pyzed.sl as sl
+import threading
+import socket
+from Audio import say, get_wav_duration
+from Joint import Joint
+from PyZedWrapper import PyZedWrapper
+import Settings as s
+import numpy as np
 
 
-def get_percentage_of_successes_in_arrays():
-    df = pd.read_excel("Patients.xlsx", sheet_name="patients_history_of_trainings")
-    df.iloc[:, 0] = df.iloc[:, 0].astype(str)
-    filtered_rows = df[df.iloc[:, 0] == "314808981"]
+class Help (threading.Thread):
 
-    x_values = []
-    y_values = []
+    def calc_angle_3d(self, joint1, joint2, joint3):
+        a = np.array([joint1.x, joint1.y, joint1.z], dtype=np.float32)  # First
+        b = np.array([joint2.x, joint2.y, joint2.z], dtype=np.float32)  # Mid
+        c = np.array([joint3.x, joint3.y, joint3.z], dtype=np.float32)  # End
 
-    row = filtered_rows.iloc[0]  # Get the first (and only) row
-    row_values = row.iloc[1:]  # Exclude the first value of the row
-
-    if len(row_values) > 20:
-        last_20_values = row_values[-20:]  # Get the last 20 values
-    else:
-        last_20_values = row_values  # Take all values if there are less than 20
-
-    count = 1
-    for index, cell_value in enumerate(last_20_values):
-        if index % 2 != 0:  # Check if index is odd
-            y_values.append(cell_value)
-        else:
-            x_values.append(count)
-            count += 1
-
-    return x_values, y_values
-
-
-def draw_a_success_graph_and_save():
-    x_values, y_values = get_percentage_of_successes_in_arrays()
-
-    # Create a new plot
-    plt.plot(x_values, y_values)
-    plt.xlabel('תאריך'[::-1])
-    plt.ylabel('אחוזי הצלחה'[::-1])
-    #plt.title("גרף אחוזי הצלחה באימון"[::-1])
-
-    # Save the plot to a file
-    graph_file_path = "graph.jpg"
-    plt.savefig(graph_file_path)
-
-    # Clear the plot
-    plt.clf()
-
-    return graph_file_path
-
-
-def add_text_to_image(level):
-    # Open the image
-    image = Image.open("C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Pictures/level_for_email.png")
-
-    # Initialize ImageDraw object
-    draw = ImageDraw.Draw(image)
-
-    # Choose a font (default font)
-    font = ImageFont.truetype("arial.ttf", 50)
-
-    # Define text color
-    text_color = (0, 0, 0)  # white
-
-    # Define text position
-    text_width, text_height = draw.textsize(str(level), font)
-    image_width, image_height = image.size
-    text_x = (image_width - text_width) // 2
-    text_y = (image_height - text_height) // 2 -10
-
-    # Add text to the image
-    draw.text((text_x, text_y), str(level), fill=text_color, font=font)
-
-    # Save the image with text
-    image_with_text_path = "C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Pictures/temp_level_for_email.png"
-    image.save(image_with_text_path)
-
-    return image_with_text_path
-
-
-def email_sending_level_up(level):
-    # Generate the graph file path
-    graph_file_path = draw_a_success_graph_and_save()
-
-    # Generate the graph and get its buffer
-    buffer = BytesIO()
-    plt.savefig(buffer, format='jpg')
-    buffer.seek(0)
-
-    # Email configuration
-    sender_email = 'yaelszn@gmail.com'
-    receiver_email = 'yaelszn@gmail.com'
-    password = 'diyf cxzc tifj sotp'
-
-    # Read the PNG file and add text
-    png_path_with_text = add_text_to_image(level)
-
-    with open(png_path_with_text, "rb") as file:
-        png_data = file.read()
-
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
-
-    # Create message container
-    message = MIMEMultipart("related")
-    message['From'] = sender_email
-    message['To'] = receiver_email
-    message['Subject'] = 'לגימי יש משהו לומר לך!'
-    name = 'יעל'
-    # Create HTML content with embedded image and graph
-    html_content = f'''
-    <html>
-      <body style="direction: rtl;">
-        <p>{name}, כל הכבוד על ההשגים שלך! </p>
-        <p>באימון האחרון עלית לרמה </p>
-        <img src="cid:image" alt="Image" style="display: block; margin: 0 auto;">
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p>גרף ההתקדמות באחוזי ההצלחה שלך בכל אימון: </p>
-        <img src="cid:graph" alt="Image">
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
-      </body>
-    </html>
-    '''
-
-    # Attach HTML content
-    message.attach(MIMEText(html_content, 'html'))
-
-    # Attach the PNG image as inline content
-    png_image = MIMEImage(png_data, 'png')
-    png_image.add_header('Content-ID', '<image>')
-    message.attach(png_image)
-
-    # Attach the graph as inline content
-    graph_image = MIMEImage(graph_data, 'jpeg')
-    graph_image.add_header('Content-ID', '<graph>')
-    message.attach(graph_image)
-
-    # Attach the graph file
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
-        graph_attachment = MIMEImage(graph_data, 'jpeg')
-        graph_attachment.add_header('Content-Disposition', 'attachment', filename='graph.jpg')
-        message.attach(graph_attachment)
-
-    # Connect to SMTP server
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
-        server.starttls()  # Secure the connection
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-        print('Email sent successfully!')
-
-
-
-
-def email_sending_not_level_up(level):
-    # Generate the graph file path
-    graph_file_path = draw_a_success_graph_and_save()
-
-    # Generate the graph and get its buffer
-    buffer = BytesIO()
-    plt.savefig(buffer, format='jpg')
-    buffer.seek(0)
-
-    # Email configuration
-    sender_email = 'yaelszn@gmail.com'
-    receiver_email = 'yaelszn@gmail.com'
-    password = 'diyf cxzc tifj sotp'
-
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
-
-    # Create message container
-    message = MIMEMultipart("related")
-    message['From'] = sender_email
-    message['To'] = receiver_email
-    message['Subject'] = 'לגימי יש משהו לומר לך!'
-    name = 'יעל'
-    # Create HTML content with embedded image and graph
-    html_content = f'''
-    <html>
-      <body style="direction: rtl;">
-        <p>{name}, כל הכבוד שהתאמנת היום! </p>
-        <p> הרמה הנוכחית שלך היא רמה  {level} </p>
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-weight: bold;">גרף ההתקדמות באחוזי ההצלחה שלך בכל אימון: </p>
-        <img src="cid:graph" alt="Image">
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
-      </body>
-    </html>
-    '''
-
-    # Attach HTML content
-    message.attach(MIMEText(html_content, 'html'))
-
-    # Attach the graph as inline content
-    graph_image = MIMEImage(graph_data, 'jpeg')
-    graph_image.add_header('Content-ID', '<graph>')
-    message.attach(graph_image)
-
-    # Attach the graph file
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
-        graph_attachment = MIMEImage(graph_data, 'jpeg')
-        graph_attachment.add_header('Content-Disposition', 'attachment', filename='graph.jpg')
-        message.attach(graph_attachment)
-
-    # Connect to SMTP server
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
-        server.starttls()  # Secure the connection
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-        print('Email sent successfully!')
-
-
-#email_sending_level_up("5")
-#email_sending_not_level_up("5")
-
-import os
-from datetime import datetime
-
-
-def get_sorted_folders(directory):
-    # Get the list of folder names in the specified directory
-    folder_names = [f for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
-
-    # Convert folder names to datetime objects
-    folder_datetimes = []
-    for folder in folder_names:
+        ba = a - b
+        bc = c - b
         try:
-            folder_datetime = datetime.strptime(folder, "%d-%m-%Y %H-%M-%S")
-            folder_datetimes.append((folder, folder_datetime))
-        except ValueError:
-            # Skip folder names that don't match the expected format
-            continue
+            cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+            angle = np.arccos(cosine_angle)
+            return round(np.degrees(angle), 2)
 
-    # Sort the list of tuples by datetime in descending order
-    sorted_folders = sorted(folder_datetimes, key=lambda x: x[1], reverse=True)
+        except:
+            print("could not calculate the angle")
+            return None
 
-    # Extract just the folder names from the sorted list
-    sorted_folder_names = [folder for folder, _ in sorted_folders]
+    def _init_(self):
+        threading.Thread._init_(self)
+        # Initialize the ZED camera
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_address = ('localhost', 7000)
+        self.sock.bind(self.server_address)
+        print("CAMERA INITIALIZATION")
+        self.frame_count = 0
+        self.start_time = None
 
-    return sorted_folder_names
+    def run(self):
+        while True:
+            print("CAMERA START")
+            medaip = PyZedWrapper()
+            medaip.start()
+            self.zed = PyZedWrapper.get_zed(medaip)
+
+            while not s.finish_program:
+                self.get_skeleton_data()
+
+    def get_skeleton_data(self):
+        bodies = sl.Bodies()  # Structure containing all the detected bodies
+        body_runtime_param = sl.BodyTrackingRuntimeParameters()
+        body_runtime_param.detection_confidence_threshold = 40
+
+        if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
+            self.zed.retrieve_bodies(bodies, body_runtime_param)
+            body_array = bodies.body_list
+            num_of_bodies = len(body_array)
+            time.sleep(0.001)
+
+            if num_of_bodies != 0:
+                body = bodies.body_list[0]
+
+                arr_organs = ['pelvis', 'spine_1', 'spine_2', 'spine_3', 'neck', 'nose', 'L_eye', 'R_eye', 'L_ear', 'R_ear',
+                              'L_clavicle', 'R_clavicle', 'L_shoulder', 'R_shoulder', 'L_elbow', 'R_elbow', 'L_wrist',
+                              'R_wrist', 'L_hip', 'R_hip', 'L_knee', 'R_knee', 'L_ankle', 'R_ankle', 'L_big_toe',
+                              'R_big_toe', 'L_small_toe', 'R_small_toe', 'L_heel', 'R_heel', 'L_hand_thumb', 'R_hand_thumb',
+                              'L_hand_index', 'R_hand_index', 'L_hand_middle', 'R_hand_middle', 'L_hand_pinky', 'R_hand_pinky']
+
+                joints = {}
+                for i, kp_3d in enumerate(body.keypoint):
+                    organ = arr_organs[i]
+                    joint = Joint(organ, kp_3d)
+                    joints[organ] = joint
+
+                    # Print the joint name and its coordinates
+                    print(f"{organ}: X: {kp_3d[0]:.2f}, Y: {kp_3d[1]:.2f}, Z: {kp_3d[2]:.2f}")
+
+                return joints
+
+            else:
+                time.sleep(0.01)
+                return None
+
+        else:
+            return None
+
+if __name__ == '__main__':
+    s.camera_num = 1  # 0 - webcam, 2 - second USB in maya's computer
+
+    # Audio variables initialization
+    language = 'Hebrew'
+    gender = 'Male'
+    s.audio_path = 'audio files/' + language + '/' + gender + '/'
+    s.picture_path = 'audio files/' + language + '/' + gender + '/'
+    # s.str_to_say = ""
+    # current_time = datetime.datetime.now()
+    # s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
+    # str(current_time.minute) + "." + str(current_time.second)
+
+    # Training variables initialization
+    s.rep = 10
+    s.waved = False
+    s.success_exercise = False
+    s.calibration = False
+    s.finish_workout = False
+    s.gymmy_done = False
+    s.camera_done = False
+    s.robot_count = False
+    s.demo_finish = False
+    s.list_effort_each_exercise = {}
+    s.ex_in_training = []
+    s.finish_program= False
+    # s.exercises_start=False
+    s.waved_has_tool = True  # True just in order to go through the loop in Gymmy
+    s.max_repetitions_in_training=0
+    # Excel variable
+    ############################# להוריד את הסולמיות
+    s.ex_list = {}
+    #s.req_exercise = "bend_elbows_ball"
+    time.sleep(2)
+    # Create all components
+    s.camera = Help()
+    s.number_of_repetitions_in_training=0
 
 
-# Example usage
-# directory_path = "C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/4382/Graphs/right_hand_up_and_bend_notool"  # Replace with your directory path
-# sorted_folders = get_sorted_folders(directory_path)
-#
-# print("Folders from latest to earliest:")
-# for folder in sorted_folders:
-#     print(folder)
-
-
-def find_image(directory, number):
-    # Create a regex pattern to match the files with ' ' followed by the specific number and '.jpeg'
-    pattern = re.compile(r' (\d+)\.jpeg$')
-
-    # Iterate through the files in the directory
-    for filename in os.listdir(directory):
-        match = pattern.search(filename)
-        if match and match.group(1) == str(number):
-            return os.path.join(directory, filename)
-    return None
-
-print(find_image("C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Patients/4382/Graphs/bend_elbows_ball/01-06-2024 18-42-16", 1))
+    # Start all threads
+    s.camera.start()
 

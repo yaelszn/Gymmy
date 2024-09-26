@@ -3,6 +3,7 @@ import threading
 import Settings as s
 from Camera import Camera
 from Gymmy import Gymmy
+from Realsense import Realsense
 from TrainingNew import Training
 from ScreenNew import Screen, FullScreenApp, EntrancePage
 
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     s.stop_requested = False
     s.is_second_repetition_or_more=False
     # Create all components
-    s.camera = Camera()
+    s.camera = Realsense()
     s.training = Training()
     s.robot = Gymmy()
 

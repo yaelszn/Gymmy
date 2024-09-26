@@ -4,6 +4,7 @@ import threading
 import cv2
 import Settings as s
 
+
 class PyZedWrapper(threading.Thread):
 
     def __init__(self):

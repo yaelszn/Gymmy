@@ -1,93 +1,85 @@
+import json
+import random
+import pyzed.sl as sl
 import threading
 import socket
-import json
-import math
-import time
-import pandas as pd
-import numpy as np
-from statistics import mean, stdev
-
-# internal imports
-from MP import MP
+from Audio import say, get_wav_duration
 from Joint import Joint
+from MP import MP
+from PyZedWrapper import PyZedWrapper
 import Settings as s
+import time
 import Excel
-from Audio import say
+from ScreenNew import Screen, FullScreenApp, OnePage, TwoPage, ThreePage, FourPage, FivePage, SixPage, SevenPage, \
+    EightPage, NinePage, TenPage, Fail, Very_good, Excellent, Well_done, AlmostExcellent
+import numpy as np
+from openpyxl import Workbook
+from scipy.signal import savgol_filter
+
+class KalmanFilter:
+    def __init__(self, initial_position, process_noise=1e-2, measurement_noise=1e-1, error_estimate=1, alpha=0.5, threshold=20):
+        self.current_estimate = np.array(initial_position)  # Current estimate
+        self.estimate_covariance = error_estimate  # Error estimate
+        self.process_noise = process_noise  # Process noise
+        self.measurement_noise = measurement_noise  # Measurement noise
+        self.alpha = alpha  # EMA smoothing factor
+        self.smoothed_estimate = np.array(initial_position)  # Smoothed estimate
+        self.previous_positions = [initial_position]  # Keep track of previous positions
+        self.threshold = threshold  # Threshold for large intervals
+
+    def predict(self):
+        self.current_estimate = self.current_estimate
+        self.estimate_covariance += self.process_noise
+
+    def update(self, measurement):
+        # Check for large intervals between the current and previous measurements
+        if len(self.previous_positions) > 0:
+            prev_position = self.previous_positions[-1]
+            distance = np.linalg.norm(np.array(measurement) - np.array(prev_position))
+            if distance > self.threshold:
+                # If the interval is large, replace with an average of the last few measurements
+                print("Large interval detected. Smoothing...")
+                measurement = self.average_previous_positions()
+
+        # Apply Savitzky-Golay filter for smoothing
+        measurement = self.apply_savgol_filter(measurement)
+
+        kalman_gain = self.estimate_covariance / (self.estimate_covariance + self.measurement_noise)
+        self.current_estimate += kalman_gain * (np.array(measurement) - self.current_estimate)
+        self.estimate_covariance *= (1 - kalman_gain)
+        self.smoothed_estimate = self.apply_ema(self.smoothed_estimate, self.current_estimate)
+
+        # Add the current position to the list of previous positions
+        self.previous_positions.append(measurement)
+        if len(self.previous_positions) > 5:  # Limit the number of stored previous positions
+            self.previous_positions.pop(0)
+
+    def apply_ema(self, previous_estimate, current_estimate):
+        return self.alpha * current_estimate + (1 - self.alpha) * previous_estimate
+
+    def average_previous_positions(self):
+        # Average the previous few positions to smooth the transition
+        return np.mean(self.previous_positions[-3:], axis=0)
+
+    def get_estimate(self):
+        return self.smoothed_estimate
+
+    def apply_savgol_filter(self, measurement, window_length=15, polyorder=2):
+        # Ensure there are enough points to apply the filter
+        if len(self.previous_positions) >= window_length:
+            # Apply the Savitzky-Golay filter to the last few positions (including current)
+            smoothed = savgol_filter(np.array(self.previous_positions[-window_length:] + [measurement]), window_length, polyorder, axis=0)
+            return smoothed[-1]  # Return the last smoothed value (current position)
+        else:
+            return measurement  # If not enough data, return the original measurement
 
 
-class Camera(threading.Thread):
-
-    def __init__(self):
-        threading.Thread.__init__(self)
-        # Create socket for client-server communication with Camera.py
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.server_address = ('localhost', 7000)
-        self.sock.bind(self.server_address)
-        print("CAMERA INITIALIZATION")
-
-    def get_skeleton_data(self):
-        self.sock.settimeout(1)
-        try:
-            data, address = self.sock.recvfrom(4096)
-            # print('received {} bytes from {}'.format(len(data), address))
-            data = json.loads(data.decode())
-            data = data.split('/')
-            joints_str = []
-            for i in data:
-                joint_data = i.split(',')
-                joints_str.append(joint_data)
-            joints_str = joints_str[:-1]  # remove the empty list at the end
-            # change from string to float values
-            joints = {}  # joints dict data
-            for j in joints_str:
-                joints[j[0]] = Joint(j[0], float(j[1]), float(j[2]), float(j[3]) * 100)  # z is smaller than x and y!!
-            return joints
-        except socket.timeout:  # fail after 1 second of no activity
-            print("Didn't receive data! [Timeout]")
-            return None
-
-    def init_position(self):
-        # Check user position - so all joints all visible, and all exercise will be able to be recognized.
-        init_pos = False
-        say("calibration")
-        print("CAMERA: init position - please stand in front of the camera with hands to the sides")
-        while not init_pos:
-            jd = self.get_skeleton_data()
-            if jd is not None:
-                count = 0
-                for j in jd.values():
-                    print(j)
-                    if j.visible:
-                        count += 1
-                angle_right = self.calc_angle(jd["R_Shoulder"], jd["R_Hip"], jd["R_Wrist"])
-                angle_left = self.calc_angle(jd["L_Shoulder"], jd["L_Hip"], jd["L_Wrist"])
-                if count == len(jd) and angle_right > 80 and angle_left > 80:
-                    init_pos = True  # all joints are visible + arms are raised to the sides - position initialized.
-            else:  # skeleton is not recognized in frame
-                print("user is not recognized")
-        # say("calibration_complete")
-        s.calibration = True
-        print("CAMERA: init position verified")
-
-    def calc_angle(self, joint1, joint2, joint3):
-        a = self.calc_dist(joint1, joint2)
-        b = self.calc_dist(joint1, joint3)
-        c = self.calc_dist(joint2, joint3)
-        try:
-            rad_angle = math.acos((a ** 2 + b ** 2 - c ** 2) / (2 * a * b))
-            deg_angle = (rad_angle * 180) / math.pi
-            return round(deg_angle, 2)
-        except:
-            # pass
-            print("could not calculate the angle")
+class Realsense(threading.Thread):
 
     def calc_angle_3d(self, joint1, joint2, joint3):
-        if joint1.is_joint_all_zeros() or joint2.is_joint_all_zeros() or joint3.is_joint_all_zeros():
-            return None
-
-        a = np.array([joint1.x, joint1.y, joint1.z])  # First
-        b = np.array([joint2.x, joint2.y, joint2.z])  # Mid
-        c = np.array([joint3.x, joint3.y, joint3.z])  # End
+        a = np.array([joint1.x, joint1.y, joint1.z], dtype=np.float32)  # First
+        b = np.array([joint2.x, joint2.y, joint2.z], dtype=np.float32)  # Mid
+        c = np.array([joint3.x, joint3.y, joint3.z], dtype=np.float32)  # End
 
         ba = a - b
         bc = c - b
@@ -100,17 +92,225 @@ class Camera(threading.Thread):
             print("could not calculate the angle")
             return None
 
-    def calc_dist(self, joint1, joint2):
-        distance = math.hypot(joint1.x - joint2.x,
-                              joint1.y - joint2.y)
-        return distance
+    def __init__(self):
+        threading.Thread.__init__(self)
+        # Initialize the ZED camera or RealSense (depends on your setup)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_address = ('localhost', 7000)
+        self.sock.bind(self.server_address)
+        print("CAMERA INITIALIZATION")
+        self.frame_count = 0
+        self.start_time = None
+
+    def run(self):
+        while True:
+            print("CAMERA START")
+            medaip = MP()  # Assuming PyZedWrapper manages your camera setup
+            medaip.start()
+
+            while not s.finish_program:
+                time.sleep(0.0001)  # Prevents the MP from being stuck
+                if s.req_exercise != "":
+                    ex = s.req_exercise
+                    print("CAMERA: Exercise", ex, "start")
+                    if s.req_exercise != "hello_waving":
+                        audio = s.req_exercise
+                        time.sleep(get_wav_duration(audio) + get_wav_duration("start_ex"))
+                        s.max_repetitions_in_training += s.rep  # Number of repetitions expected in this exercise
+                    getattr(self, ex)()  # Call the exercise method dynamically
+                    print("CAMERA: Exercise", ex, "done")
+                    s.req_exercise = ""
+                    s.camera_done = True
+                else:
+                    time.sleep(1)  # Prevents the MP from being stuck
+            print("Camera Done")
+
+    def get_skeleton_data(self):
+        self.sock.settimeout(1)
+        try:
+            data, address = self.sock.recvfrom(4096)
+            # Decode and split the received data
+            data = json.loads(data.decode())
+            data = data.split('/')
+
+            joints_str = []
+            for i in data:
+                joint_data = i.split(',')
+                joints_str.append(joint_data)
+
+            joints_str = joints_str[:-1]  # Remove the empty entry at the end
+
+            joints = {}  # Dictionary to store joint data
+
+            # Use the same joint names as in MP
+            lm_dict = {'nose': 0, 'L_eye_inner': 1, 'L_eye': 2, "L_eye_outer": 3,
+                       'R_eye_inner': 4, 'R_eye': 5, "R_eye_outer": 6,
+                       'L_ear': 7, 'R_ear': 8, "L_mouth": 9, "R_mouth": 10,
+                       'L_shoulder': 11, 'R_shoulder': 12, 'L_elbow': 13, 'R_elbow': 14,
+                       'L_wrist': 15, 'R_wrist': 16,
+                       'L_hand_pinky': 17, 'R_hand_pinky': 18, 'L_hand_index': 19, 'R_hand_index': 20,
+                       'L_hand_thumb': 21, 'R_hand_thumb': 22, 'L_hip': 23, 'R_hip': 24}
+
+            for key, value in lm_dict.items():
+                joint_data = [float(joints_str[value][1]), float(joints_str[value][2]), float(joints_str[value][3])*100]
+
+                if key in joints:
+                    # If joint already exists, update using Kalman Filter
+                    joints[key].kalman_filter.predict()  # Predict the next position
+                    joints[key].kalman_filter.update(joint_data)  # Update the Kalman filter with the new data
+                    joints[key].position = joints[key].kalman_filter.get_estimate()  # Get the smoothed position
+                else:
+                    # Create a new joint if it doesn't exist
+                    joint = Joint(key, joint_data)
+                    joint.kalman_filter = KalmanFilter(joint_data, alpha=0.5)  # Initialize Kalman Filter
+                    joints[key] = joint
+
+            return joints
+
+        except socket.timeout:
+            print("Didn't receive data! [Timeout]")
+            return None
+
+
+
+
+    def random_encouragement(self):
+        enco = ["Well_done", "Very_good", "Excellent"]
+        random_class_name = random.choice(enco)
+        random_class = globals()[random_class_name]
+        random_instance = random_class
+        s.screen.switch_frame(random_instance)
+
+
+    def end_exercise(self, counter):
+        print(" ")
+        if s.rep - 2 > counter:
+            time.sleep(1)
+            s.screen.switch_frame(Fail)
+
+
+        if (s.rep - 2) <= counter <= (s.rep - 1):
+            time.sleep(1)
+            s.screen.switch_frame(AlmostExcellent)
+
+
+        if counter == s.rep:
+            time.sleep(1)
+            self.random_encouragement()
 
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
-                               joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, angle_classification, use_alternate_angles=False):
+                                   joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, use_alternate_angles=False, left_right_differ=False):
+
+            list_first_angle=[]
+            list_second_angle=[]
+            flag = True
+            counter = 0
+            list_joints = []
+            while s.req_exercise == exercise_name:
+            #for i in range (1,200):
+                joints = self.get_skeleton_data()
+                if joints is not None:
+                    right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
+                                                     joints[str("R_" + joint3)])
+                    left_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("L_" + joint2)],
+                                                    joints[str("L_" + joint3)])
+                    if use_alternate_angles:
+                        right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
+                                                         joints[str("L_" + joint6)])
+                        left_angle2 = self.calc_angle_3d(joints[str("L_" + joint4)], joints[str("L_" + joint5)],
+                                                         joints[str("R_" + joint6)])
+
+                        new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
+                                     joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
+                                     joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("L_" + joint6)],
+                                     joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
+                                     right_angle, left_angle, right_angle2, left_angle2]
+
+                    else:
+                        right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
+                                                       joints[str("R_" + joint6)])
+                        left_angle2 = self.calc_angle_3d(joints[str("L_" + joint4)], joints[str("L_" + joint5)],
+                                                      joints[str("L_" + joint6)])
+
+                        new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
+                                     joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
+                                     joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
+                                     joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
+                                     right_angle, left_angle, right_angle2, left_angle2]
+
+                    ##############################################################################
+                    print(left_angle, " ", right_angle)
+                    print(left_angle2, " ", right_angle2)
+
+                    list_first_angle.append(left_angle)
+                    list_second_angle.append(left_angle2)
+
+                    ##############################################################################
+
+
+
+                    list_joints.append(new_entry)
+                    #print(str(i))
+                    if right_angle is not None and left_angle is not None and \
+                            right_angle2 is not None and left_angle2 is not None:
+                        print("first angle mean: ", np.nanmean(list_first_angle))
+                        print("first angle stdev: ", np.nanstd(list_first_angle))
+                        print("second angle mean: ", np.nanmean(list_second_angle))
+                        print("second angle stdev: ", np.nanstd(list_second_angle))
+
+
+                        if left_right_differ:
+                            if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
+                                    (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & (not flag):
+                                flag = True
+                                counter += 1
+                                s.number_of_repetitions_in_training += 1
+                                s.patient_repetitions_counting_in_exercise+=1
+                                #self.change_count_screen(counter)
+                                print("counter:"+ str(counter))
+                              #  if not s.robot_count:
+                                say(str(counter))
+                            elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
+                                    (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & (flag):
+                                flag = False
+
+
+                        else:
+                            if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
+                                    (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
+                                flag = True
+                                counter += 1
+                                s.number_of_repetitions_in_training += 1
+                                s.patient_repetitions_counting_in_exercise+=1
+                                #self.change_count_screen(counter)
+                                print("counter:" + str(counter))
+                                #  if not s.robot_count:
+                                say(str(counter))
+                            elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
+                                    (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & (flag):
+                                flag = False
+
+                if counter == s.rep:
+                    s.req_exercise = ""
+                    s.success_exercise = True
+                    break
+            #self.ezer(list_first_angle)
+            self.end_exercise(counter)
+            s.ex_list.update({exercise_name: counter})
+            Excel.wf_joints(exercise_name, list_joints)
+
+
+    def exercise_two_angles_3d_with_axis_check(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
+                               joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, diff_size, use_alternate_angles=False,
+                               left_right_differ=False):
+
+        list_first_angle = []
+        list_second_angle = []
         flag = True
         counter = 0
         list_joints = []
         while s.req_exercise == exercise_name:
+        #for i in range (1,100):
             joints = self.get_skeleton_data()
             if joints is not None:
                 right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
@@ -118,253 +318,417 @@ class Camera(threading.Thread):
                 left_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("L_" + joint2)],
                                                 joints[str("L_" + joint3)])
                 if use_alternate_angles:
-                    right_angle2 = self.calc_angle_3d(joints[str("L_" + joint4)], joints[str("R_" + joint5)],
-                                                      joints[str("R_" + joint6)])
-                    left_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("L_" + joint5)],
-                                                     joints[str("L_" + joint6)])
+                    right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
+                                                      joints[str("L_" + joint6)])
+                    left_angle2 = self.calc_angle_3d(joints[str("L_" + joint4)], joints[str("L_" + joint5)],
+                                                     joints[str("R_" + joint6)])
+
+                    new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
+                                 joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
+                                 joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("L_" + joint6)],
+                                 joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
+                                 right_angle, left_angle, right_angle2, left_angle2]
+
+
                 else:
                     right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
-                                                   joints[str("R_" + joint6)])
+                                                      joints[str("R_" + joint6)])
                     left_angle2 = self.calc_angle_3d(joints[str("L_" + joint4)], joints[str("L_" + joint5)],
-                                                  joints[str("L_" + joint6)])
-                new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
-                             joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
-                             joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
-                             joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
-                             right_angle, left_angle, right_angle2, left_angle2]
+                                                     joints[str("L_" + joint6)])
+
+                    new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
+                                 joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
+                                 joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
+                                 joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
+                                 right_angle, left_angle, right_angle2, left_angle2]
+
+                ##############################################################################
+                print(left_angle, " ", right_angle)
+                print(left_angle2, " ", right_angle2)
+
+                list_first_angle += [left_angle]
+                list_second_angle += [left_angle2]
+
+                print("left shoulder", joints["L_shoulder"].__str__())
+                print("right shoulder", joints["R_shoulder"].__str__())
+                print(str(abs(joints["L_shoulder"].x - joints["R_shoulder"].x)))
+
+
+                ##############################################################################
+
+
+                #print(i)
                 list_joints.append(new_entry)
                 if right_angle is not None and left_angle is not None and \
                         right_angle2 is not None and left_angle2 is not None:
+                    print("first angle mean: ", np.nanmean(list_first_angle))
+                    print("first angle stdev: ", np.nanstd(list_first_angle))
+                    print("second angle mean: ", np.nanmean(list_second_angle))
+                    print("second angle stdev: ", np.nanstd(list_second_angle))
+
+                    if left_right_differ:
+                        if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
+                                (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
+                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < 200) & (not flag):
+                            flag = True
+                            counter += 1
+                            s.number_of_repetitions_in_training += 1
+                            s.patient_repetitions_counting_in_exercise += 1
+                            #self.change_count_screen(counter)
+                            print("counter:" + str(counter))
+                            #  if not s.robot_count:
+                            say(str(counter))
+                        elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
+                                (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
+                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < 200) & (flag):
+                            flag = False
+
+
+                    else:
+                        if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
+                                (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
+                            flag = True
+                            counter += 1
+                            s.number_of_repetitions_in_training += 1
+                            s.patient_repetitions_counting_in_exercise += 1
+                            #self.change_count_screen(counter)
+                            print("counter:" + str(counter))
+                            #  if not s.robot_count:
+                            say(str(counter))
+                        elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
+                                (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & (flag):
+                            flag = False
+
+            if counter == s.rep:
+                s.req_exercise = ""
+                s.success_exercise = True
+                break
+
+        self.end_exercise(counter)
+        s.ex_list.update({exercise_name: counter})
+        Excel.wf_joints(exercise_name, list_joints)
+
+    def exercise_three_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
+                               joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2,
+                                joint7, joint8, joint9, up_lb3, up_ub3, down_lb3, down_ub3, use_alternate_angles=False,
+                               left_right_differ=False):
+
+
+        flag = True
+        counter = 0
+        list_joints = []
+        while s.req_exercise == exercise_name:
+        #for i in range (1,100):
+            joints = self.get_skeleton_data()
+            if joints is not None:
+                right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
+                                                 joints[str("R_" + joint3)])
+                left_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("L_" + joint2)],
+                                                joints[str("L_" + joint3)])
+
+                right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
+                                                 joints[str("R_" + joint6)])
+                left_angle2 = self.calc_angle_3d(joints[str("L_" + joint4)], joints[str("L_" + joint5)],
+                                                joints[str("L_" + joint6)])
+
+                if use_alternate_angles:
+                    right_angle3 = self.calc_angle_3d(joints[str("R_" + joint7)], joints[str("R_" + joint8)],
+                                                      joints[str("L_" + joint9)])
+                    left_angle3 = self.calc_angle_3d(joints[str("L_" + joint7)], joints[str("L_" + joint8)],
+                                                     joints[str("R_" + joint9)])
+
+                    new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
+                                 joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
+                                 joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
+                                 joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
+                                 joints[str("R_" + joint7)], joints[str("R_" + joint8)], joints[str("L_" + joint9)],
+                                 joints[str("L_" + joint7)], joints[str("L_" + joint8)], joints[str("R_" + joint9)],
+                                 right_angle, left_angle, right_angle2, left_angle2, right_angle3, left_angle3]
+
+                else:
+                    right_angle3 = self.calc_angle_3d(joints[str("R_" + joint7)], joints[str("R_" + joint8)],
+                                                      joints[str("R_" + joint9)])
+                    left_angle3 = self.calc_angle_3d(joints[str("L_" + joint7)], joints[str("L_" + joint8)],
+                                                     joints[str("L_" + joint9)])
+
+                    new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
+                                 joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
+                                 joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
+                                 joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
+                                 joints[str("R_" + joint7)], joints[str("R_" + joint8)], joints[str("R_" + joint9)],
+                                 joints[str("L_" + joint7)], joints[str("L_" + joint8)], joints[str("L_" + joint9)],
+                                 right_angle, left_angle, right_angle2, left_angle2, right_angle3, left_angle3]
+
+                ##############################################################################
+                print(left_angle, " ", right_angle)
+                print(left_angle2, " ", right_angle2)
+                print(left_angle3, " ", right_angle3)
+                print("#######################################")
+                ##############################################################################
+
+
+                list_joints.append(new_entry)
+                if right_angle is not None and left_angle is not None and \
+                        right_angle2 is not None and left_angle2 is not None and \
+                        right_angle3 is not None and left_angle3 is not None:
+
                     if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
-                            (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
+                            (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
+                            (up_lb3 < right_angle3 < up_ub3) & (up_lb3 < left_angle3 < up_ub3) & (not flag):
                         flag = True
                         counter += 1
-                        print(counter)
-                        if not s.robot_count:
-                            say(str(counter))
-                    if (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
-                            (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & (flag):
+                        s.number_of_repetitions_in_training += 1
+                        s.patient_repetitions_counting_in_exercise += 1
+                        print("counter:" + str(counter))
+                        #self.change_count_screen(counter)
+                       # if not s.robot_count:
+                        say(str(counter))
+                    elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
+                            (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
+                            (down_lb3 < right_angle3 < down_ub3) & (down_lb3 < left_angle3 < down_ub3) & (flag):
                         flag = False
-            if (not s.robot_count) and (counter == s.rep):
+
+            if counter == s.rep:
                 s.req_exercise = ""
                 s.success_exercise = True
                 break
-        if s.adaptive:
-            if angle_classification == "first":
-                self.classify_performance(list_joints, exercise_name, 12, 13, counter)
-            else:
-                self.classify_performance(list_joints, exercise_name, 14, 15, counter)
-        s.ex_list.append([exercise_name, counter])
+
+        self.end_exercise(counter)
+        s.ex_list.update({exercise_name: counter})
         Excel.wf_joints(exercise_name, list_joints)
 
-    def exercise_one_angle(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
-                           use_alternate_angles=False):
-        # TODO - remove this function.
+
+    def exercise_one_angle_3d_by_sides(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side):
         flag = True
         counter = 0
         list_joints = []
         while s.req_exercise == exercise_name:
             joints = self.get_skeleton_data()
             if joints is not None:
-                if use_alternate_angles:
-                    right_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("R_" + joint2)],
-                                                     joints[str("R_" + joint3)])
-                    left_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("L_" + joint2)],
-                                                    joints[str("L_" + joint3)])
-                else:
-                    right_angle = self.calc_angle(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
-                                                  joints[str("R_" + joint3)])
-                    left_angle = self.calc_angle(joints[str("L_" + joint1)], joints[str("L_" + joint2)],
-                                                 joints[str("L_" + joint3)])
+                right_angle= self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
+                                          joints[str("R_" + joint3)])
+
+                left_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("L_" + joint2)],
+                                         joints[str("L_" + joint3)])
 
                 new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
                              joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
                              right_angle, left_angle]
                 list_joints.append(new_entry)
-                if right_angle is not None and left_angle is not None:
-                    if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & (not flag):
-                        flag = True
-                        counter += 1
-                        print(counter)
-                        if not s.robot_count:
-                            say(str(counter))
-                    if (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & (flag):
-                        flag = False
-            if (not s.robot_count) and (counter == s.rep):
-                s.req_exercise = ""
-                s.success_exercise = True
-                break
-        if s.adaptive:
-            self.classify_performance(list_joints, exercise_name, 6, 7, counter)
-        s.ex_list.append([exercise_name, counter])
-        Excel.wf_joints(exercise_name, list_joints)
 
-    def exercise_one_angle_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
-                              use_alternate_angles=False):
-        flag = True
-        counter = 0
-        list_joints = []
-        while s.req_exercise == exercise_name:
-            joints = self.get_skeleton_data()
-            if joints is not None:
-                if use_alternate_angles:
-                    right_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("R_" + joint2)],
-                                                     joints[str("R_" + joint3)])
-                    left_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("L_" + joint2)],
-                                                    joints[str("L_" + joint3)])
+                ##############################################################################
+                print(left_angle, " ", right_angle)
+                print("left wrist x: ", joints[str("R_wrist")].x)
+                print("right wrist x: ", joints[str("L_shoulder")].x)
+                print("nose: ", joints[str("nose")].y)
+
+
+                ##############################################################################
+
+                if side == 'right':
+                    if right_angle is not None and left_angle is not None:
+                        if (one_lb < right_angle < one_ub) & (joints[str("R_wrist")].x>joints[str("L_shoulder")].x+50) & (joints[str("nose")].y-50>joints[str("R_wrist")].y) & (not flag):
+                            flag = True
+                            counter += 1
+                            s.patient_repetitions_counting_in_exercise += 1
+                            s.number_of_repetitions_in_training += 1
+                            print("counter:" + str(counter))
+                            #self.change_count_screen(counter)
+                            # if not s.robot_count:
+                            say(str(counter))
+                        elif (two_lb < right_angle < two_ub) & (joints[str("R_wrist")].x<joints[str("L_shoulder")].x-400) & (flag):
+                            flag = False
+
                 else:
-                    right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
-                                                     joints[str("R_" + joint3)])
-                    left_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("L_" + joint2)],
-                                                    joints[str("L_" + joint3)])
-
-                new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
-                             joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
-                             right_angle, left_angle]
-                list_joints.append(new_entry)
-                if right_angle is not None and left_angle is not None:
-                    if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & (not flag):
-                        flag = True
-                        counter += 1
-                        print(counter)
-                        if not s.robot_count:
+                    if right_angle is not None and left_angle is not None:
+                        if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-50>joints[str("L_wrist")].x)& (joints[str("nose")].y - 50 > joints[str("L_wrist")].y) & (not flag):
+                            flag = True
+                            counter += 1
+                            s.number_of_repetitions_in_training += 1
+                            s.patient_repetitions_counting_in_exercise += 1
+                            print("counter:" + str(counter))
+                            #self.change_count_screen(counter)
+                            #if not s.robot_count:
                             say(str(counter))
-                    if (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & (flag):
-                        flag = False
-            if (not s.robot_count) and (counter == s.rep):
+                        elif (two_lb < left_angle < two_ub) & (joints[str("L_wrist")].x>joints[str("R_shoulder")].x+400) & (flag):
+                            flag = False
+
+            if counter == s.rep:
                 s.req_exercise = ""
                 s.success_exercise = True
                 break
-        if s.adaptive:
-            self.classify_performance(list_joints, exercise_name, 6, 7, counter)
-        s.ex_list.append([exercise_name, counter])
+
+        self.end_exercise(counter)
+        s.ex_list.update({exercise_name: counter})
         Excel.wf_joints(exercise_name, list_joints)
-
-    def raise_arms_horizontally(self):
-        self.exercise_two_angles_3d("raise_arms_horizontally", "Hip", "Shoulder", "Wrist", 80, 105, 5, 30,
-                                    "Shoulder", "Shoulder", "Wrist", 150, 180, 80, 110, "first", True)
-
-    def bend_elbows(self):
-        self.exercise_one_angle_3d("bend_elbows", "Shoulder", "Elbow", "Wrist", 150, 180, 10, 50)
-
-    def raise_arms_bend_elbows(self):
-        self.exercise_two_angles_3d("raise_arms_bend_elbows", "Shoulder", "Elbow", "Wrist", 130, 180, 10, 70,
-                                    "Elbow", "Shoulder", "Hip", 60, 105, 60, 105, "first")
-
-    def open_and_close_arms(self):
-        self.exercise_two_angles_3d("open_and_close_arms",  "Hip", "Shoulder", "Wrist", 80, 150, 80, 150,
-                                   "Shoulder", "Shoulder", "Wrist", 90, 120, 150, 175, "second",  True)
-
-    def open_and_close_arms_90(self):
-        self.exercise_two_angles_3d("open_and_close_arms_90", "Wrist", "Elbow", "Shoulder", 60, 150, 60, 150,
-                                    "Shoulder", "Shoulder", "Elbow", 140, 180, 80, 120, "second", True)
-
-    def raise_arms_forward(self):
-        self.exercise_two_angles_3d("raise_arms_forward", "Wrist", "Shoulder", "Hip", 85, 135, 10, 50,
-                                   "Shoulder", "Shoulder", "Wrist", 80, 115, 80, 115, "first", True)
 
     def hello_waving(self):  # check if the participant waved
-        if s.try_again:
-            print("Camera: Wave for trying again")
-            say('try again')
-        else:
-            time.sleep(4)
-            print("Camera: Wave for start")
-            say('ready wave')
+        # s.waved_has_tool = True
+        # s.req_exercise = ""
         while s.req_exercise == "hello_waving":
             joints = self.get_skeleton_data()
             if joints is not None:
-                right_shoulder = joints[str("R_Shoulder")]
-                right_wrist = joints[str("R_Wrist")]
-                if right_shoulder.y < right_wrist.y != 0:
+                right_shoulder = joints[str("R_shoulder")]
+                right_wrist = joints[str("R_wrist")]
+                if right_shoulder.y > right_wrist.y != 0:
+                    print(str(right_shoulder.y))
+                    print(str(right_wrist.y))
+                    s.waved_has_tool = True
                     # print(right_shoulder.y)
                     # print(right_wrist.y)
-                    s.waved = True
                     s.req_exercise = ""
 
-    def check_angle_range(self, joint1, joint2, joint3, use_alternate_angles=False):
-        # just for coding and understanding angle boundaries
-        list_joints = []
-        list_joints2 = []
-        medaip = MP()
-        medaip.start()
-        s.finish_workout = False
-        while not s.finish_workout:
+
+######################################################### First set of ball exercises
+
+    def bend_elbows_ball(self):  # EX1
+        self.exercise_two_angles_3d("bend_elbows_ball", "shoulder", "elbow", "wrist",150, 180, 10, 35,
+                                    "elbow", "shoulder", "hip", 0, 45, 0, 45)
+
+    def raise_arms_above_head_ball(self):  # EX2
+        self.exercise_two_angles_3d("raise_arms_above_head_ball", "hip", "shoulder", "elbow", 125, 170, 0, 50,
+                                    "shoulder", "elbow", "wrist", 120, 180, 135, 180)
+
+    # def raise_arms_forward_turn_ball(self):  # EX3
+    #     self.exercise_two_angles_3d_with_axis_check("raise_arms_forward_turn_ball", "shoulder", "elbow","wrist", 100, 180, 140, 180,
+    #                                 "wrist", "hip", "hip",95,140,35,70, True, True)
+    #                                 #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
+
+
+    def raise_arms_forward_turn_ball(self):  # EX3
+        self.exercise_two_angles_3d("raise_arms_forward_turn_ball", "shoulder", "elbow","wrist", 100, 180, 140, 180,
+                                    "wrist", "hip", "hip",95,140,35,70, True, True)
+                                    #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
+
+######################################################### Second set of ball exercises
+
+    def open_arms_and_forward_ball(self):  # EX4
+        self.exercise_three_angles_3d("open_arms_and_forward_ball", "hip", "shoulder", "elbow", 40, 120, 80, 120,
+                                      "shoulder", "elbow", "wrist",0,180,140,180,
+                                    "elbow", "shoulder", "shoulder", 60, 135, 150,180,True)
+
+
+    def open_arms_above_head_ball(self):  # EX5
+        self.exercise_two_angles_3d("open_arms_above_head_ball", "elbow", "shoulder", "hip", 145,180, 80, 110,
+                                   "shoulder", "elbow", "wrist", 130, 180, 130, 180)
+
+
+########################################################### Set with a rubber band
+
+    def open_arms_with_band(self):  # EX6
+        self.exercise_two_angles_3d("open_arms_with_band","hip", "shoulder", "wrist", 85, 120, 70, 120,
+                                    "wrist", "shoulder", "shoulder", 135,170,70,110,True)
+
+        #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
+
+    def open_arms_and_up_with_band(self):  # EX7
+        self.exercise_three_angles_3d("open_arms_and_up_with_band", "hip", "shoulder", "wrist", 125, 170, 20, 100,
+                                    "shoulder", "elbow", "wrist", 130,180,0,180,
+                                    "elbow", "shoulder", "shoulder", 110, 160, 70, 105, True)
+
+
+    def up_with_band_and_lean(self):  # EX8
+        self.exercise_two_angles_3d("up_with_band_and_lean", "shoulder", "elbow", "wrist", 125, 180, 125,180,
+                                   "wrist", "hip", "hip", 120, 170, 50, 100, True, True)
+
+
+
+
+######################################################  Set with a stick
+    def bend_elbows_stick(self):  # EX9
+        self.exercise_two_angles_3d("bend_elbows_stick", "shoulder", "elbow", "wrist",135, 180, 10, 40,
+                                    "elbow", "shoulder", "hip", 0, 35, 0, 30)
+
+    def bend_elbows_and_up_stick(self):  # EX10
+        self.exercise_two_angles_3d("bend_elbows_and_up_stick", "hip", "shoulder", "elbow", 110, 170, 10, 50,
+                                 "shoulder", "elbow", "wrist", 125, 180, 30, 85)
+
+    def arms_up_and_down_stick(self):  # EX11
+        self.exercise_two_angles_3d("arms_up_and_down_stick", "hip", "shoulder", "elbow", 115, 180, 10, 55,
+                                    "wrist", "elbow", "shoulder", 130,180,130,180)
+
+    def switch_with_stick(self):  # EX12
+        self.exercise_two_angles_3d_with_axis_check("switch_with_stick", "shoulder", "elbow", "wrist", 0, 180, 140, 180,
+                                    "wrist", "hip", "hip", 95, 140, 35, 70, True, True)
+
+################################################# Set of exercises without equipment
+    def hands_behind_and_lean_notool(self): # EX13
+        self.exercise_two_angles_3d("hands_behind_and_lean_notool", "shoulder", "elbow", "wrist", 10,70,10,70,
+                                    "elbow", "shoulder", "hip", 30, 95, 125, 170,False, True)
+
+    #def hands_behind_and_turn_both_sides(self):  # EX14
+     #   self.exercise_two_angles_3d("hands_behind_and_turn_both_sides", "elbow", "shoulder", "hip", 140,180,15,100,
+      #                              "elbow", "hip", "knee", 130, 115, 80, 105, False, True)
+
+    def right_hand_up_and_bend_notool(self):  # EX14
+        self.exercise_one_angle_3d_by_sides("right_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 160, 0, 180, "right")
+
+    def left_hand_up_and_bend_notool(self): #EX15
+        self.exercise_one_angle_3d_by_sides("left_hand_up_and_bend_notool", "hip", "shoulder", "wrist", 120, 160, 0, 180, "left")
+
+    def raising_hands_diagonally_notool(self): # EX16
+        self.exercise_two_angles_3d_with_axis_check("raising_hands_diagonally_notool", "wrist", "shoulder", "hip", 0, 100, 105, 135,
+                                    "elbow", "shoulder", "shoulder", 0, 180, 40, 75, True, True)\
+
+
+    def help_function(self):
+        while True:
             joints = self.get_skeleton_data()
-            if joints is not None:
-                if use_alternate_angles:
-                    right_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("R_" + joint2)],
-                                                     joints[str("R_" + joint3)])
-                    left_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("L_" + joint2)],
-                                                    joints[str("L_" + joint3)])
-                else:
-                    right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
-                                                     joints[str("R_" + joint3)])
-                    left_angle = self.calc_angle_3d(joints[str("L_" + joint1)], joints[str("L_" + joint2)],
-                                                    joints[str("L_" + joint3)])
-                if right_angle is not None:  # and right_angle2 is not None:
-                    list_joints.append(right_angle)
-                    # list_joints2.append(right_angle2)
-                    # list_joints.append(left_angle)
-        print(list_joints)
-        print(mean(list_joints))
-        print(stdev(list_joints))
+            print(f'R_hand_thumb: {joints["R_hand_thumb"]} ')
+            print(f'R_hand_pinky: {joints["R_hand_pinky"]} ')
 
-        # print(list_joints2)
-        # print(mean(list_joints2))
-        # print(stdev(list_joints2))
-
-    def classify_performance(self, list_joints, exercise_name, indexangleright, indexangleleft, counter):
-        if counter > 1:
-            df = pd.DataFrame([sublist[indexangleright:indexangleleft + 1] for sublist in
-                               list_joints]).T  # angles are in the indexangleright and indexangleleft indexs
-            right_hand_data = df.iloc[0]
-            right_hand_data = right_hand_data.dropna().to_numpy()
-            left_hand_data = df.iloc[1]
-            left_hand_data = left_hand_data.dropna().to_numpy()
-
-            exercise = exercise_name
-
-    def run(self):
-        print("CAMERA START")
-        medaip = MP()
-        medaip.start()
-
-        while not s.finish_workout:
-            time.sleep(0.00000001)  # Prevents the MP to stuck
-            jd = self.get_skeleton_data()  # clear data TODO check if it help
-            if s.req_exercise != "":
-                print("CAMERA: Exercise ", s.req_exercise, " start")
-                time.sleep(1)
-                getattr(self, s.req_exercise)()
-                print("CAMERA: Exercise ", s.req_exercise, " done")
-                s.req_exercise = ""
-                s.camera_done = True
-        print("Camera Done")
+            # arr_organs = ['pelvis', 'spine_1', 'spine_2', 'spine_3', 'neck', 'nose', 'L_eye', 'R_eye', 'L_ear', 'R_ear',
+            #               'L_clavicle', 'R_clavicle', 'L_shoulder', 'R_shoulder', 'L_elbow', 'R_elbow', 'L_wrist',
+            #               'R_wrist', 'L_hip', 'R_hip', 'L_knee', 'R_knee', 'L_ankle', 'R_ankle', 'L_big_toe',
+            #               'R_big_toe', 'L_small_toe', 'R_small_toe', 'L_heel', 'R_heel', 'L_hand_thumb', 'R_hand_thumb',
+            #               'L_hand_index', 'R_hand_index', 'L_hand_middle', 'R_hand_middle', 'L_hand_pinky',
+            #               'R_hand_pinky']
 
 
 if __name__ == '__main__':
-    check = False
-    if check:
-        c = Camera()
-        # c.check_angle_range("Shoulder", "Hip", "Wrist")
-        c.check_angle_range( "Shoulder", "Shoulder", "Wrist", True)
+    s.camera_num = 1  # 0 - webcam, 2 - second USB in maya's computer
 
-    else:
-        language = 'Hebrew'
-        gender = 'Female'
-        s.audio_path = 'audio files/' + language + '/' + gender + '/'
-        s.finish_workout = False
-        s.participant_code = "1106"
-        s.rep = 2
-        s.req_exercise = "bend_elbows"
-        s.robot_count = False
-        #Excel.create_workbook()
-        s.ex_list = []
-        s.adaptive = False
-        if s.adaptive:
-            s.adaptation_model_name = 'model2'
-            s.performance_class = {}
-        print('HelloServer')
-        c = Camera()
-        c.start()
+    # Audio variables initialization
+    language = 'Hebrew'
+    gender = 'Male'
+    s.audio_path = 'audio files/' + language + '/' + gender + '/'
+    s.picture_path = 'audio files/' + language + '/' + gender + '/'
+    # s.str_to_say = ""
+    # current_time = datetime.datetime.now()
+    # s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
+    # str(current_time.minute) + "." + str(current_time.second)
+
+    # Training variables initialization
+    s.rep = 10
+    s.waved = False
+    s.success_exercise = False
+    s.calibration = False
+    s.finish_workout = False
+    s.gymmy_done = False
+    s.camera_done = False
+    s.robot_count = False
+    s.demo_finish = False
+    s.list_effort_each_exercise = {}
+    s.ex_in_training = []
+    s.finish_program= False
+    # s.exercises_start=False
+    s.waved_has_tool = True  # True just in order to go through the loop in Gymmy
+    s.max_repetitions_in_training=0
+    # Excel variable
+    ############################# להוריד את הסולמיות
+    s.ex_list = {}
+    s.req_exercise = "help_function"
+    time.sleep(2)
+    # Create all components
+    s.camera = Realsense()
+    s.number_of_repetitions_in_training=0
+
+
+    # Start all threads
+    s.camera.start()
+
+
+
+
+
+
