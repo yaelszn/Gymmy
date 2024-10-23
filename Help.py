@@ -4,7 +4,7 @@ import pyzed.sl as sl
 import threading
 import socket
 from Audio import say, get_wav_duration
-from Joint import Joint
+from Joint_zed import Joint
 from PyZedWrapper import PyZedWrapper
 import Settings as s
 import numpy as np

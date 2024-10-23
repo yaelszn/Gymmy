@@ -3,7 +3,7 @@ import xlsxwriter
 from datetime import datetime
 
 import ScreenNew
-from Joint import Joint
+from Joint_zed import Joint
 import openpyxl
 import Settings as s
 from openpyxl import load_workbook
@@ -15,6 +15,8 @@ import os
 import subprocess
 import platform
 import re
+from datetime import timedelta
+
 
 
 def create_and_open_folder(folder_path):
@@ -38,8 +40,8 @@ def create_workbook_for_training():
     datetime_string = datetime.now().strftime("%d-%m-%Y %H-%M-%S")
     workbook_name = f"Patients/{s.chosen_patient_ID}/{datetime_string}.xlsx"
     s.training_workbook_path = workbook_name
-    s.start_dt= f"{datetime_string}"
-    s.training_workbook = xlsxwriter.Workbook(workbook_name)
+    s.training_workbook = openpyxl.Workbook()  # Do not pass the filename here
+    s.training_workbook.save(s.training_workbook_path)  # Save the workbook after creating it
 
 
 
@@ -125,28 +127,31 @@ def get_success_number(file_path, exercise):
 #
 
 def wf_joints(ex_name, list_joints):
-    worksheet1 = s.training_workbook.add_worksheet(ex_name[:31])
+    worksheet1 = s.training_workbook.create_sheet(ex_name[:31])
     col = 0
 
     for l in range(0, len(list_joints)):
-        worksheet1.write(0, col, col + 1)
+        worksheet1.cell(row=1, column=col + 1, value=col + 1)
 
-        row = 1
+        row = 2
         for j in list_joints[l]:
             if isinstance(j, Joint):  # Check if j is a Joint object
                 j_ar = j.joint_to_array()
                 for i in range(len(j_ar)):
-                    worksheet1.write(row, col, str(j_ar[i]))
+                    worksheet1.cell(row=row, column=col + 1, value=str(j_ar[i]))
+
                     row += 1
 
             else:
                 # Handle other types appropriately, e.g., just write the value to the worksheet
-                worksheet1.write(row, col, str(j))
+                worksheet1.cell(row=row, column=col + 1, value=str(j))
+
                 row += 1
 
         col += 1
 
-    #s.training_workbook.save(s.training_workbook_path) #save the workbook
+
+    s.training_workbook.save(s.training_workbook_path) #save the workbook
     create_graphs_and_tables(ex_name, list_joints)
 
 
@@ -320,26 +325,33 @@ def create_and_save_graph(data, exercise):
                  horizontalalignment='right', fontsize=11, weight='bold',
                  bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-
+        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
 
         # Save the plot as an image file
-        create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{s.start_dt}')
-        plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{s.start_dt}/{plot_name}.jpeg'
+        create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}')
+        plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}/{plot_name}.jpeg'
         plt.savefig(plot_filename)
         plt.close()  # Close the plot to clear the figure
 
 
 def success_worksheet():
-    s.success_worksheet = s.training_workbook.add_worksheet("success_worksheet")
-    s.success_worksheet.write(0, 0, "exercise")
-    s.success_worksheet.write(0, 1, "number of successful repetitions")
+    # Create a new sheet named "success_worksheet"
+    s.success_worksheet = s.training_workbook.create_sheet("success_worksheet")
 
-    row = 1
+    # Write headers in the first row (row=1)
+    s.success_worksheet.cell(row=1, column=1, value="exercise")
+    s.success_worksheet.cell(row=1, column=2, value="number of successful repetitions")
+
+    # Start from the second row for data
+    row = 2
     for exercise, success in s.ex_list.items():
-        s.success_worksheet.write(row, 0, exercise)
-        s.success_worksheet.write(row, 1, success)
-
+        # Write exercise name and success count into the worksheet
+        s.success_worksheet.cell(row=row, column=1, value=exercise)
+        s.success_worksheet.cell(row=row, column=2, value=success)
         row += 1
+
+    # Save the workbook after writing to the sheet
+    s.training_workbook.save(s.training_workbook_path)
 
 
 
@@ -371,6 +383,26 @@ def find_and_change_values_exercises(new_values_dict, headers_row=1):
     workbook.save(file_path)
 
 
+def calculate_training_length():
+    # If the number of elements is odd, remove the last one
+    if len(s.starts_and_ends_of_stops) % 2 == 0:  # Even number of elements
+        new_times_array = s.starts_and_ends_of_stops
+    else:  # Odd number of elements
+        new_times_array = s.starts_and_ends_of_stops[:-1]  # Return all elements except the last one
+
+    training_length = timedelta(0)  # Initialize training length as zero timedelta
+
+    # Iterate through the array in steps of 2 (each pair)
+    for i in range(0, len(new_times_array), 2):
+        start_time = new_times_array[i]  # The start time in the pair
+        end_time = new_times_array[i + 1]  # The end time in the pair
+        print(str(start_time))
+        print(str(end_time))
+        training_length += (end_time - start_time)  # Add the difference to the total training length
+
+    # Return the total time in seconds
+    return training_length.total_seconds()
+
 def find_and_change_values_patients(new_values_dict, headers_row=1):
     # Load the workbook
     file_path = "Patients.xlsx"
@@ -399,6 +431,7 @@ def find_and_change_values_patients(new_values_dict, headers_row=1):
     workbook.save(file_path)
 
 
+
 def find_and_add_training_to_patient(headers_row=1):
     # Load the workbook
     file_path = "Patients.xlsx"
@@ -419,10 +452,12 @@ def find_and_add_training_to_patient(headers_row=1):
                 if sheet.cell(row=cell.row, column=col).value is not None:
                     next_column = col + 1
 
+            start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
             # Write the new value to the next available column in the found row
-            sheet.cell(row=cell.row, column=next_column, value=s.start_dt)  # training name
+            sheet.cell(row=cell.row, column=next_column, value=start_dt)  # training dt, in the first place of the array there is the start time
             sheet.cell(row=cell.row, column=next_column + 1, value=(s.number_of_repetitions_in_training / s.max_repetitions_in_training))  # percent of the training that the patient managed to do
             sheet.cell(row=cell.row, column=next_column + 2, value=s.effort)  # percent of the training that the patient managed to do
+            sheet.cell(row=cell.row, column=next_column + 3, value=calculate_training_length())  # percent of the training that the patient managed to do
 
             break  # Stop searching after finding the value
 
@@ -454,56 +489,12 @@ def count_number_of_exercises_in_training_by_ID():
     return true_count
 
 
-# def create_summary_workbook():
-#         workbook_name = f"Patients/{s.chosen_patient_ID}/summary.xlsx"
-#
-#         # Create a new workbook
-#         workbook = xlsxwriter.Workbook(workbook_name)
-#
-#         # Add a worksheet
-#         workbook.add_worksheet("Sheet1")
-#
-#         # Close the workbook to save it
-#         workbook.close()
-
-
-# def add_exercise_to_summary(exercise_name, avg, sd, min_val, max_val, time_val):
-#     # Load the existing workbook
-#     file_path = f"Patients/{s.chosen_patient_ID}/summary.xlsx"
-#     workbook = openpyxl.load_workbook(file_path)
-#
-#     # Check if "Sheet1" exists and rename it to the exercise name
-#     if "Sheet1" in workbook.sheetnames:
-#         sheet = workbook["Sheet1"]
-#         sheet.title = exercise_name
-#     # Check if the exercise sheet already exists, if not, create it
-#     elif exercise_name not in workbook.sheetnames:
-#         sheet = workbook.create_sheet(title=exercise_name)
-#
-#     # Add headers if it's a new or renamed sheet
-#     if sheet.max_row == 1 and sheet.cell(row=1, column=1).value is None:  # Check if it's an empty sheet
-#         sheet.append(["Date Time", "Average", "Standard Deviation", "Minimum", "Maximum", "Time"])
-#
-#     # Find the next empty row (last row + 1)
-#     next_row = sheet.max_row + 1
-#
-#     # Add data to the next available row, with the first column being the datetime
-#     sheet.cell(row=next_row, column=1, value=s.start_dt)  # Datetime from s.start_dt
-#     sheet.cell(row=next_row, column=2, value=avg)  # Average
-#     sheet.cell(row=next_row, column=3, value=sd)  # Standard Deviation
-#     sheet.cell(row=next_row, column=4, value=min_val)  # Minimum
-#     sheet.cell(row=next_row, column=5, value=max_val)  # Maximum
-#     sheet.cell(row=next_row, column=6, value=time_val)  # Time
-#
-#     # Save the workbook
-#     workbook.save(file_path)
-
-
 def create_and_save_table_with_calculations(data, exercise):
     # Define the directory for saving the table image
-    date_and_time_of_training = s.start_dt  # Extract date and time of training
+    start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+
     # Create and open the folder to save the tables
-    create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{date_and_time_of_training}')
+    create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}')
 
     # Iterate over each table data (in case you have multiple tables)
     for table_name, table_data in data.items():
@@ -554,13 +545,63 @@ def create_and_save_table_with_calculations(data, exercise):
                 cell.set_fontsize(12)  # Set a slightly smaller font for data rows
                 cell.set_facecolor('#ffffff')  # White background for data cells
 
+        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+
         # Save the table as an image with the background color and no transparency
-        table_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{date_and_time_of_training}/{table_name}.png'
+        table_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}/{table_name}.png'
         plt.savefig(table_filename, bbox_inches='tight', pad_inches=0, dpi=300)  # Removed transparent=True
         plt.close()  # Close the figure to clear memory
 
 def close_workbook():
     s.training_workbook.close()
+
+
+# def create_summary_workbook():
+#         workbook_name = f"Patients/{s.chosen_patient_ID}/summary.xlsx"
+#
+#         # Create a new workbook
+#         workbook = xlsxwriter.Workbook(workbook_name)
+#
+#         # Add a worksheet
+#         workbook.add_worksheet("Sheet1")
+#
+#         # Close the workbook to save it
+#         workbook.close()
+
+
+# def add_exercise_to_summary(exercise_name, avg, sd, min_val, max_val, time_val):
+#     # Load the existing workbook
+#     file_path = f"Patients/{s.chosen_patient_ID}/summary.xlsx"
+#     workbook = openpyxl.load_workbook(file_path)
+#
+#     # Check if "Sheet1" exists and rename it to the exercise name
+#     if "Sheet1" in workbook.sheetnames:
+#         sheet = workbook["Sheet1"]
+#         sheet.title = exercise_name
+#     # Check if the exercise sheet already exists, if not, create it
+#     elif exercise_name not in workbook.sheetnames:
+#         sheet = workbook.create_sheet(title=exercise_name)
+#
+#     # Add headers if it's a new or renamed sheet
+#     if sheet.max_row == 1 and sheet.cell(row=1, column=1).value is None:  # Check if it's an empty sheet
+#         sheet.append(["Date Time", "Average", "Standard Deviation", "Minimum", "Maximum", "Time"])
+#
+#     # Find the next empty row (last row + 1)
+#     next_row = sheet.max_row + 1
+#
+#     # Add data to the next available row, with the first column being the datetime
+#     sheet.cell(row=next_row, column=1, value=s.start_dt)  # Datetime from s.start_dt
+#     sheet.cell(row=next_row, column=2, value=avg)  # Average
+#     sheet.cell(row=next_row, column=3, value=sd)  # Standard Deviation
+#     sheet.cell(row=next_row, column=4, value=min_val)  # Minimum
+#     sheet.cell(row=next_row, column=5, value=max_val)  # Maximum
+#     sheet.cell(row=next_row, column=6, value=time_val)  # Time
+#
+#     # Save the workbook
+#     workbook.save(file_path)
+
+
+
 
 
 

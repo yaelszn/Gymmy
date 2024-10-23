@@ -1,22 +1,14 @@
 # class represent skeleton joint
-import math
+
 
 class Joint(object):
 
-    def __init__(self, type, kp_3d):
+    def __init__(self, type, x, y, z):
         self.type = type
-
-        if self.is_Nan(kp_3d):
-            self.x = 0
-            self.y = 0
-            self.z = 0
-            self.visible=0
-
-        else:
-            self.x = kp_3d[0]
-            self.y = kp_3d[1]
-            self.z = kp_3d[2]
-            self.visible=1
+        self.x = x
+        self.y = y
+        self.z = z
+        self.visible = 0 if x == y == z == 0 else 1
 
     def __str__(self):
         return self.type+" "+str(self.x)+" "+str(self.y)+" "+str(self.z)
@@ -30,15 +22,3 @@ class Joint(object):
             return True
         else:
             return False
-
-
-    def is_Nan(self, point):
-        value1 = float(point[0])
-        value2 = float(point[1])
-        value3 = float(point[2])
-
-        if math.isnan(value1) and math.isnan(value2) and math.isnan(value3):
-            return True
-
-        return False
-

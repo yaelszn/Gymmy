@@ -11,7 +11,7 @@ import Settings as s
 import time
 import Excel
 from ScreenNew import Screen, FullScreenApp, OnePage, TwoPage, ThreePage, FourPage, FivePage, SixPage, SevenPage, \
-    EightPage, NinePage, TenPage, Fail, Very_good, Excellent, Well_done, AlmostExcellent
+    EightPage, NinePage, TenPage, Very_good, Excellent, Well_done, AlmostExcellent, FailPage
 import numpy as np
 from openpyxl import Workbook
 from scipy.signal import savgol_filter
@@ -32,13 +32,18 @@ class KalmanFilter:
         self.estimate_covariance += self.process_noise
 
     def update(self, measurement):
-        # Check for large intervals between the current and previous measurements
         if len(self.previous_positions) > 0:
             prev_position = self.previous_positions[-1]
             distance = np.linalg.norm(np.array(measurement) - np.array(prev_position))
+
+            # Debugging the distances
+            # print(f"Distance between frames: {distance}")
+            # print(f"Measurement: {measurement}, Previous Position: {prev_position}")
+
             if distance > self.threshold:
-                # If the interval is large, replace with an average of the last few measurements
-                print("Large interval detected. Smoothing...")
+               # print("Large interval detected. Smoothing...")
+
+                # Only smooth if the distance truly exceeds the threshold
                 measurement = self.average_previous_positions()
 
         # Apply Savitzky-Golay filter for smoothing
@@ -101,102 +106,122 @@ class Realsense(threading.Thread):
         print("CAMERA INITIALIZATION")
         self.frame_count = 0
         self.start_time = None
+        self.kalman_filters = {}
+
 
     def run(self):
-        while True:
-            print("CAMERA START")
-            medaip = MP()  # Assuming PyZedWrapper manages your camera setup
-            medaip.start()
+        print("CAMERA START")
+        medaip = MP()  # Assuming PyZedWrapper manages your camera setup
+        medaip.start()
+        while not s.finish_program:
+            time.sleep(0.0001)  # Prevents the MP from being stuck
+            if s.req_exercise != "":
+                ex = s.req_exercise
+                print("CAMERA: Exercise", ex, "start")
+                if s.req_exercise != "hello_waving":
+                    audio = s.req_exercise
+                    time.sleep(get_wav_duration(audio) + get_wav_duration("start_ex"))
+                    s.max_repetitions_in_training += s.rep  # Number of repetitions expected in this exercise
+                getattr(self, ex)()  # Call the exercise method dynamically
+                print("CAMERA: Exercise", ex, "done")
+                s.req_exercise = ""
+                s.camera_done = True
+            else:
+                time.sleep(1)  # Prevents the MP from being stuck
+        print("Camera Done")
 
-            while not s.finish_program:
-                time.sleep(0.0001)  # Prevents the MP from being stuck
-                if s.req_exercise != "":
-                    ex = s.req_exercise
-                    print("CAMERA: Exercise", ex, "start")
-                    if s.req_exercise != "hello_waving":
-                        audio = s.req_exercise
-                        time.sleep(get_wav_duration(audio) + get_wav_duration("start_ex"))
-                        s.max_repetitions_in_training += s.rep  # Number of repetitions expected in this exercise
-                    getattr(self, ex)()  # Call the exercise method dynamically
-                    print("CAMERA: Exercise", ex, "done")
-                    s.req_exercise = ""
-                    s.camera_done = True
-                else:
-                    time.sleep(1)  # Prevents the MP from being stuck
-            print("Camera Done")
+    # def get_skeleton_data(self):
+    #     self.sock.settimeout(1)
+    #     try:
+    #         data, address = self.sock.recvfrom(4096)
+    #         # Decode and split the received data
+    #         data = json.loads(data.decode())
+    #         data = data.split('/')
+    #
+    #         joints_str = []
+    #         for i in data:
+    #             joint_data = i.split(',')
+    #             joints_str.append(joint_data)
+    #
+    #         joints_str = joints_str[:-1]  # Remove the empty entry at the end
+    #
+    #         joints = {}  # Dictionary to store joint data
+    #
+    #         for j in joints_str:
+    #             joint_name = j[0]
+    #             joint_position = [float(j[1]), float(j[2]), float(j[3]) * 100]  # z is scaled by 100
+    #
+    #             print(f"Processing joint: {joint_name}, Position: {joint_position}")
+    #
+    #             Store [0, 0, 0] as the joint position but skip processing it
+    #             if joint_position == [0.0, 0.0, 0.0]:
+    #                 #print(f"Skipping Kalman filter update for {joint_name} due to invalid position.")
+    #                 # Directly store the invalid position
+    #                 joints[joint_name] = Joint(joint_name, 0.0, 0.0, 0.0)
+    #                 continue
+    #
+    #             # Initialize Kalman filter for this joint if it doesn't already exist
+    #             if joint_name not in self.kalman_filters:
+    #                 self.kalman_filters[joint_name] = KalmanFilter(initial_position=joint_position)
+    #                 #print(f"Initializing Kalman filter for {joint_name} with position {joint_position}")
+    #
+    #             # Get the Kalman filter for this joint
+    #             kalman_filter = self.kalman_filters[joint_name]
+    #
+    #             # Apply Kalman filter: predict and update with valid data
+    #             kalman_filter.predict()  # Kalman filter prediction step
+    #             kalman_filter.update(joint_position)  # Update with the new measurement
+    #             filtered_position = kalman_filter.get_estimate()  # Get the filtered position
+    #
+    #             Store the filtered joint data
+    #             joints[joint_name] = Joint(joint_name, filtered_position[0], filtered_position[1], filtered_position[2])
+    #
+    #         return joints
+    #
+    #     except socket.timeout:
+    #         print("Didn't receive data! [Timeout]")
+    #         return None
+
+            #
+            # for key, value in lm_dict.items():
+            #     joint_data = [float(joints_str[value][1]), float(joints_str[value][2]), float(joints_str[value][3])*100]
+            #
+            #     if key in joints:
+            #         # If joint already exists, update using Kalman Filter
+            #         joints[key].kalman_filter.predict()  # Predict the next position
+            #         joints[key].kalman_filter.update(joint_data)  # Update the Kalman filter with the new data
+            #         joints[key].position = joints[key].kalman_filter.get_estimate()  # Get the smoothed position
+            #     else:
+            #         # Create a new joint if it doesn't exist
+            #         joint = Joint(key, joint_data)
+            #         joint.kalman_filter = KalmanFilter(joint_data, alpha=0.5)  # Initialize Kalman Filter
+            #         joints[key] = joint
 
     def get_skeleton_data(self):
         self.sock.settimeout(1)
         try:
             data, address = self.sock.recvfrom(4096)
-            # Decode and split the received data
+            # print('received {} bytes from {}'.format(len(data), address))
             data = json.loads(data.decode())
             data = data.split('/')
-
             joints_str = []
             for i in data:
                 joint_data = i.split(',')
                 joints_str.append(joint_data)
-
-            joints_str = joints_str[:-1]  # Remove the empty entry at the end
-
-            joints = {}  # Dictionary to store joint data
-
-            # Use the same joint names as in MP
-            lm_dict = {'nose': 0, 'L_eye_inner': 1, 'L_eye': 2, "L_eye_outer": 3,
-                       'R_eye_inner': 4, 'R_eye': 5, "R_eye_outer": 6,
-                       'L_ear': 7, 'R_ear': 8, "L_mouth": 9, "R_mouth": 10,
-                       'L_shoulder': 11, 'R_shoulder': 12, 'L_elbow': 13, 'R_elbow': 14,
-                       'L_wrist': 15, 'R_wrist': 16,
-                       'L_hand_pinky': 17, 'R_hand_pinky': 18, 'L_hand_index': 19, 'R_hand_index': 20,
-                       'L_hand_thumb': 21, 'R_hand_thumb': 22, 'L_hip': 23, 'R_hip': 24}
-
-            for key, value in lm_dict.items():
-                joint_data = [float(joints_str[value][1]), float(joints_str[value][2]), float(joints_str[value][3])*100]
-
-                if key in joints:
-                    # If joint already exists, update using Kalman Filter
-                    joints[key].kalman_filter.predict()  # Predict the next position
-                    joints[key].kalman_filter.update(joint_data)  # Update the Kalman filter with the new data
-                    joints[key].position = joints[key].kalman_filter.get_estimate()  # Get the smoothed position
-                else:
-                    # Create a new joint if it doesn't exist
-                    joint = Joint(key, joint_data)
-                    joint.kalman_filter = KalmanFilter(joint_data, alpha=0.5)  # Initialize Kalman Filter
-                    joints[key] = joint
-
+            joints_str = joints_str[:-1]  # remove the empty list at the end
+            # change from string to float values
+            joints = {}  # joints dict data
+            for j in joints_str:
+                joints[j[0]] = Joint(j[0], float(j[1]), float(j[2]), float(j[3]) * 100)  # z is smaller than x and y!!
             return joints
-
-        except socket.timeout:
+        except socket.timeout:  # fail after 1 second of no activity
             print("Didn't receive data! [Timeout]")
             return None
 
 
 
 
-    def random_encouragement(self):
-        enco = ["Well_done", "Very_good", "Excellent"]
-        random_class_name = random.choice(enco)
-        random_class = globals()[random_class_name]
-        random_instance = random_class
-        s.screen.switch_frame(random_instance)
 
-
-    def end_exercise(self, counter):
-        print(" ")
-        if s.rep - 2 > counter:
-            time.sleep(1)
-            s.screen.switch_frame(Fail)
-
-
-        if (s.rep - 2) <= counter <= (s.rep - 1):
-            time.sleep(1)
-            s.screen.switch_frame(AlmostExcellent)
-
-
-        if counter == s.rep:
-            time.sleep(1)
-            self.random_encouragement()
 
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                                    joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, use_alternate_angles=False, left_right_differ=False):
@@ -207,6 +232,8 @@ class Realsense(threading.Thread):
             counter = 0
             list_joints = []
             while s.req_exercise == exercise_name:
+                while s.did_training_paused:
+                    time.sleep(0.01)
             #for i in range (1,200):
                 joints = self.get_skeleton_data()
                 if joints is not None:
@@ -295,7 +322,7 @@ class Realsense(threading.Thread):
                     s.success_exercise = True
                     break
             #self.ezer(list_first_angle)
-            self.end_exercise(counter)
+            #self.end_exercise(counter)
             s.ex_list.update({exercise_name: counter})
             Excel.wf_joints(exercise_name, list_joints)
 
@@ -310,6 +337,8 @@ class Realsense(threading.Thread):
         counter = 0
         list_joints = []
         while s.req_exercise == exercise_name:
+            while s.did_training_paused:
+                time.sleep(0.01)
         #for i in range (1,100):
             joints = self.get_skeleton_data()
             if joints is not None:
@@ -404,7 +433,7 @@ class Realsense(threading.Thread):
                 s.success_exercise = True
                 break
 
-        self.end_exercise(counter)
+        #self.end_exercise(counter)
         s.ex_list.update({exercise_name: counter})
         Excel.wf_joints(exercise_name, list_joints)
 
@@ -418,6 +447,8 @@ class Realsense(threading.Thread):
         counter = 0
         list_joints = []
         while s.req_exercise == exercise_name:
+            while s.did_training_paused:
+                time.sleep(0.01)
         #for i in range (1,100):
             joints = self.get_skeleton_data()
             if joints is not None:
@@ -493,7 +524,7 @@ class Realsense(threading.Thread):
                 s.success_exercise = True
                 break
 
-        self.end_exercise(counter)
+        #self.end_exercise(counter)
         s.ex_list.update({exercise_name: counter})
         Excel.wf_joints(exercise_name, list_joints)
 
@@ -503,6 +534,8 @@ class Realsense(threading.Thread):
         counter = 0
         list_joints = []
         while s.req_exercise == exercise_name:
+            while s.did_training_paused:
+                time.sleep(0.01)
             joints = self.get_skeleton_data()
             if joints is not None:
                 right_angle= self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
@@ -558,7 +591,7 @@ class Realsense(threading.Thread):
                 s.success_exercise = True
                 break
 
-        self.end_exercise(counter)
+        #self.end_exercise(counter)
         s.ex_list.update({exercise_name: counter})
         Excel.wf_joints(exercise_name, list_joints)
 
@@ -570,9 +603,11 @@ class Realsense(threading.Thread):
             if joints is not None:
                 right_shoulder = joints[str("R_shoulder")]
                 right_wrist = joints[str("R_wrist")]
-                if right_shoulder.y > right_wrist.y != 0:
-                    print(str(right_shoulder.y))
-                    print(str(right_wrist.y))
+                print(f'shoulder: {str(right_shoulder.y)}')
+                print(f'wrist: {str(right_wrist.y)}')
+                if right_shoulder.y < right_wrist.y != 0:
+                    print(f'xxxxxxxxxxxxxxxxxxxxxxxxxxxx: {str(right_shoulder.y)}')
+                    print(f'xxxxxxxxxxxxxxxxxxxxxxxxxxxx: {str(right_wrist.y)}')
                     s.waved_has_tool = True
                     # print(right_shoulder.y)
                     # print(right_wrist.y)
@@ -582,8 +617,8 @@ class Realsense(threading.Thread):
 ######################################################### First set of ball exercises
 
     def bend_elbows_ball(self):  # EX1
-        self.exercise_two_angles_3d("bend_elbows_ball", "shoulder", "elbow", "wrist",150, 180, 10, 35,
-                                    "elbow", "shoulder", "hip", 0, 45, 0, 45)
+        self.exercise_two_angles_3d("bend_elbows_ball", "shoulder", "elbow", "wrist",150, 180, 10, 60,
+                                    "elbow", "shoulder", "hip", 0, 60, 0, 60)
 
     def raise_arms_above_head_ball(self):  # EX2
         self.exercise_two_angles_3d("raise_arms_above_head_ball", "hip", "shoulder", "elbow", 125, 170, 0, 50,

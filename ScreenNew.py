@@ -20,7 +20,7 @@ import pygame
 from PIL import Image, ImageTk
 from email_validator import validate_email, EmailNotValidError
 import Settings as s
-from Audio import say
+from Audio import say, get_wav_duration
 from gtts import gTTS
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -42,16 +42,20 @@ class Screen(tk.Tk):
         pass
 
     def switch_frame(self, frame_class, **kwargs):
-        """Destroys all existing frames and creates a new one."""
+        """Destroys all existing frames and creates a new one safely from any thread."""
 
-        # Destroy all existing frames
-        for widget in self.winfo_children():
-            widget.destroy()
+        def switch():
+            # Destroy all existing frames
+            for widget in self.winfo_children():
+                widget.destroy()
 
-        # Create a new frame
-        new_frame = frame_class(self, **kwargs)
-        self._frame = new_frame
-        self._frame.pack()
+            # Create a new frame
+            new_frame = frame_class(self, **kwargs)
+            self._frame = new_frame
+            self._frame.pack()
+
+        # Use after() to ensure it runs in the main thread
+        self.after(0, switch)
 
     def quit(self):
         self.destroy()
@@ -93,8 +97,24 @@ class EntrancePage(tk.Frame):
                                             bg='#50a6ad', bd=0, highlightthickness=0)
         enter_as_patient_button.place(x=540, y=130)
 
+        shut_down_button_img = Image.open("Pictures//shut_down.jpg")  # Change path to your image file
+        shut_down_button_photo = ImageTk.PhotoImage(shut_down_button_img)
+
+        shut_down_button = tk.Button(self, image=shut_down_button_photo, command=lambda: self.on_click_shut_down(),
+                                              width=shut_down_button_img.width, height=shut_down_button_img.height, bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        shut_down_button.image = shut_down_button_photo  # Store reference to image to prevent garbage collection
+        shut_down_button.place(x=30, y=30)
+
         s.ex_in_training = []
 
+    def on_click_shut_down(self):
+        s.finish_program = True  # Signal all threads to stop
+        s.req_exercise=""
+        s.camera.join()
+        s.training.join()
+        s.robot.join()
+        print("All threads have stopped.")
+        self.quit()
     def on_click_therapist_chosen(self):
         s.screen.switch_frame(ID_therapist_fill_page)
 
@@ -186,7 +206,9 @@ class ID_patient_fill_page(tk.Frame):
                     s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "email")
                     s.current_level_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "level")
                     s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
-
+                    s.rep= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "number of repetitions in each exercise")
+                    gender = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "gender")
+                    s.audio_path = 'audio files/Hebrew/' + gender + '/'
 
                     df1 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
 
@@ -860,6 +882,7 @@ class ChooseBallExercisesPage(tk.Frame):
         self.background_label.pack()
 
         name_label(self)
+        how_many_repetitions_of_exercises(self)
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
         forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
@@ -998,6 +1021,7 @@ class ChooseBallExercisesPage(tk.Frame):
 
 
     def on_arrow_click(self):
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
     def to_previous_button_click(self):
@@ -1011,7 +1035,7 @@ class ChooseBallExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
@@ -1027,6 +1051,8 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         self.background_label.pack()
 
         name_label(self)
+        how_many_repetitions_of_exercises(self)
+
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
         forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
@@ -1135,9 +1161,11 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
         s.screen.switch_frame(ChooseStickExercisesPage)
 
     def on_arrow_click_back(self):
+        Excel.find_and_change_values_patients({"nmber of repetitions each in exercise": self.selected_option.get()})
         s.screen.switch_frame(ChooseBallExercisesPage)
 
     def to_previous_button_click(self):
@@ -1151,7 +1179,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
@@ -1170,6 +1198,8 @@ class ChooseStickExercisesPage(tk.Frame):
         self.background_label.pack()
 
         name_label(self)
+        how_many_repetitions_of_exercises(self)
+
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
         forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
@@ -1304,9 +1334,11 @@ class ChooseStickExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
         s.screen.switch_frame(ChooseNoToolExercisesPage)
 
     def on_arrow_click_back(self):
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
     def to_previous_button_click(self):
@@ -1320,7 +1352,7 @@ class ChooseStickExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 class ChooseNoToolExercisesPage(tk.Frame):
@@ -1334,6 +1366,8 @@ class ChooseNoToolExercisesPage(tk.Frame):
         self.background_label.pack()
 
         name_label(self)
+        how_many_repetitions_of_exercises(self)
+
 
         end_button_img = Image.open("Pictures//end_button.jpg")
         end_button_photo = ImageTk.PhotoImage(end_button_img)
@@ -1465,10 +1499,11 @@ class ChooseNoToolExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
     def on_arrow_click_back(self):
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
         s.screen.switch_frame(ChooseStickExercisesPage)
 
 
@@ -1526,28 +1561,29 @@ class ExercisePage(tk.Frame):
         self.chosen_subject = subjects[0]  # Instance variable for later use
 
         # Create a canvas for layering background and transparent image
-        self.canvas = tk.Canvas(self, width=1000, height=600)
+        self.canvas = tk.Canvas(self, width=1024, height=576)
         self.canvas.pack(fill="both", expand=True)
 
         # Load background image
         background_image = Image.open(f'Pictures//{self.chosen_subject}//background.jpg')
         self.background_photo = ImageTk.PhotoImage(background_image)
 
-        stop_training_button_img = Image.open("Pictures//stop_training_button.jpg")
-        stop_training_button_photo = ImageTk.PhotoImage(stop_training_button_img)
-        stop_training_button = tk.Button(self, image=stop_training_button_photo,
+        self.stop_training_button_img = Image.open("Pictures//stop_training_button.jpg")
+        self.stop_training_button_photo = ImageTk.PhotoImage(self.stop_training_button_img)
+        self.stop_training_button = tk.Button(self, image=self.stop_training_button_photo,
                                          command=self.stop_training_button_click,
                                          bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
-        stop_training_button.image = stop_training_button_photo  # Prevent garbage collection
-        stop_training_button.place(x=15, y=10)
+        self.stop_training_button.image = self.stop_training_button_photo  # Prevent garbage collection
+        self.stop_training_button.place(x=15, y=10)
+        self.stop = False
 
-        pause_training_button_img = Image.open("Pictures//pause_training_button.jpg")
-        pause_training_button_photo = ImageTk.PhotoImage(pause_training_button_img)
-        pause_training_button = tk.Button(self, image=pause_training_button_photo,
+        self.pause_training_button_img = Image.open("Pictures//pause_training_button.jpg")
+        self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
+        self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
                                          command=self.pause_training_button_click,
                                          bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
-        pause_training_button.image = pause_training_button_photo  # Prevent garbage collection
-        pause_training_button.place(x=95, y=10)
+        self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
+        self.pause_training_button.place(x=95, y=10)
 
         # Place background image on canvas
         self.canvas.create_image(0, 0, image=self.background_photo, anchor="nw")
@@ -1600,19 +1636,53 @@ class ExercisePage(tk.Frame):
                 self.count += 1
 
             # Schedule next iteration to keep updating the screen
-            self.after(1, self.update_exercise)  # Call the function every 1ms
+            self.after_id= self.after(1, self.update_exercise)  # Call the function every 1ms
         else:
             print("Exercise complete")
 
     def stop_training_button_click(self):
         s.req_exercise = ""
         s.stop_requested=True
+        s.finish_workout= True
+        self.after_cancel(self.after_id)  # Cancel any pending after() calls
+
         print("Stop training button clicked")
 
     def pause_training_button_click(self):
         s.starts_and_ends_of_stops.append(datetime.now())
-        # Define what happens when the button is clicked
-        print("Stop training button clicked")
+
+        if s.did_training_paused:
+            # Define what happens when the button is clicked
+            print("Pause training button clicked")
+            s.did_training_paused= False
+
+            if hasattr(self, 'pause_training_button'):
+                self.pause_training_button.destroy()
+
+                # Create a new button
+            self.pause_training_button_img = Image.open("Pictures//pause_training_button.jpg")
+            self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
+            self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
+                                                   command=self.pause_training_button_click,
+                                                   bd=0, highlightthickness=0)
+            self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
+            self.pause_training_button.place(x=95, y=10)
+
+        else:
+            if hasattr(self, 'pause_training_button'):
+                self.pause_training_button.destroy()
+
+                # Create a new button
+            self.pause_training_button_img = Image.open("Pictures//continue_training_button.jpg")
+            self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
+            self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
+                                                   command=self.pause_training_button_click,
+                                                   bd=0, highlightthickness=0)
+            self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
+            self.pause_training_button.place(x=95, y=10)
+
+            s.did_training_paused = True
+
 
 class ChooseTrainingOrExerciseInformation(tk.Frame):
     def __init__(self, master):
@@ -2280,6 +2350,43 @@ def name_label(self):
     self.label1.image = background_img
 
 
+def how_many_repetitions_of_exercises(self):
+    # List of options for the dropdown
+    self.options = ["5", "6", "7", "8", "9", "10"]
+
+    # Create a StringVar to hold the selected value
+    self.selected_option = tk.StringVar()
+
+    # Get the current number of repetitions from Excel
+    current_number_of_repetitions = Excel.find_value_by_colName_and_userID(
+        "Patients.xlsx", "patients_details", s.chosen_patient_ID, "number of repetitions in each exercise"
+    )
+
+    # Set the default selected option based on the value from Excel
+    self.selected_option.set(self.options[int(current_number_of_repetitions) - 5])  # Subtract 5 to match the index
+
+    # Create a custom style for the OptionMenu
+    style = ttk.Style()
+    style.theme_use('clam')  # Set theme to 'clam'
+
+    # Configure the appearance of the OptionMenu and the dropdown items
+    style.configure('Custom.TMenubutton', font=('Arial', 16, 'bold'), background='lightgray', foreground='black',
+                    padding=[10, 10], anchor='center')  # Add padding and set anchor to 'center'
+
+    # To configure the dropdown font (for the items inside the menu), modify the 'TMenu' style
+    style.configure('Custom.TMenu', font=('Arial', 16))  # Increase font for dropdown items
+
+    # Create the OptionMenu with the custom style
+    self.option_menu = ttk.OptionMenu(self, self.selected_option, self.selected_option.get(), *self.options)
+    self.option_menu['style'] = 'Custom.TMenubutton'  # Apply the custom style
+    self.option_menu.config(width=4)  # Adjust the width of the dropdown
+    self.option_menu.place(x=425, y=500)
+
+    # Change the dropdown font by updating the menu widget itself
+    menu = self.option_menu['menu']
+    menu.config(font=('Arial', 16))  # Set font for dropdown items
+
+
 class InformationAboutTrainingPage (tk.Frame):
     def __init__(self, master):
 
@@ -2394,7 +2501,7 @@ class ExplanationPage(tk.Frame):
         tk.Label(self, image=self.photo_image).pack()
 
         self.label = tk.Label(self)
-        self.label.place(x=400, y=120)  # Adjust x and y coordinates for the video
+        self.label.place(x=400, y=120)
         video_file = f'Videos//{exercise}_vid.mp4'
         video_path = os.path.join(os.getcwd(), video_file)
         self.cap = cv2.VideoCapture(video_path)
@@ -2407,9 +2514,55 @@ class ExplanationPage(tk.Frame):
             # Play videos
             play_video(self.cap, self.label, exercise, None, 0.5, 0.8)
             say(exercise)
+            self.after(get_wav_duration(exercise)*1000+500, lambda: say(str(f'{s.rep} times')))
 
 
-# class ExercisePage(tk.Frame):
+class Number_of_good_repetitions_page(tk.Frame):
+    def __init__(self, master, **kwargs):
+        tk.Frame.__init__(self, master, **kwargs)
+
+        # Create a canvas for layering background and text with no border or highlight
+        self.canvas = tk.Canvas(self, width=1024, height=576, bd=0, highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+
+        # Load and display the background image
+        image = Image.open('Pictures//good_repetitions.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        self.canvas.create_image(0, 0, image=self.photo_image, anchor="nw")
+
+        # Overlay text directly on the canvas instead of using Labels
+        self.canvas.create_text(480, 190, text=str(s.patient_repetitions_counting_in_exercise),
+                                font=("Arial", 100, "bold"), fill="black")
+
+        self.canvas.create_text(480, 450, text=str(s.rep),
+                                font=("Arial", 100, "bold"), fill="black")
+
+
+        say("you managed to perform")
+        first_delay = get_wav_duration("you managed to perform") * 1000 + 500
+
+        # First after delay
+        self.after(first_delay, lambda: self.say_repetitions())
+
+    def say_repetitions(self):
+        say(str(s.patient_repetitions_counting_in_exercise))
+        second_delay = get_wav_duration(str(s.patient_repetitions_counting_in_exercise)) * 1000 + 500
+
+        # Second after delay
+        self.after(second_delay, lambda: self.say_good_repetitions())
+
+    def say_good_repetitions(self):
+        say("good repetitions out of")
+        third_delay = get_wav_duration("good repetitions out of") * 1000 + 500
+
+        # Third after delay
+        self.after(third_delay, lambda: self.say_rep_count())
+
+    def say_rep_count(self):
+        say(str(s.rep))
+
+
+    # class ExercisePage(tk.Frame):
 #     def __init__(self, master):
 #         tk.Frame.__init__(self, master)
 #         image = Image.open('Pictures//exercise.jpg')
@@ -2427,7 +2580,7 @@ class Very_good(tk.Frame):
         image = Image.open('Pictures//verygood.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
-        say('very_good')
+        say('Very_good')
 
 
 class Excellent(tk.Frame):
@@ -2436,7 +2589,7 @@ class Excellent(tk.Frame):
         image = Image.open('Pictures//excellent.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
-        say('excellent')
+        say('Excellent')
 
 class Well_done(tk.Frame):
     def __init__(self, master):
@@ -2444,7 +2597,7 @@ class Well_done(tk.Frame):
         image = Image.open('Pictures//welldone.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
-        say('well_done')
+        say('Well_done')
 
 
 class AlmostExcellent(tk.Frame):
@@ -2456,7 +2609,7 @@ class AlmostExcellent(tk.Frame):
         say('almostexcellent')
 
 
-class Fail(tk.Frame):
+class FailPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
         image = Image.open('Pictures//fail.jpg')
@@ -2469,7 +2622,7 @@ class Fail(tk.Frame):
 class StartOfTraining(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//face.jpg')
+        image = Image.open('Pictures//hello.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("welcome")
@@ -2605,6 +2758,20 @@ class GoodbyePage(tk.Frame):
         image = Image.open('Pictures//goodbye.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
+        say('goodbye')
+
+
+class ClappingPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//clapping_page.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+        random_number = random.randint(1, 8)
+        say(f'clap {random_number}')
+        self.after(get_wav_duration(f'clap {random_number}')*1000+500, lambda: s.screen.switch_frame(GoodbyePage))
+
+
 
 
 ######################################################## Effort scale Page #################################################
@@ -2731,6 +2898,61 @@ class EffortScale(tk.Frame):
         s.finished_effort = True
 
 
+class Repeat_training_or_not(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+
+        image = Image.open('Pictures//background.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+
+
+
+
+        # Load images for buttons
+        finish_training_image = Image.open("Pictures//finish_training_button.jpg")
+        finish_training_photo = ImageTk.PhotoImage(finish_training_image)
+        repeat_training_image = Image.open("Pictures//repeat_training_button.jpg")
+        repeat_training_photo = ImageTk.PhotoImage(repeat_training_image)
+
+        # Store references to prevent garbage collection
+        self.finish_training_photo = finish_training_photo
+        self.repeat_training_photo = repeat_training_photo
+
+        # Create buttons with images
+        finish_training_button = tk.Button(self, image=finish_training_photo,
+                                              command=self.on_click_not_repeat,
+                                              width=finish_training_image.width, height=finish_training_image.height,
+                                              bg='#50a6ad', bd=0, highlightthickness=0)
+        finish_training_button.place(x=160, y=130)
+
+        repeat_training_button = tk.Button(self, image=repeat_training_photo,
+                                            command=self.on_click_repeat,
+                                            width=repeat_training_image.width, height=repeat_training_image.height,
+                                            bg='#50a6ad', bd=0, highlightthickness=0)
+        repeat_training_button.place(x=540, y=130)
+
+
+    def on_click_repeat(self):
+        s.another_training_requested= True
+        s.choose_continue_or_not= True
+        s.screen.switch_frame(Not_first_round_entrance_page)
+
+    def on_click_not_repeat(self):
+        s.choose_continue_or_not= True
+        s.screen.switch_frame(ClappingPage)
+
+
+class Not_first_round_entrance_page(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+
+        image = Image.open('Pictures//not_first_round_entrance.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+
+
+
 class FullScreenApp(object):
     def __init__(self, master, **kwargs):
         self.master=master
@@ -2757,7 +2979,9 @@ if __name__ == "__main__":
     #s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
     s.gymmy_done=False
     s.camera_done= False
+    s.rep=5
+    s.audio_path = 'audio files/Hebrew/Male/'
     s.patient_repetitions_counting_in_exercise = 1
-    s.screen.switch_frame(ExercisePage)
+    s.screen.switch_frame(ClappingPage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
