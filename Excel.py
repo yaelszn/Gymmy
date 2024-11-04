@@ -158,12 +158,14 @@ def wf_joints(ex_name, list_joints):
 def create_graphs_and_tables(exercise, list_joints):
 
     try:
-        if get_number_of_angles_in_exercise(exercise) == 1:
+        if get_number_of_angles_in_exercise(exercise) == "1a":
             one_angle_graph_and_table(exercise, list_joints)
-        if get_number_of_angles_in_exercise(exercise) == 2:
+        if get_number_of_angles_in_exercise(exercise) == "2a":
             two_angles_graph_and_table(exercise, list_joints)
-        if get_number_of_angles_in_exercise(exercise) == 3:
+        if get_number_of_angles_in_exercise(exercise) == "3a":
             three_angles_graph_and_table(exercise, list_joints)
+        if get_number_of_angles_in_exercise(exercise) == "2jd":
+            two_joints_distance_graphs_and_table(exercise, list_joints)
 
 
     except (pd.errors.ParserError, FileNotFoundError):
@@ -293,12 +295,46 @@ def three_angles_graph_and_table(exercise_name, list_joints):
         create_and_save_table_with_calculations(data, exercise_name)
 
 
+def two_joints_distance_graphs_and_table(exercise_name, list_joints):
+    if (list_joints!=[]):
+        last_two_values = [entry[-2:] for entry in list_joints] #extract from each record the last 2 values (the angles)
+        right_distance = [sublist[0] for sublist in last_two_values] #the right angle from each record
+        left_distance = [sublist[1] for sublist in last_two_values] #the left angle from each record
+
+
+        #extract the joints names and create graphs names
+        first_values= list_joints[0]
+        first_4_values= first_values[:4]
+        joints_names = [str(sample).split()[0] for sample in first_4_values] #takes from each joint only the first string which is the name
+        first_graph_name= "Distance " + joints_names[0] + " To " + joints_names[1]
+        second_graph_name= "Distance " + joints_names[2] + " To " + joints_names[3]
+
+        #create a list of x values
+        length= len(list_joints)
+        measurement_num = list(range(1, length + 1))
+
+        #create a data dic for graph
+        data = {
+        first_graph_name: {'x': measurement_num, 'y': right_distance},
+        second_graph_name: {'x': measurement_num, 'y': left_distance}}
+
+        create_and_save_graph(data, exercise_name)
+        create_and_save_table_with_calculations(data, exercise_name)
+
+
 def create_and_save_graph(data, exercise):
     # Define the starting row and column for inserting the graphs
     # Iterate over each plot data
     for plot_name, plot_data in data.items():
         # Create a new plot
-        plt.plot(plot_data['x'], plot_data['y'])
+        y_series = pd.Series(plot_data['y'])
+        y_values = y_series.dropna().tolist()
+
+        # create a list of x values
+        length = len(y_values)
+        measurement_num = list(range(1, length + 1))
+
+        plt.plot(measurement_num, y_values)
 
         # Set the font size
         fontsize = 16
@@ -307,23 +343,23 @@ def create_and_save_graph(data, exercise):
         plt.ylabel('זווית'[::-1], fontsize=fontsize, weight='bold')
         plt.title(plot_name[:-2], fontsize=fontsize + 2, weight='bold')
 
-        # Filter out None values from plot_data['y']
-        y_values = [value for value in plot_data['y'] if value is not None]
+        # # Filter out None values from plot_data['y']
 
-        # Add text box with statistics if y_values is not empty
-        if y_values:
-            min_val = f"{min(y_values):.2f}"
-            max_val = f"{max(y_values):.2f}"
-            average = f"{(sum(y_values) / len(y_values)):.2f}"
-            stdev = f"{np.std(y_values):.2f}"
-
-        text = f" {min_val} :מינימום \n {max_val} :מקסימום \n  {average} :ממוצע \n {stdev} :תקן סטיית"
-        hebrew_pattern = re.compile(r'[\u0590-\u05FF]+')
-        text_content = hebrew_pattern.sub(lambda match: match.group(0)[::-1], text)
-
-        plt.text(1, 1, text_content, transform=plt.gca().transAxes, verticalalignment='top',
-                 horizontalalignment='right', fontsize=11, weight='bold',
-                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        #
+        # # Add text box with statistics if y_values is not empty
+        # if y_values:
+        #     min_val = f"{min(y_values):.2f}"
+        #     max_val = f"{max(y_values):.2f}"
+        #     average = f"{(sum(y_values) / len(y_values)):.2f}"
+        #     stdev = f"{np.std(y_values):.2f}"
+        #
+        # text = f" {min_val} :מינימום \n {max_val} :מקסימום \n  {average} :ממוצע \n {stdev} :תקן סטיית"
+        # hebrew_pattern = re.compile(r'[\u0590-\u05FF]+')
+        # text_content = hebrew_pattern.sub(lambda match: match.group(0)[::-1], text)
+        #
+        # plt.text(1, 1, text_content, transform=plt.gca().transAxes, verticalalignment='top',
+        #          horizontalalignment='right', fontsize=11, weight='bold',
+        #          bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
         start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
 
@@ -490,16 +526,21 @@ def count_number_of_exercises_in_training_by_ID():
 
 
 def create_and_save_table_with_calculations(data, exercise):
-    # Define the directory for saving the table image
+    # Define the name of the file for saving the table image
     start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
 
     # Create and open the folder to save the tables
     create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}')
 
-    # Iterate over each table data (in case you have multiple tables)
+
+    # Iterate over each table data (each table if for an angle/distance)
     for table_name, table_data in data.items():
         # Perform calculations (min, max, avg, std)
-        y_values = [value for value in table_data['y'] if value is not None]  # Remove None values from 'y' data
+        # Create a new plot
+        y_series = pd.Series(data['y'])
+        y_values = y_series.dropna().tolist()
+
+
         if y_values:
             min_val = f"{min(y_values):.2f}"
             max_val = f"{max(y_values):.2f}"
