@@ -13,7 +13,7 @@ class Gymmy(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
-        self.gymmy = PoppyTorso(camera="dummy", port= "COM3", baudrate= 115200)  # for real robot
+        self.gymmy = PoppyTorso(camera="dummy", port= "COM4")  # for real robot
         #self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
         print("ROBOT INITIALIZATION")
         #self.gymmy.abs_z.goto_position(0, 1, wait=True)
