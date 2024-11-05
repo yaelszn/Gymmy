@@ -37,7 +37,7 @@ class PyZedWrapper(threading.Thread):
         body_params = sl.BodyTrackingParameters()
         body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_FAST  # Use the fastest tracking model
         body_params.enable_tracking = True
-        body_params.image_sync = True
+        #body_params.image_sync = True
         body_params.enable_body_fitting = False  # Disable body fitting for performance
         body_params.body_format = sl.BODY_FORMAT.BODY_38  # Use BODY_18 format for 18 joints
 
