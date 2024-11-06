@@ -249,8 +249,8 @@ class Camera(threading.Thread):
                 ex = s.req_exercise
                 print("CAMERA: Exercise ", ex, " start")
                 if s.req_exercise != "hello_waving":
-                    audio = s.req_exercise
-                    time.sleep(get_wav_duration(audio) + get_wav_duration("start_ex"))
+                    # audio = s.req_exercise
+                    # time.sleep(get_wav_duration(audio) + get_wav_duration("start_ex"))
                     s.max_repetitions_in_training += s.rep  # Number of repetitions expected in this exercise
                 self.joints = {}  # Clear joints data for each new exercise
                 self.previous_angles={}

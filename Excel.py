@@ -537,7 +537,7 @@ def create_and_save_table_with_calculations(data, exercise):
     for table_name, table_data in data.items():
         # Perform calculations (min, max, avg, std)
         # Create a new plot
-        y_series = pd.Series(data['y'])
+        y_series = pd.Series(table_data['y'])
         y_values = y_series.dropna().tolist()
 
 

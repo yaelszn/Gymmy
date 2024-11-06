@@ -19,6 +19,14 @@ if __name__ == '__main__':
     s.additional_audio_playing = False
     s.volume = 0.6
     # Training variables initialization
+    s.ball_exercises_number = 5
+    s.band_exercises_number = 3
+    s.stick_exercises_number = 4
+    s.weights_exercises_number = 4
+    s.no_tool_exercises_number = 4
+
+
+
     s.rep = 5
     s.req_exercise = ""
     s.audio_path = None

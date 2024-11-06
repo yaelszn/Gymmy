@@ -59,6 +59,8 @@ def __init__():
 
     global exercises_by_order
 
+    global ball_exercises_number
+
 
 
 

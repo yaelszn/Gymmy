@@ -45,7 +45,7 @@ class Gymmy(threading.Thread):
                 time.sleep(0.00000001)  # Prevents the MP to stuck
                 if s.req_exercise != "" and not s.req_exercise=="hello_waving":
                     ex = s.req_exercise
-                    time.sleep(1)
+                    time.sleep(2)
 
                     print("ROBOT: Exercise ", ex, " start")
                     self.exercise_demo(ex)
