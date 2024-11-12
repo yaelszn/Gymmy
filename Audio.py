@@ -109,6 +109,7 @@ class AdditionalAudio(threading.Thread):
 
         # Indicate that additional audio is finished playing
         s.additional_audio_playing = False
+        time.sleep(5)
 
 def say(str_to_say):
     """

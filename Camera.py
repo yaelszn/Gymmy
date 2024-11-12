@@ -1,7 +1,7 @@
 import copy
 import math
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pygame
 import pyzed.sl as sl
@@ -236,6 +236,8 @@ class Camera(threading.Thread):
         self.joints = {}  # Store joints data
         self.max_angle_jump = 12  # Maximum allowed jump between consecutive angle calculations
         self.previous_angle = {}
+        s.general_sayings=["","",""]
+
 
     def run(self):
         print("CAMERA START")
@@ -245,7 +247,7 @@ class Camera(threading.Thread):
 
         while not s.finish_program:
             time.sleep(0.0001)  # Prevents the MP from being stuck
-            if s.req_exercise != "":
+            if (s.req_exercise != "" and s.gymmy_finished_demo) or (s.req_exercise == "hello_waving"):
                 ex = s.req_exercise
                 print("CAMERA: Exercise ", ex, " start")
                 if s.req_exercise != "hello_waving":
@@ -373,6 +375,16 @@ class Camera(threading.Thread):
     #         time.sleep(1)
     #         self.random_encouragement()
 
+    def sayings_generator(self):
+        if s.robot_counter < s.rep-1:
+            random_number_for_general_saying = random.randint(1, s.rep*30) #the number of frames probably in an exercise, devided by 6 to have the chance for several sayings
+
+        if random_number_for_general_saying==1 or random_number_for_general_saying==2 and  (datetime.now() - timedelta(seconds=10) < s.last_saying_time):
+            random_saying_name = random.choice(self.general_sayings)
+            say(random_saying_name)
+            s.last_saying_time= datetime.now()
+
+
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                                    joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, use_alternate_angles=False, left_right_differ=False):
 
@@ -386,7 +398,9 @@ class Camera(threading.Thread):
             while s.req_exercise == exercise_name:
                 while s.did_training_paused and not s.stop_requested:
                     time.sleep(0.01)
-            #for i in range (1,200):
+
+
+                #for i in range (1,200):
                 joints = self.get_skeleton_data()
                 if joints is not None:
                     right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
@@ -817,8 +831,6 @@ class Camera(threading.Thread):
         Excel.wf_joints(exercise_name, list_joints)
 
     def hello_waving(self):  # check if the participant waved
-        # s.waved_has_tool = True
-        # s.req_exercise = ""
         while s.req_exercise == "hello_waving":
             joints = self.get_skeleton_data()
             if joints is not None:
@@ -826,8 +838,6 @@ class Camera(threading.Thread):
                 right_wrist = joints[str("R_wrist")]
                 if right_shoulder.y > right_wrist.y != 0:
                     s.waved_has_tool = True
-                    # print(right_shoulder.y)
-                    # print(right_wrist.y)
                     s.req_exercise = ""
 
 

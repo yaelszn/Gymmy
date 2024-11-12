@@ -60,7 +60,10 @@ def __init__():
     global exercises_by_order
 
     global ball_exercises_number
-
+    global explanation_over
+    global gymmy_finished_demo
+    global full_name
+    global robot_counter
 
 
 

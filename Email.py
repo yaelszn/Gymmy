@@ -1,13 +1,6 @@
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
-
 import pandas as pd
 import matplotlib.pyplot as plt
-import smtplib
-from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-import Settings as s
 import os
 import re
 import math
@@ -18,6 +11,13 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 import Excel
 import Settings as s
+from email.mime.application import MIMEApplication
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+import fitz  # PyMuPDF
+from io import BytesIO
 
 def get_percentage_of_successes_in_last_10_training():
     df = pd.read_excel("Patients.xlsx", sheet_name="patients_history_of_trainings")
@@ -193,7 +193,7 @@ def email_sending_not_level_up():
 
     # Email configuration
     sender_email = 'yaelszn@gmail.com'
-    receiver_email = 'yaelszn@gmail.com'
+    receiver_email = s.email_of_patient
     password = 'diyf cxzc tifj sotp'
 
     with open(graph_file_path, 'rb') as graph_file:
@@ -284,16 +284,19 @@ def collect_images_from_folders(patient_id, exercise_name, timestamp):
     return table_images_ordered, graph_images_ordered  # Tables first, then Graphs
 
 
-def create_pdf(pdf_filename, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3):
+def create_pdf():
     """
     Create a PDF with a global header, section headers, and fixed-size images, with the images
     ordered for specific layouts depending on the number of images in each section.
     """
+
+    pdf_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3 = data_creation_to_create_pdf()
+
     # Register the Hebrew-compatible font
-    pdfmetrics.registerFont(TTFont('Hebrew', "C:/Users/yaels/יעל פרוייקט גמר/zedcheck/arial.ttf-master/arial.ttf"))
+    pdfmetrics.registerFont(TTFont('Hebrew', "arial.ttf-master/arial.ttf"))
 
     # Create a canvas to generate the PDF
-    pdf_canvas = canvas.Canvas(pdf_filename, pagesize=letter)
+    pdf_canvas = canvas.Canvas(pdf_path, pagesize=letter)
 
     # Set the PDF page dimensions (letter size)
     width, height = letter
@@ -427,9 +430,10 @@ def create_pdf(pdf_filename, image_groups, section_headers, global_header_line1,
 
     # Finalize the PDF
     pdf_canvas.save()
+    return pdf_path
 
 
-def send_email_to_therapist():
+def data_creation_to_create_pdf():
     # Example usage
     exercises = s.exercises_by_order
     image_groups = []
@@ -474,5 +478,125 @@ def send_email_to_therapist():
     output_path = os.path.join(output_directory, f'{start_time}.pdf')
 
     # Create the PDF with images, headers, and a global title
-    create_pdf(output_path, image_groups, section_headers, global_header_line1, global_header_line2,
-               global_header_line3)
+    return output_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3
+
+
+def create_pdf_preview(pdf_path):
+    # Open the PDF
+    pdf_document = fitz.open(pdf_path)
+
+    # Check if there is a second page (page 1 in zero-indexed format)
+    if pdf_document.page_count < 2:
+        print("The PDF does not have a second page. No preview created.")
+        pdf_document.close()
+        return None  # Return None if there's no second page
+
+    # Load the second page (page index 1)
+    page = pdf_document.load_page(1)
+
+    # Render page to a pixmap (an image representation)
+    pix = page.get_pixmap()
+
+    # Convert the pixmap to a PIL image
+    image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+    # Save the image to a BytesIO object
+    image_io = BytesIO()
+    image.save(image_io, format='JPEG')
+    image_io.seek(0)
+
+    # Close the PDF
+    pdf_document.close()
+
+    return image_io
+
+def email_to_physical_therapist():
+    # Define the PDF file path
+    pdf_file_path = create_pdf()
+
+    # Generate the PDF preview
+    preview_image_io = create_pdf_preview(pdf_file_path)
+
+    # Email configuration
+    sender_email = 'yaelszn@gmail.com'
+    # Assuming receiver_emails is a string of comma-separated emails
+    receiver_emails_str = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details",
+                                                                 s.chosen_patient_ID, "email of therapist")
+
+    # Convert the comma-separated string into a list
+    receiver_emails = receiver_emails_str.split(',')  # Add all recipient emails here
+    password = 'diyf cxzc tifj sotp'
+
+    # Create message container
+    message = MIMEMultipart("related")
+    message['From'] = sender_email
+    message['To'] = ", ".join(receiver_emails)  # Display recipients as comma-separated
+    message['Subject'] = f'{s.full_name} סיכום אימון '
+
+    # Set up initial variables for email content
+    number_of_pauses = 0
+    did_paused = "לא"
+    did_stopped = "הושלם"
+
+    # Determine if the training was paused or stopped
+    if s.stop_requested and len(s.starts_and_ends_of_stops) == 2:
+        did_stopped = "הופסק באמצע"
+
+    if len(s.starts_and_ends_of_stops) > 2:
+        did_paused = "כן"
+        number_of_pauses = len(s.starts_and_ends_of_stops) // 2 - 1
+
+    # Create HTML content with the inline image
+    html_content = f'''
+    <html>
+      <body style="direction: rtl;">
+        <p> סיכום אימון של <b>{s.full_name}</b>, </p>
+        <p> האם בוצעה הפסקה באימון?  <b>{did_paused}</b> </p>
+    '''
+
+    if number_of_pauses != 0:
+        html_content += f'<p> בוצעו  <b>{number_of_pauses}</b> הפסקות באימון </p>'
+
+    html_content += f'''
+        <p> האם האימון הושלם או הופסק באמצע? <b>{did_stopped}</b> </p>
+        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
+        <p style="font-family: Arial, sans-serif; font-weight: bold;">סיכום האימון מופיע בקובץ המצורף</p>
+        <p>תצוגה מקדימה של סיכום האימון:</p>
+        <img src="cid:preview_image" alt="PDF Preview">
+        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
+        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
+      </body>
+    </html>
+    '''
+
+    # Attach HTML content
+    message.attach(MIMEText(html_content, 'html'))
+
+    # Attach the PDF preview image as an inline image if it exists
+    if preview_image_io:
+        preview_image = MIMEImage(preview_image_io.read(), _subtype="jpeg")
+        preview_image.add_header('Content-ID', '<preview_image>')
+        message.attach(preview_image)
+
+    # Attach the PDF file
+    with open(pdf_file_path, 'rb') as pdf_file:
+        pdf_data = pdf_file.read()
+        pdf_attachment = MIMEApplication(pdf_data, _subtype="pdf")
+        pdf_attachment.add_header('Content-Disposition', 'attachment', filename='summary.pdf')
+        message.attach(pdf_attachment)
+
+    # Connect to SMTP server and send the email
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()  # Secure the connection
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_emails, message.as_string())
+        print('Email sent successfully!')
+
+
+if __name__ == '__main__':
+    s.email_of_patient = "yaelszn@gmail.com"
+    s.full_name = "יעל שניידמן"
+    s.stop_requested = True
+    s.starts_and_ends_of_stops=[1,2,3,4,5]
+
+    email_to_physical_therapist()

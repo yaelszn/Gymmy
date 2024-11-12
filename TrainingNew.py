@@ -169,6 +169,7 @@ class Training(threading.Thread):
             Excel.find_and_add_training_to_patient()
             Excel.close_workbook()
             self.check_points_and_send_email()
+            Email.email_to_physical_therapist()
             print("TRAINING DONE")
             time.sleep(1)
             self.reset()
@@ -212,8 +213,9 @@ class Training(threading.Thread):
         s.patient_repetitions_counting_in_exercise=0
 
         print("TRAINING: Exercise ", name, " start")
-        s.screen.switch_frame(ExplanationPage, exercise= name)
+        s.explanation_over = False
         s.req_exercise = name
+        s.screen.switch_frame(ExplanationPage, exercise= name)
         speak_time = get_wav_duration(name)+get_wav_duration(f'{str(s.rep)} times')
         time.sleep(min(speak_time, self.get_video_duration(name))) #wait the time of the audio
         time.sleep(abs(self.get_video_duration(name)-speak_time)) #wait the time of the video minus the time it already waited
@@ -223,6 +225,7 @@ class Training(threading.Thread):
 
 
         print("TRAINING: Exercise ", name, " done")
+        s.gymmy_finished_demo = False
         time.sleep(3)
         # time.sleep(1)
 

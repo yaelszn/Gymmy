@@ -1,4 +1,5 @@
 import threading
+from datetime import datetime
 
 import pygame
 
@@ -24,6 +25,7 @@ if __name__ == '__main__':
     s.stick_exercises_number = 4
     s.weights_exercises_number = 4
     s.no_tool_exercises_number = 4
+
 
 
 
@@ -53,6 +55,12 @@ if __name__ == '__main__':
     s.choose_continue_or_not= False
     s.did_training_paused= False
     s.rate= "moderate"
+    s.explanation_over= False
+    s.gymmy_finished_demo = False
+    s.last_saying_time = datetime.now()
+    s.robot_counter = 0
+
+
     # Create all components
     s.camera = Camera()
     s.training = Training()

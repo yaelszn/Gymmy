@@ -206,8 +206,9 @@ class ID_patient_fill_page(tk.Frame):
                     s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "email")
                     s.current_level_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "level")
                     s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
-                    s.rep= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "number of repetitions in each exercise")
+                    s.rep= int(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "number of repetitions in each exercise"))
                     gender = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "gender")
+                    s.full_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "first name") + " " + Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "last name")
                     s.audio_path = 'audio files/Hebrew/' + gender + '/'
 
                     df1 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
@@ -681,6 +682,7 @@ class PatientRegistration(tk.Frame):
     def on_click_to_physio_menu(self):  # go back to the physio menu page
         s.screen.switch_frame(Choose_Action_Physio)
 
+
 class PatientDisplaying(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
@@ -1036,7 +1038,8 @@ class ChooseBallExercisesPage(tk.Frame):
 
 
     def on_arrow_click(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(), "rate": self.selected_option_rate.get()})
+
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
     def to_previous_button_click(self):
@@ -1050,8 +1053,9 @@ class ChooseBallExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
+
 
 
 
@@ -1065,8 +1069,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        name_label(self)
-        how_many_repetitions_of_exercises(self)
+        add_to_exercise_page(self)
 
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
@@ -1188,11 +1191,13 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+                                               "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseStickExercisesPage)
 
     def on_arrow_click_back(self):
-        Excel.find_and_change_values_patients({"nmber of repetitions each in exercise": self.selected_option.get()})
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+                                               "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseBallExercisesPage)
 
     def to_previous_button_click(self):
@@ -1206,7 +1211,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
@@ -1224,8 +1229,7 @@ class ChooseStickExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        name_label(self)
-        how_many_repetitions_of_exercises(self)
+        add_to_exercise_page(self)
 
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
@@ -1374,11 +1378,13 @@ class ChooseStickExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+                                               "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseNoToolExercisesPage)
 
     def on_arrow_click_back(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+                                               "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
     def to_previous_button_click(self):
@@ -1392,7 +1398,7 @@ class ChooseStickExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
@@ -1407,9 +1413,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        name_label(self)
-        how_many_repetitions_of_exercises(self)
-
+        add_to_exercise_page(self)
 
         end_button_img = Image.open("Pictures//end_button.jpg")
         end_button_photo = ImageTk.PhotoImage(end_button_img)
@@ -1553,11 +1557,12 @@ class ChooseNoToolExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
     def on_arrow_click_back(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get()})
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+                                               "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseStickExercisesPage)
 
 
@@ -2110,16 +2115,29 @@ class TablesPage(tk.Frame):
         previous_page_category.image = previous_page_button_photo
         previous_page_category.place(x=30, y=30)
 
-        # Fetch sorted folders
-        sorted_folders = get_sorted_folders(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}')
-        if len(sorted_folders) == 0:
+        try:
+            # Attempt to fetch sorted folders for the exercise
+            sorted_folders = get_sorted_folders(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}')
+
+            if len(sorted_folders) == 0:
+                # Display 'patient_didnt_do.jpg' if no folders are found
+                didnt_do_before = Image.open('Pictures//patient_didnt_do.jpg')
+                self.didnt_do_before = ImageTk.PhotoImage(didnt_do_before)
+                self.didnt_do_before_label = tk.Label(self, image=self.didnt_do_before, bd=0, bg=self.background_color)
+                self.didnt_do_before_label.place(x=270, y=75)
+            else:
+                # Show tables if folders are found
+                num_of_angles = self.get_number_of_angles_in_exercise(exercise)
+                self.show_tables(sorted_folders, 0, num_of_angles, exercise)
+
+        except FileNotFoundError:
+            # Handle case where the path does not exist
             didnt_do_before = Image.open('Pictures//patient_didnt_do.jpg')
             self.didnt_do_before = ImageTk.PhotoImage(didnt_do_before)
             self.didnt_do_before_label = tk.Label(self, image=self.didnt_do_before, bd=0, bg=self.background_color)
             self.didnt_do_before_label.place(x=270, y=75)
-        else:
-            num_of_angles = self.get_number_of_angles_in_exercise(exercise)
-            self.show_tables(sorted_folders, 0, num_of_angles, exercise)
+            print(f"Error: The path 'Patients/{s.chosen_patient_ID}/Tables/{exercise}' does not exist.")
+
 
     def show_tables(self, sorted_folder, place, num_of_angles, exercise):
         if place > 0:
@@ -2387,6 +2405,11 @@ class TablesPage(tk.Frame):
 
 
 
+def add_to_exercise_page(self):
+    name_label(self)
+    how_many_repetitions_of_exercises(self)
+    rate_of_exercises(self)
+
 
 def name_label(self):
     back = Image.open('Pictures//empty.JPG')
@@ -2409,7 +2432,7 @@ def how_many_repetitions_of_exercises(self):
     self.options = ["5", "6", "7", "8", "9", "10"]
 
     # Create a StringVar to hold the selected value
-    self.selected_option = tk.StringVar()
+    self.selected_option_rep = tk.StringVar()
 
     # Get the current number of repetitions from Excel
     current_number_of_repetitions = Excel.find_value_by_colName_and_userID(
@@ -2417,7 +2440,7 @@ def how_many_repetitions_of_exercises(self):
     )
 
     # Set the default selected option based on the value from Excel
-    self.selected_option.set(self.options[int(current_number_of_repetitions) - 5])  # Subtract 5 to match the index
+    self.selected_option_rep.set(self.options[int(current_number_of_repetitions) - 5])  # Subtract 5 to match the index
 
     # Create a custom style for the OptionMenu
     style = ttk.Style()
@@ -2431,14 +2454,76 @@ def how_many_repetitions_of_exercises(self):
     style.configure('Custom.TMenu', font=('Arial', 16))  # Increase font for dropdown items
 
     # Create the OptionMenu with the custom style
-    self.option_menu = ttk.OptionMenu(self, self.selected_option, self.selected_option.get(), *self.options)
+    self.option_menu = ttk.OptionMenu(self, self.selected_option_rep, self.selected_option_rep.get(), *self.options)
     self.option_menu['style'] = 'Custom.TMenubutton'  # Apply the custom style
     self.option_menu.config(width=4)  # Adjust the width of the dropdown
-    self.option_menu.place(x=425, y=500)
+    self.option_menu.place(x=520, y=480)
 
-    # Change the dropdown font by updating the menu widget itself
-    menu = self.option_menu['menu']
-    menu.config(font=('Arial', 16))  # Set font for dropdown items
+
+    # Adjust dropdown items font
+    self.option_menu['menu'].config(font=('Arial', 16))
+
+    # Background and label setup
+    self.background_color = "#deeaf7"
+    background_img = ImageTk.PhotoImage(Image.open('Pictures//empty.JPG'))
+    self.label1 = tk.Label(self, text=":מספר חזרות ", image=background_img, compound=tk.CENTER,
+                           font=("Thaoma", 16, 'bold'), width=110, height=50, bg=self.background_color)
+    self.label1.place(x=620, y=480)
+    self.label1.image = background_img
+
+
+def rate_of_exercises(self):
+
+    # List of options for the dropdown
+    self.options_rate = ["slow", "moderate", "fast"]
+
+    # Create a StringVar to hold the selected value
+    self.selected_option_rate = tk.StringVar()
+
+    # Get the current number of repetitions from Excel
+    current_rate = Excel.find_value_by_colName_and_userID(
+        "Patients.xlsx", "patients_details", s.chosen_patient_ID, "rate"
+    )
+
+    # Set the default selected option based on the value from Excel
+    self.selected_option_rate.set(self.options_rate[self.options_rate.index(str(current_rate))])
+
+    # Create a custom style for the OptionMenu
+    style = ttk.Style()
+    style.theme_use('clam')  # Set theme to 'clam'
+
+    # Configure the appearance of the OptionMenu and the dropdown items
+    style.configure('Custom.TMenubutton', font=('Arial', 16, 'bold'), background='lightgray', foreground='black',
+                    padding=[10, 10], anchor='center')  # Add padding and set anchor to 'center'
+
+    # To configure the dropdown font (for the items inside the menu), modify the 'TMenu' style
+    style.configure('Custom.TMenu', font=('Arial', 16))  # Increase font for dropdown items
+
+    # Configure the appearance of the OptionMenu and the dropdown items
+    style.configure('Custom.TMenubutton', font=('Arial', 16, 'bold'), background='lightgray', foreground='black',
+                    padding=[10, 10], anchor='center')  # Add padding and set anchor to 'center'
+
+    # To configure the dropdown font (for the items inside the menu), modify the 'TMenu' style
+    style.configure('Custom.TMenu', font=('Arial', 16))  # Increase font for dropdown items
+
+    # Create the OptionMenu with the custom style
+    self.option_menu_rate = ttk.OptionMenu(self, self.selected_option_rate, self.selected_option_rate.get(), *self.options_rate)
+    self.option_menu_rate['style'] = 'Custom.TMenubutton'  # Apply the custom style
+    self.option_menu_rate.config(width=11)  # Adjust the width of the dropdown
+    self.option_menu_rate.place(x=270, y=480)
+
+
+    # Adjust dropdown items font
+    self.option_menu_rate['menu'].config(font=('Arial', 16))
+    # Background and label setup
+    self.background_color = "#deeaf7"
+    background_img = ImageTk.PhotoImage(Image.open('Pictures//empty.JPG'))
+
+
+    self.label2 = tk.Label(self, text=":קצב ", image=background_img, compound=tk.CENTER,
+                           font=("Thaoma", 16, 'bold'), width=50, height=50, bg=self.background_color)
+    self.label2.place(x=450, y=480)
+    self.label2.image = background_img
 
 
 class InformationAboutTrainingPage (tk.Frame):
@@ -2560,6 +2645,14 @@ class ExplanationPage(tk.Frame):
         video_path = os.path.join(os.getcwd(), video_file)
         self.cap = cv2.VideoCapture(video_path)
 
+        skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
+        skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
+        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo, command=lambda: self.on_click_skip(),
+                                width=skip_explanation_button_img.width, height=skip_explanation_button_img.height, bd=0,
+                                highlightthickness=0)
+        skip_explanation_button.image = skip_explanation_button_photo
+        skip_explanation_button.place(x=30, y=30)
+
 
         if not (self.cap.isOpened()):
             print("Error opening video streams or files")
@@ -2568,7 +2661,14 @@ class ExplanationPage(tk.Frame):
             # Play videos
             play_video(self.cap, self.label, exercise, None, 0.5, 0.8)
             say(exercise)
-            self.after(get_wav_duration(exercise)*1000+500, lambda: say(str(f'{s.rep} times')))
+            self.after(get_wav_duration(exercise)*1000+500, lambda: self.end_of_explanation())
+
+    def end_of_explanation(self):
+        say(str(f'{s.rep} times'))
+        s.explanation_over = True
+
+    def on_click_skip(self):
+        s.explanation_over = True
 
 
 class Number_of_good_repetitions_page(tk.Frame):
