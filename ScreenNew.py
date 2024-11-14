@@ -883,8 +883,8 @@ class ChooseBallExercisesPage(tk.Frame):
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        name_label(self)
-        how_many_repetitions_of_exercises(self)
+        add_to_exercise_page(self)
+
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
         forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
@@ -1053,7 +1053,7 @@ class ChooseBallExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option_rep.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
@@ -1191,12 +1191,12 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
                                                "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseStickExercisesPage)
 
     def on_arrow_click_back(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
                                                "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseBallExercisesPage)
 
@@ -1211,7 +1211,7 @@ class ChooseRubberBandExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option_rep.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
@@ -1378,12 +1378,12 @@ class ChooseStickExercisesPage(tk.Frame):
 
 
     def on_arrow_click_forward(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
                                                "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseNoToolExercisesPage)
 
     def on_arrow_click_back(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
                                                "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
 
@@ -1398,7 +1398,7 @@ class ChooseStickExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option_rep.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
@@ -1557,11 +1557,11 @@ class ChooseNoToolExercisesPage(tk.Frame):
             self.label.image = background_img
 
         else:
-            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option.get(), "rate": self.selected_option_rate.get()})
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option_rep.get(), "rate": self.selected_option_rate.get()})
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
     def on_arrow_click_back(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option.get(),
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
                                                "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseStickExercisesPage)
 
