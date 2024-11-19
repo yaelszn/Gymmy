@@ -26,20 +26,18 @@ from scipy.signal import savgol_filter
 import numpy as np
 from scipy.signal import savgol_filter
 
+import numpy as np
 
-class CombinedFilter:
-    def __init__(self, window_size=5, current_weight=0.2, savgol_window=15, polyorder=2, max_null_extrapolation=100,
-                 max_jump=50.0):
-        self.window_size = window_size  # Number of previous measurements to consider
-        self.current_weight = current_weight  # Weight to place on the current measurement
-        self.savgol_window = savgol_window  # Window size for Savitzky-Golay smoothing
-        self.polyorder = polyorder  # Polynomial order for Savitzky-Golay filter
+
+class MovingAverageFilter:
+    def __init__(self, window_size=3, max_null_extrapolation=50, max_jump=70.0):
+        self.window_size = window_size  # Number of previous measurements to consider for moving average
         self.max_null_extrapolation = max_null_extrapolation  # Max nulls before fallback
         self.max_jump = max_jump  # Maximum allowable jump between consecutive positions
 
-        self.previous_positions = []  # Store previous positions
+        self.previous_positions = []  # Store previous positions for moving average
         self.consecutive_invalid_measurements = 0  # Track consecutive null measurements
-        self.last_valid_position = None  # Last valid position used for smoothing
+        self.last_valid_position = None  # Last valid position used for jump limiting
         self.last_velocity = None  # Track the last calculated velocity
 
     def update(self, measurement):
@@ -50,137 +48,70 @@ class CombinedFilter:
 
             # Predict next value if within the limit
             if self.last_velocity is not None and self.consecutive_invalid_measurements < self.max_null_extrapolation:
-                # Extrapolate based on the last known velocity
                 measurement = self.extrapolate_position()
                 print(f"Predicting using velocity: {self.last_velocity}, extrapolated position: {measurement}")
             else:
-                # Too many nulls: use last valid position or stop extrapolating
+                # Too many nulls: use last valid position or default to zero if none available
                 measurement = self.last_valid_position if self.last_valid_position is not None else np.zeros(3)
                 print(f"Too many nulls. Using the last valid measurement: {measurement}")
-
         else:
-            # Valid measurement found, reset null count
-            self.last_valid_position = measurement
+            # Reset null count if valid measurement is found
             self.consecutive_invalid_measurements = 0
-            self.last_velocity = self.calculate_velocity()
+            self.last_valid_position = measurement
+            self.last_velocity = self.calculate_velocity(measurement)
 
         # Add current measurement and ensure window size is limited
         self.previous_positions.append(measurement)
         if len(self.previous_positions) > self.window_size:
             self.previous_positions.pop(0)
 
-        # Smooth data if enough measurements are available
-        if len(self.previous_positions) >= self.savgol_window:
-            smoothed_data = self.smooth_data()
-            return smoothed_data[-1]  # Return the most recent smoothed value
-        else:
-            return self.previous_positions[-1]
+        # Calculate and return the moving average of the stored positions
+        return self.calculate_moving_average()
 
     def limit_jump(self, measurement):
-        """
-        Limit the maximum jump between the last valid position and the current measurement.
-        """
+        """Limit the maximum jump between the last valid position and the current measurement."""
         if self.last_valid_position is None:
             return measurement  # No valid previous position, return as is
 
-        # Calculate the difference between the current and last valid position
+        # Calculate the distance between the current and last valid position
         distance = np.linalg.norm(measurement - self.last_valid_position)
 
         # If the distance exceeds the max_jump, clamp it
         if distance > self.max_jump:
-            # Limit the jump by scaling the change down
             direction = (measurement - self.last_valid_position) / distance  # Unit vector in direction of change
             measurement = self.last_valid_position + direction * self.max_jump  # Clamp to max_jump distance
 
         return measurement
 
     def extrapolate_position(self):
-        """
-        Extrapolate position based on velocity, with velocity decay and a maximum distance cap.
-        """
-        # Dynamic decay factor based on the number of nulls, with a cap to prevent excessive decay
-        base_decay = min(0.2 + (0.05 * self.consecutive_invalid_measurements), 0.7)  # Cap at 0.5
+        """Extrapolate position based on the last known velocity."""
+        if self.last_velocity is None or self.last_valid_position is None:
+            return np.zeros(3)  # Fallback to zero if no velocity or position is available
 
-        # Calculate decay factor
-        decay_factor = max(0.1, 1 - base_decay * self.consecutive_invalid_measurements)
+        extrapolated_position = self.last_valid_position + self.last_velocity
+        return self.limit_jump(extrapolated_position)  # Ensure no sudden jump
 
-        # Adjust velocity based on the decay factor
-        adjusted_velocity = self.last_velocity * decay_factor
+    def calculate_velocity(self, measurement):
+        """Calculate the velocity based on the difference from the last valid position."""
+        if self.last_valid_position is None:
+            return np.zeros(3)  # No velocity if there's no previous position
 
-        # Calculate the extrapolated position
-        extrapolated_position = self.last_valid_position + adjusted_velocity
+        # Velocity is the difference between the current and last valid position
+        return measurement - self.last_valid_position
 
-        # Cap the maximum distance that can be extrapolated
-        max_distance = 50.0  # Define a maximum allowed distance for extrapolation
-        total_extrapolated_distance = np.linalg.norm(extrapolated_position - self.last_valid_position)
+    def calculate_moving_average(self):
+        """Calculate the moving average of positions in the window."""
+        if len(self.previous_positions) == 0:
+            return np.zeros(3)  # Return zero if no data is available
+        return np.mean(self.previous_positions, axis=0)
 
-        if total_extrapolated_distance > max_distance:
-            # Limit the extrapolated position to the maximum allowed distance
-            extrapolated_position = self.last_valid_position + (
-                    adjusted_velocity / total_extrapolated_distance) * max_distance
-
-        return extrapolated_position
-
-    def calculate_velocity(self):
-        """
-        Calculate the velocity based on the last few valid positions (sliding window).
-        """
-        if len(self.previous_positions) < 2:
-            return np.zeros(3)  # Not enough data for velocity calculation
-
-        # Use a sliding window approach for velocity (considering the last few positions)
-        velocity_window = min(3, len(self.previous_positions))  # Use up to 3 positions
-        velocity = (self.previous_positions[-1] - self.previous_positions[-velocity_window]) / velocity_window
-        return velocity
-
-    def adjust_for_trend(self, measurement):
-        """
-        Adjust the measurement based on trend detection.
-        """
-        avg_diff = self.calculate_avg_diff()
-
-        diff_last = np.abs(self.previous_positions[-1] - self.previous_positions[-2])
-        diff_second_last = np.abs(self.previous_positions[-2] - self.previous_positions[-3])
-
-        if self.is_downward_trend():
-            if np.any(diff_last > diff_second_last):
-                return self.previous_positions[-1] - 1.1 * avg_diff  # Accelerating downward
-            else:
-                return self.previous_positions[-1] - 0.5 * avg_diff  # Decelerating downward
-        else:
-            if np.any(diff_last > diff_second_last):
-                return self.previous_positions[-1] + 1.1 * avg_diff  # Accelerating upward
-            else:
-                return self.previous_positions[-1] + 0.5 * avg_diff  # Decelerating upward
-
-    def smooth_data(self):
-        """
-        Apply the Savitzky-Golay filter to smooth the data.
-        """
-        data = np.array(self.previous_positions)
-        smoothed_data = savgol_filter(data, self.savgol_window, self.polyorder, axis=0)
-        return smoothed_data
-
-    def calculate_avg_diff(self, window_size=4):
-        """
-        Calculate the average difference over the last 'window_size' measurements.
-        """
-        if len(self.previous_positions) < window_size:
-            return 0  # Not enough data for average diff
-
-        diffs = np.diff(self.previous_positions[-window_size:], axis=0)
-        avg_diff = np.mean(diffs, axis=0)
-        return avg_diff
-
-    def is_downward_trend(self, window_size=5):
-        """
-        Check if the average of the last 'window_size' measurements is decreasing.
-        """
-        if len(self.previous_positions) < window_size:
-            return False  # Not enough data to determine the trend
-
-        avg_previous = np.mean(self.previous_positions[-window_size:-1], axis=0)
-        return np.all(avg_previous > self.previous_positions[-1])
+    def reset(self):
+        """Reset the filter (clear stored positions and last valid measurement)."""
+        self.previous_positions.clear()
+        self.last_valid_position = None
+        self.last_velocity = None
+        self.consecutive_invalid_measurements = 0
+        print("Filter reset.")
 
 
 class Camera(threading.Thread):
@@ -296,7 +227,7 @@ class Camera(threading.Thread):
                     else:
                         # Initialize joint and filter for a new organ
                         joint = Joint(organ, kp_3d)
-                        joint.filter = CombinedFilter()
+                        joint.filter = MovingAverageFilter()
                         joint.position = joint.filter.update(kp_3d)
                         self.joints[organ] = joint
 
@@ -521,6 +452,7 @@ class Camera(threading.Thread):
             #self.end_exercise(counter)
             s.ex_list.update({exercise_name: counter})
             Excel.wf_joints(exercise_name, list_joints)
+
 
 
     def exercise_two_angles_3d_with_axis_check(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
@@ -762,10 +694,11 @@ class Camera(threading.Thread):
         Excel.wf_joints(exercise_name, list_joints)
 
 
-    def exercise_one_angle_3d_by_sides(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side):
+    def hand_up_and_band_angles(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side, differ=120):
         flag = True
         counter = 0
         list_joints = []
+        distance_between_shoulders = 285
         while s.req_exercise == exercise_name:
             while s.did_training_paused and not s.stop_requested:
                 time.sleep(0.01)
@@ -795,7 +728,8 @@ class Camera(threading.Thread):
 
                 if side == 'right':
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < right_angle < one_ub) & (joints[str("R_wrist")].x>joints[str("L_shoulder")].x+50) & (joints[str("nose")].y-50>joints[str("R_wrist")].y) & (not flag):
+                        if (one_lb < right_angle < one_ub)  & (joints[str("nose")].y-50>joints[str("R_wrist")].y) & \
+                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & (not flag):
                             flag = True
                             counter += 1
                             s.patient_repetitions_counting_in_exercise += 1
@@ -809,7 +743,8 @@ class Camera(threading.Thread):
 
                 else:
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-50>joints[str("L_wrist")].x)& (joints[str("nose")].y - 50 > joints[str("L_wrist")].y) & (not flag):
+                        if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-50>joints[str("L_wrist")].x)& (joints[str("nose")].y - 50 > joints[str("L_wrist")].y) & \
+                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & (not flag):
                             flag = True
                             counter += 1
                             s.number_of_repetitions_in_training += 1
@@ -863,21 +798,15 @@ class Camera(threading.Thread):
                                     #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
 
 
-    def ball_hands_up_and_bend_backwards(self):
-        self.exercise_two_angles_3d("ball_hands_up_and_bend_backwards", "hip", "shoulder", "elbow", 90,170,90,170,
-                                    "shoulder", "elbow", "wrist", 120,180,0,90)
+
 
 ######################################################### Second set of ball exercises
 
     def ball_open_arms_and_forward(self):  # EX4
-        # self.exercise_three_angles_3d("open_arms_and_forward_ball", "hip", "shoulder", "elbow", 40, 110, 80, 120,
-        #                               "shoulder", "elbow", "wrist",0,180,140,180,
-        #                             "elbow", "shoulder", "shoulder", 60, 100, 130,180,True)
-
         self.exercise_two_angles_3d("ball_open_arms_and_forward", "hip", "shoulder", "elbow", 20, 110, 80, 120,
                                     "elbow", "shoulder", "shoulder", 60, 120, 140,180,True)
     def ball_open_arms_above_head(self):  # EX5
-        self.exercise_two_angles_3d("ball_open_arms_above_head", "elbow", "shoulder", "hip", 145,180, 80, 110,
+        self.exercise_two_angles_3d("ball_open_arms_above_head", "elbow", "shoulder", "hip", 130,180, 80, 110,
                                    "shoulder", "elbow", "wrist", 130, 180, 130, 180)
 
 
@@ -885,20 +814,19 @@ class Camera(threading.Thread):
 
     def band_open_arms(self):  # EX6
         self.exercise_two_angles_3d("band_open_arms","hip", "shoulder", "wrist", 70, 110, 40, 110,
-                                    "wrist", "shoulder", "wrist", 125,170,0,80,True)
+                                    "wrist", "shoulder", "shoulder", 130,170,0,120,True)
 
         #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
 
     def band_open_arms_and_up(self):  # EX7
-        self.exercise_three_angles_3d("band_open_arms_and_up", "hip", "shoulder", "wrist", 125, 170, 20, 100,
+        self.exercise_three_angles_3d("band_open_arms_and_up", "hip", "shoulder", "elbow", 130, 170, 20, 100,
                                     "shoulder", "elbow", "wrist", 130,180,0,180,
-                                    "wrist", "shoulder", "shoulder", 110, 160, 70, 130, True)
+                                    "elbow", "shoulder", "shoulder", 110, 160, 70, 120, True)
 
 
     def band_up_and_lean(self):  # EX8
-        self.exercise_two_angles_3d("band_up_and_lean", "shoulder", "elbow", "wrist", 125, 180, 125,180,
-                                   "elbow", "hip", "hip", 115, 170, 50, 90, True, True)
-
+        self.exercise_two_angles_3d_with_axis_check("band_up_and_lean", "shoulder", "elbow", "wrist", 125, 180, 125,180,
+                                   "elbow", "hip", "hip", 110, 170, 50, 100, True, True,40)
 
 
 
@@ -925,10 +853,11 @@ class Camera(threading.Thread):
     def stick_bending_forward(self):
         self.exercise_two_angles_3d("stick_bending_forward", "wrist", "elbow", "shoulder", 120,180,120,180,
                                      "shoulder", "hip", "knee",40,90,105,150)
+
 ################################################# Set of exercises without equipment
     def notool_hands_behind_and_lean(self): # EX13
-        self.exercise_two_angles_3d("notool_hands_behind_and_lean", "shoulder", "elbow", "wrist", 10,70,10,70,
-                                    "elbow", "shoulder", "hip", 80, 110, 125, 170,False, True)
+        self.exercise_two_angles_3d_with_axis_check("notool_hands_behind_and_lean", "shoulder", "elbow", "wrist", 10,70,10,70,
+                                    "elbow", "shoulder", "hip", 80, 110, 125, 170,False, True, 40)
                                     # "elbow", "hip", "hip", 30, 100, 125, 170,True, True)
 
         #def hands_behind_and_turn_both_sides(self):  # EX14
@@ -936,10 +865,10 @@ class Camera(threading.Thread):
       #                              "elbow", "hip", "knee", 130, 115, 80, 105, False, True)
 
     def notool_right_hand_up_and_bend(self):  # EX14
-        self.exercise_one_angle_3d_by_sides("notool_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0, 180, "right")
+        self.hand_up_and_band_angles("notool_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0, 180, "right")
 
     def notool_left_hand_up_and_bend(self): #EX15
-        self.exercise_one_angle_3d_by_sides("notool_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0, 180, "left")
+        self.hand_up_and_band_angles("notool_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0, 180, "left")
 
     def notool_raising_hands_diagonally(self): # EX16
         self.exercise_two_angles_3d_with_axis_check("notool_raising_hands_diagonally", "wrist", "shoulder", "hip", 0, 100, 105, 135,
@@ -947,18 +876,26 @@ class Camera(threading.Thread):
                                     "shoulder", "elbow", "wrist", 0,180, 120, 180, False, True,70, True)
 
 
+
+
+    def weights_open_arms_and_forward(self):  # EX4
+        self.exercise_two_angles_3d("weights_open_arms_and_forward", "hip", "shoulder", "elbow", 20, 110, 80, 120,
+                                    "elbow", "shoulder", "shoulder", 60, 110, 140, 180, True)
+
+    def weights_open_arms_above_head(self):  # EX5
+        self.exercise_two_angles_3d("weights_open_arms_above_head", "elbow", "shoulder", "hip", 140, 180, 70, 100,
+                                    "shoulder", "elbow", "wrist", 130, 180, 130, 180)
+
+
+
     def weights_right_hand_up_and_bend(self):  # EX14
-        self.exercise_one_angle_3d_by_sides("weights_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0, 180, "right")
+        self.hand_up_and_band_angles("weights_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0, 180, "right")
 
     def weights_left_hand_up_and_bend(self):  # EX15
-        self.exercise_one_angle_3d_by_sides("weights_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0,
+        self.hand_up_and_band_angles("weights_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 0,
                                             180, "left")
 
 
-    def weights_raising_hands_diagonally(self): # EX16
-        self.exercise_two_angles_3d_with_axis_check("weights_raising_hands_diagonally", "wrist", "shoulder", "hip", 0, 100, 105, 135,
-                                    #"elbow", "shoulder", "shoulder", 0, 180, 40, 75, True, True)\
-                                    "shoulder", "elbow", "wrist", 0,180, 120, 180, False, True,70, True)
 
     def weights_bending_forward(self):
         self.exercise_two_angles_3d("weights_bending_forward", "wrist", "elbow", "shoulder", 120,180,120,180,
@@ -992,6 +929,7 @@ if __name__ == '__main__':
     # s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
     # str(current_time.minute) + "." + str(current_time.second)
 
+    s.gymmy_finished_demo = True
     # Training variables initialization
     s.rep = 5
     s.waved = False
@@ -1013,7 +951,7 @@ if __name__ == '__main__':
     ############################# להוריד את הסולמיות
     s.ex_list = {}
     s.chosen_patient_ID="314808981"
-    s.req_exercise = "weights_bending_forward"
+    s.req_exercise = "weights_left_hand_up_and_bend"
     time.sleep(2)
     # Create all components
     s.camera = Camera()
@@ -1026,7 +964,7 @@ if __name__ == '__main__':
     # Start all threads
     s.camera.start()
     Excel.create_workbook_for_training()  # create workbook in excel for this session
-    time.sleep(45)
+    time.sleep(30)
     s.req_exercise=""
     Excel.success_worksheet()
     # Excel.find_and_add_training_to_patient()

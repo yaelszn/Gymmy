@@ -47,7 +47,6 @@ class Gymmy(threading.Thread):
                 time.sleep(0.00000001)  # Prevents the MP to stuck
                 if s.req_exercise != "" and not s.req_exercise=="hello_waving":
                     ex = s.req_exercise
-                    time.sleep(2)
 
                     print("ROBOT: Exercise ", ex, " start")
                     self.exercise_demo(ex)
@@ -74,7 +73,6 @@ class Gymmy(threading.Thread):
         else:
             self.faster_sayings = ['pick_up_pace', 'faster']
             getattr(self, ex)("demo", "slow")
-            time.sleep(3)
             s.gymmy_finished_demo = True
 
             random_number_for_faster_saying = random.randint(3, 6)
@@ -156,6 +154,7 @@ class Gymmy(threading.Thread):
             self.gymmy.r_arm_z.goto_position(0, 1.5, wait=False)
             self.gymmy.l_shoulder_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_shoulder_y.goto_position(0, 1.5, wait=False)
+            time.sleep(1)
 
 
         else:
@@ -908,6 +907,7 @@ class Gymmy(threading.Thread):
             time.sleep(0.5)
             self.gymmy.l_shoulder_y.goto_position(0, 1.5, wait=False)
             self.gymmy.r_shoulder_y.goto_position(0, 1.5, wait=False)
+
 
     def stick_bending_forward(self, i, rate):
         if i == 0:

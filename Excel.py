@@ -158,11 +158,11 @@ def wf_joints(ex_name, list_joints):
 def create_graphs_and_tables(exercise, list_joints):
 
     try:
-        if get_number_of_angles_in_exercise(exercise) == "1a":
+        if get_number_of_angles_in_exercise(exercise) == 1:
             one_angle_graph_and_table(exercise, list_joints)
-        if get_number_of_angles_in_exercise(exercise) == "2a":
+        if get_number_of_angles_in_exercise(exercise) == 2:
             two_angles_graph_and_table(exercise, list_joints)
-        if get_number_of_angles_in_exercise(exercise) == "3a":
+        if get_number_of_angles_in_exercise(exercise) == 3:
             three_angles_graph_and_table(exercise, list_joints)
         if get_number_of_angles_in_exercise(exercise) == "2jd":
             two_joints_distance_graphs_and_table(exercise, list_joints)

@@ -217,8 +217,7 @@ class Training(threading.Thread):
         s.req_exercise = name
         s.screen.switch_frame(ExplanationPage, exercise= name)
         speak_time = get_wav_duration(name)+get_wav_duration(f'{str(s.rep)} times')
-        time.sleep(min(speak_time, self.get_video_duration(name))) #wait the time of the audio
-        time.sleep(abs(self.get_video_duration(name)-speak_time)) #wait the time of the video minus the time it already waited
+        time.sleep(speak_time+1) #wait the time of the audio
         s.screen.switch_frame(ExercisePage)
         while s.req_exercise == name:
             time.sleep(0.00000001)

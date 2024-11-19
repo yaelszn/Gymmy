@@ -2661,7 +2661,8 @@ class ExplanationPage(tk.Frame):
             # Play videos
             play_video(self.cap, self.label, exercise, None, 0.5, 0.8)
             say(exercise)
-            self.after(get_wav_duration(exercise)*1000+500, lambda: self.end_of_explanation())
+            x= get_wav_duration(exercise)
+            self.after(get_wav_duration(exercise)*1000, lambda: self.end_of_explanation())
 
     def end_of_explanation(self):
         say(str(f'{s.rep} times'))

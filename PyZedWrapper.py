@@ -4,9 +4,7 @@ import threading
 import cv2
 import Settings as s
 
-
 class PyZedWrapper(threading.Thread):
-
     def __init__(self):
         threading.Thread.__init__(self)
         print("MP INITIALIZATION")
@@ -17,14 +15,13 @@ class PyZedWrapper(threading.Thread):
     def run(self):
         print("MP START")
 
-        ################################################################
         # Set configuration parameters for camera initialization
         init = sl.InitParameters()
-        init.camera_resolution = sl.RESOLUTION.HD720  # Lower resolution to increase FPS
-        init.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE  # Set coordinate system to IMAGE (standard for 2D image)
-        init.depth_mode = sl.DEPTH_MODE.PERFORMANCE  # Less computationally intensive depth mode
-        init.coordinate_units = sl.UNIT.MILLIMETER  # Units in millimeters for depth
-        init.camera_fps = 60  # Lower FPS to balance performance
+        init.camera_resolution = sl.RESOLUTION.HD720
+        init.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE
+        init.depth_mode = sl.DEPTH_MODE.ULTRA
+        init.coordinate_units = sl.UNIT.MILLIMETER
+        init.camera_fps = 60
 
         # Open the camera
         err = self.zed.open(init)
@@ -35,19 +32,19 @@ class PyZedWrapper(threading.Thread):
 
         # Define Body Tracking parameters for skeleton recognition
         body_params = sl.BodyTrackingParameters()
-        body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_FAST  # Use the fastest tracking model
+        body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_FAST
         body_params.enable_tracking = True
-        #body_params.image_sync = True
-        body_params.enable_body_fitting = False  # Disable body fitting for performance
-        body_params.body_format = sl.BODY_FORMAT.BODY_38  # Use BODY_18 format for 18 joints
+        body_params.enable_body_fitting = False
+        body_params.body_format = sl.BODY_FORMAT.BODY_38
 
         # Set runtime parameters
         runtime = sl.RuntimeParameters()
-        runtime.measure3D_reference_frame = sl.REFERENCE_FRAME.WORLD  # 3D reference frame
+        runtime.measure3D_reference_frame = sl.REFERENCE_FRAME.WORLD
 
-        # Enable positional tracking for body tracking in world coordinates
+
+        # Enable positional tracking
         positional_tracking_parameters = sl.PositionalTrackingParameters()
-        positional_tracking_parameters.set_as_static = True  # Static scene assumption for better stability
+        positional_tracking_parameters.set_as_static = True
         self.zed.enable_positional_tracking(positional_tracking_parameters)
 
         # Enable body tracking
@@ -59,12 +56,23 @@ class PyZedWrapper(threading.Thread):
 
         # Declare an sl.Mat object to hold image data
         image = sl.Mat()
+        bodies = sl.Bodies()  # Structure to hold body tracking data
 
         while self.zed.is_opened() and not s.finish_program:
             if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
                 # Retrieve the left view image for display
                 self.zed.retrieve_image(image, sl.VIEW.LEFT)
                 frame = image.get_data()
+
+                # Retrieve bodies (skeleton data)
+                self.zed.retrieve_bodies(bodies, sl.BodyTrackingRuntimeParameters())
+                body_list = bodies.body_list
+
+                # # Draw markers for each joint if a body is detected
+                # for body in body_list:
+                #     for joint in body.keypoint_2d:  # 2D keypoints
+                #         # Draw a small circle at each joint position
+                #         cv2.circle(frame, (int(joint[0]), int(joint[1])), 5, (0, 255, 0), -1)  # Green circle
 
                 # Increment frame count for FPS calculation
                 self.frame_count += 1
@@ -79,7 +87,7 @@ class PyZedWrapper(threading.Thread):
                     self.start_time = current_time
 
                 # Display the ZED camera's view with skeleton tracking every 10th frame
-                if self.frame_count % 10 == 0:  # Show every 10th frame
+                if self.frame_count % 10 == 0:
                     cv2.imshow("ZED Camera with Skeleton", frame)
 
                 # Stop camera if 'q' is pressed or finish_program is triggered
