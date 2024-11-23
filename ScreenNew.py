@@ -207,9 +207,9 @@ class ID_patient_fill_page(tk.Frame):
                     s.current_level_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "level")
                     s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
                     s.rep= int(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "number of repetitions in each exercise"))
-                    gender = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "gender")
+                    s.gender = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "gender")
                     s.full_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "first name") + " " + Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "last name")
-                    s.audio_path = 'audio files/Hebrew/' + gender + '/'
+                    s.audio_path = 'audio files/Hebrew/' + s.gender + '/'
 
                     df1 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
 
@@ -516,6 +516,15 @@ class PatientRegistration(tk.Frame):
         self.selected_option = tk.StringVar()
         self.selected_option.set(self.options[0])  # Set the default selected option
 
+        self.calibration_button_img = Image.open("Pictures//calibration_button.jpg")  # Change path to your image file
+        self.calibration_button_photo = ImageTk.PhotoImage(self.calibration_button_img)
+        self.calibration_button = tk.Button(self, image=self.calibration_button_photo, command=lambda: self.on_click_calibration(),
+                                width=self.calibration_button_img.width, height=self.calibration_button_img.height, bd=0,
+                                highlightthickness=0)  # Set border width to 0 to remove button border
+        self.calibration_button.image = self.calibration_button_photo  # Store reference to image to prevent garbage collection
+        self.calibration_button.place(x=75, y=250)
+
+
         # Create a custom style for the OptionMenu
         style = ttk.Style()
         style.theme_use('clam')  # Choose a theme (e.g., 'clam', 'default', 'alt', 'classic')
@@ -552,6 +561,47 @@ class PatientRegistration(tk.Frame):
 
         else:
             self.gender='Male'
+
+    def on_click_calibration(self):
+        s.asked_for_measurement = True
+        self.cal_lable = tk.Label(
+            self,
+            text="עמוד מול המצלמה\nוהצמד ידיים לצידי הגוף",
+            compound=tk.CENTER,
+            highlightthickness=0,
+            justify=tk.RIGHT,  # Align text to the right
+            fg="red",  # Set text color to red
+            font=("Arial", 16, "bold")  # Set font to Arial, size 16, bold
+        )
+        self.cal_lable.place(x=70, y=370)
+
+        # Load alternate image
+        self.calibration_button_img_pressed = Image.open("Pictures//doing_calibration.jpg")
+        self.calibration_button_photo_pressed = ImageTk.PhotoImage(self.calibration_button_img_pressed)
+
+        self.calibration_button.config(image=self.calibration_button_photo_pressed)
+        self.calibration_button.image = self.calibration_button_photo_pressed
+        self.after(8000, self.perform_calibration)
+
+    def perform_calibration(self):
+
+        while s.average_dist is None:
+            time.sleep(0.1)
+
+
+        self.cal_lable = tk.Label(
+            self,
+            text=f'{str(round(s.average_dist, 2))} :מרחק בין הכתפיים ',
+            compound=tk.CENTER,
+            highlightthickness=0,
+            justify=tk.RIGHT,  # Align text to the right
+            fg="red",  # Set text color to red
+            font=("Arial", 16, "bold")  # Set font to Arial, size 16, bold
+        )
+        self.cal_lable.place(x=20, y=450)
+
+        self.calibration_button.config(image=self.calibration_button_photo)
+        self.calibration_button.image = self.calibration_button_photo
 
     def is_email_valid (self, email):
         try:
@@ -602,6 +652,14 @@ class PatientRegistration(tk.Frame):
             self.label.image = id_already_in_system
             self.labels.append(self.label)
 
+        elif s.average_dist is None:
+            error = Image.open('Pictures//didnt_do_calibration.jpg.jpg')
+            id_already_in_system = ImageTk.PhotoImage(error)
+            self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=230, y=490)
+            self.label.image = id_already_in_system
+            self.labels.append(self.label)
+
 
         else:
             s.chosen_patient_ID=ID_entered
@@ -613,10 +671,13 @@ class PatientRegistration(tk.Frame):
                 'gender': self.gender,
                 'number of exercises': 0,
                 'email': str(self.email_entry.get()),
-                'points in current level': 0,
-                'level': 1
+                'number of repetitions in each exercise' : 10,
+                'rate': "moderate",
+                "email of therapist": " ",
+                'dist between shoulders': s.average_dist
             }
 
+            s.average_dist = None
             sheet1=workbook["patients_details"]
             columns = list(new_row_data_details.keys())
             sheet1.append([new_row_data_details[column] for column in columns])
@@ -2659,14 +2720,15 @@ class ExplanationPage(tk.Frame):
 
         else:
             # Play videos
-            play_video(self.cap, self.label, exercise, None, 0.5, 0.8)
-            say(exercise)
+            play_video(self.cap, self.label, exercise, None, 0.5, 0.5)
+            say(exercise, True) #True so the system will know that it is an explanation
             x= get_wav_duration(exercise)
-            self.after(get_wav_duration(exercise)*1000, lambda: self.end_of_explanation())
+            self.after(get_wav_duration(exercise)*1000+1500, lambda: self.end_of_explanation())
 
     def end_of_explanation(self):
-        say(str(f'{s.rep} times'))
-        s.explanation_over = True
+        if not s.explanation_over:
+            say(str(f'{s.rep} times'))
+            s.explanation_over = True
 
     def on_click_skip(self):
         s.explanation_over = True
@@ -3142,6 +3204,6 @@ if __name__ == "__main__":
     s.rep=5
     s.audio_path = 'audio files/Hebrew/Male/'
     s.patient_repetitions_counting_in_exercise = 1
-    s.screen.switch_frame(ChooseBallExercisesPage)
+    s.screen.switch_frame(PatientRegistration)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

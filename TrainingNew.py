@@ -3,6 +3,8 @@ import threading
 import time
 
 import cv2
+import pygame
+from reportlab.platypus.figures import FlexFigure
 
 from Camera import Camera
 from Gymmy import Gymmy
@@ -12,7 +14,7 @@ from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, S
 import Settings as s
 import Excel
 import random
-from Audio import say, get_wav_duration
+from Audio import say, get_wav_duration, ContinuousAudio
 from datetime import datetime
 import Email
 
@@ -65,10 +67,10 @@ class Training(threading.Thread):
 
                 exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
                 random.shuffle(exercises_in_category)
-                s.waved_has_tool= False
+                s.waved_has_tool= True
                 if exercises_in_category!=[]:
                     #time.sleep(1)
-                    self.show_screen_category(i)
+                    #self.show_screen_category(i)
                     while not s.waved_has_tool:
                         time.sleep(0.0001)
 
@@ -218,6 +220,12 @@ class Training(threading.Thread):
         s.screen.switch_frame(ExplanationPage, exercise= name)
         speak_time = get_wav_duration(name)+get_wav_duration(f'{str(s.rep)} times')
         time.sleep(speak_time+1) #wait the time of the audio
+
+        while s.gymmy_finished_demo == False:
+            time.sleep(0.001)
+
+        time.sleep(1)
+
         s.screen.switch_frame(ExercisePage)
         while s.req_exercise == name:
             time.sleep(0.00000001)
@@ -303,7 +311,6 @@ class Training(threading.Thread):
             Email.email_sending_not_level_up()
 
 if __name__ == "__main__":
-    s.audio_path = 'audio files/Hebrew/Male/'
     # s.picture_path = 'audio files/' + language + '/' + gender + '/'
     # s.str_to_say = ""
     current_time = datetime.now()
@@ -313,11 +320,13 @@ if __name__ == "__main__":
     s.finish_workout = False
     #s.exercise_amount = 6
     s.finish_program= False
-    s.rep = 8
-    s.ex_in_training=["raising_hands_diagonally_notool"]
-    s.chosen_patient_ID="1111"
+    s.asked_for_measurement= False
+    s.rep = 5
+    s.ex_in_training=["notool_left_hand_up_and_bend"]
+    s.chosen_patient_ID="314808981"
     s.req_exercise=""
     s.ex_list = {}
+    s.is_second_repetition_or_more =False
     #s.demo_finish = False
     s.screen = Screen()
     s.camera = Camera()
@@ -326,5 +335,19 @@ if __name__ == "__main__":
     s.camera.start()
     s.training.start()
     s.robot.start()
+    s.did_training_paused = False
+    s.volume = 0.4
+    s.additional_audio_playing = False
+    s.gymmy_finished_demo = False
+    s.gender= "Female"
+    s.audio_path = f'audio files/Hebrew/{s.gender}/'
+
+    s.rate= "moderate"
+    pygame.mixer.init()
+    s.stop_song = False
+    # Start continuous audio in a separate thread
+    s.continuous_audio = ContinuousAudio()
+    s.continuous_audio.start()
+    s.screen.switch_frame(StartOfTraining)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

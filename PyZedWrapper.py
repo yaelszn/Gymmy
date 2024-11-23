@@ -68,11 +68,11 @@ class PyZedWrapper(threading.Thread):
                 self.zed.retrieve_bodies(bodies, sl.BodyTrackingRuntimeParameters())
                 body_list = bodies.body_list
 
-                # # Draw markers for each joint if a body is detected
-                # for body in body_list:
-                #     for joint in body.keypoint_2d:  # 2D keypoints
-                #         # Draw a small circle at each joint position
-                #         cv2.circle(frame, (int(joint[0]), int(joint[1])), 5, (0, 255, 0), -1)  # Green circle
+                # Draw markers for each joint if a body is detected
+                for body in body_list:
+                    for joint in body.keypoint_2d:  # 2D keypoints
+                        # Draw a small circle at each joint position
+                        cv2.circle(frame, (int(joint[0]), int(joint[1])), 5, (0, 255, 0), -1)  # Green circle
 
                 # Increment frame count for FPS calculation
                 self.frame_count += 1
@@ -87,8 +87,8 @@ class PyZedWrapper(threading.Thread):
                     self.start_time = current_time
 
                 # Display the ZED camera's view with skeleton tracking every 10th frame
-                if self.frame_count % 10 == 0:
-                    cv2.imshow("ZED Camera with Skeleton", frame)
+               #if self.frame_count % 10 == 0:
+                cv2.imshow("ZED Camera with Skeleton", frame)
 
                 # Stop camera if 'q' is pressed or finish_program is triggered
                 key = cv2.waitKey(10)
