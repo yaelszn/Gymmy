@@ -21,11 +21,10 @@ if __name__ == '__main__':
     s.volume = 0.4
     # Training variables initialization
     s.ball_exercises_number = 5
-    s.band_exercises_number = 3
-    s.stick_exercises_number = 4
+    s.band_exercises_number = 5
+    s.stick_exercises_number = 5
     s.weights_exercises_number = 4
-    s.no_tool_exercises_number = 4
-
+    s.no_tool_exercises_number = 6
     s.asked_for_measurement = False
     s.average_dist = None
     s.rep = 5

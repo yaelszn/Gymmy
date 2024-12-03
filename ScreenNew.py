@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import queue
+import threading
 import time
 import tkinter as tk
 from datetime import datetime
@@ -616,7 +617,6 @@ class PatientRegistration(tk.Frame):
 
     def on_click_patient_registration(self):
         self.delete_all_labels()
-
         excel_file_path = "Patients.xlsx"
         workbook=openpyxl.load_workbook(excel_file_path)
         df = pd.read_excel(excel_file_path, sheet_name="patients_details")
@@ -830,18 +830,122 @@ class PatientDisplaying(tk.Frame):
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
 
-def play_video(cap, label, exercise, previous, scale_factor=0.35, slow_factor=1.2):
 
+def play_video(cap, label, exercise, previous, scale_factor=0.22, slow_factor=10):
+    # Shared variable to control the playback
+    label.playing = False
+
+    def show_static_frame():
+        """Display a static frame from the video when the mouse is not hovering."""
+        ret, frame = cap.read()
+        if ret:
+            # Detect and crop black margins
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray_frame, 10, 255, cv2.THRESH_BINARY)
+            x, y, w, h = cv2.boundingRect(thresh)  # Get the bounding box of non-black areas
+            cropped_frame = frame[y:y + h, x:x + w]
+
+            # Resize the cropped frame
+            frame = cv2.resize(cropped_frame, (0, 0), fx=scale_factor+0.02, fy=scale_factor)
+
+            # Convert BGR to RGB
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Convert to PhotoImage
+            photo = ImageTk.PhotoImage(image=Image.fromarray(image))
+
+            label.config(image=photo)
+            label.image = photo
+
+    def video_worker():
+        """Worker thread to play video frames."""
+        while True:
+            if label.playing:
+                ret, frame = cap.read()
+
+                if ret:
+                    # Detect and crop black margins
+                    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    _, thresh = cv2.threshold(gray_frame, 10, 255, cv2.THRESH_BINARY)
+                    x, y, w, h = cv2.boundingRect(thresh)  # Get the bounding box of non-black areas
+                    cropped_frame = frame[y:y + h, x:x + w]
+
+                    # Resize the cropped frame
+                    frame = cv2.resize(cropped_frame, (0, 0), fx=scale_factor+0.02, fy=scale_factor)
+
+                    # Convert BGR to RGB
+                    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                    # Convert to PhotoImage
+                    photo = ImageTk.PhotoImage(image=Image.fromarray(image))
+
+                    # Update the label on the main thread
+                    label.after(0, lambda: label.config(image=photo))
+                    label.image = photo
+
+                    # Adjust the frame rate
+                    frame_rate = cap.get(cv2.CAP_PROP_FPS)
+                    adjusted_frame_rate = frame_rate * slow_factor
+                    delay = 1 / adjusted_frame_rate  # Delay in seconds
+                    time.sleep(delay)
+                else:
+                    # Video reached the end, reset the video capture to play again
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            else:
+                # time.sleep(0.1)  # Prevent busy-waiting when not playing
+                time.sleep(0.1)
+
+    # Event handlers for hover
+    def on_enter(event):
+        label.playing = True
+
+    def on_leave(event):
+        label.playing = False
+        show_static_frame()  # Show a static frame when the mouse leaves
+
+    # Bind hover events to the label
+    label.bind("<Enter>", on_enter)
+    label.bind("<Leave>", on_leave)
+
+    # Bind click event if necessary
     if previous is not None:
         def on_click(event):
             # Call the Graph function with the exercise name
             s.screen.switch_frame(TablesPage, exercise=exercise, previous=previous)
             print("video clicked!")
-
     else:
         def on_click(event):
             print()
 
+    label.bind("<Button-1>", on_click)
+
+    # Show the initial static frame
+    show_static_frame()
+
+    # Start the worker thread
+    threading.Thread(target=video_worker, daemon=True).start()
+
+
+def play_video_explanation(cap, label, exercise, previous, scale_factor=0.35, slow_factor=2):
+    """
+    Plays a video frame by frame in a Tkinter label widget without requiring mouse click interaction.
+
+    Parameters:
+    - cap: OpenCV video capture object.
+    - label: Tkinter label widget to display the video.
+    - exercise: The exercise name (used if navigating to another screen).
+    - previous: Reference to the previous page (for navigation).
+    - scale_factor: Scale factor for resizing the video frame.
+    - slow_factor: Factor to slow down the video playback.
+    """
+
+    # Function for switching to the TablesPage (optional, can be adjusted for other use cases)
+    def switch_frame():
+        if previous is not None:
+            s.screen.switch_frame(TablesPage, exercise=exercise, previous=previous)
+            print("Frame switched to TablesPage!")
+
+    # Read the next frame from the video
     ret, frame = cap.read()
 
     if ret:
@@ -853,26 +957,26 @@ def play_video(cap, label, exercise, previous, scale_factor=0.35, slow_factor=1.
         # Convert to PhotoImage
         photo = ImageTk.PhotoImage(image=Image.fromarray(image))
 
+        # Update the label with the current video frame
         label.config(image=photo)
         label.image = photo
-
-        # Bind the click event to the label
-        label.bind("<Button-1>", on_click)
 
         # Adjust the frame rate
         frame_rate = cap.get(cv2.CAP_PROP_FPS)
         adjusted_frame_rate = frame_rate * slow_factor
-        delay = int(1200 / adjusted_frame_rate)  # Delay in milliseconds
+        delay = int(1000 / adjusted_frame_rate)  # Delay in milliseconds
 
         # Schedule the next frame update
-        after_id = label.after(delay, lambda: play_video(cap, label, exercise, previous, scale_factor, slow_factor))
+        after_id = label.after(delay, lambda: play_video_explanation(cap, label, exercise, previous, scale_factor, slow_factor))
     else:
         # Video reached the end, reset the video capture to play again
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        after_id = label.after(25, lambda: play_video(cap, label, exercise, previous, scale_factor, slow_factor))
+        after_id = label.after(25, lambda: play_video_explanation(cap, label, exercise, previous, scale_factor, slow_factor))
 
     # Return the after_id to have a reference for canceling the scheduled function
     return after_id
+
+
 
 def ex_in_training_or_not(data_row, exercise):
     if data_row.iloc[0, data_row.columns.get_loc(exercise)] == True:
@@ -939,12 +1043,12 @@ class ChooseBallExercisesPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
         # Load background image
-        background_image = Image.open('Pictures//background.jpg')
+        background_image = Image.open('Pictures//background_empty.jpg')
         self.background_photo = ImageTk.PhotoImage(background_image)
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        add_to_exercise_page(self)
+        add_to_exercise_page(self, "תרגילים עם כדור")
 
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
@@ -974,134 +1078,133 @@ class ChooseBallExercisesPage(tk.Frame):
         ex_3_name= "ball_switch"
         ex_4_name= "ball_open_arms_and_forward"
         ex_5_name= "ball_open_arms_above_head"
-        formatted_ex_1_name = ex_1_name.replace('_', ' ')
-        formatted_ex_2_name = ex_2_name.replace('_', ' ')
-        formatted_ex_3_name = ex_3_name.replace('_', ' ')
-        formatted_ex_4_name = ex_4_name.replace('_', ' ')
-        formatted_ex_5_name = ex_5_name.replace('_', ' ')
-
+        formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
+        formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
+        formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
+        formatted_ex_4_name = Excel.get_name_by_exercise(ex_4_name)
+        formatted_ex_5_name = Excel.get_name_by_exercise(ex_5_name)
 
         # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=30, y=125)  # Adjust x and y coordinates for the first video
-
+        self.label1.place(x=220, y=125)  # Adjust x and y coordinates for the first video
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
         button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, ex_1_name),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=95, y=440)
-        self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text1.place(x=25, y=85)
+        button1.place(x=310, y=290)
+        self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text1.place(x=230, y=85)
         count += 1
 
-
         self.label2 = tk.Label(self)
-        self.label2.place(x=230, y=125)  # Adjust x and y coordinates for the second video
-
+        self.label2.place(x=445, y=125)  # Adjust x and y coordinates for the second video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_2_name)}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
-        button2 = tk.Button(self, image=button2_photo, command=lambda: which_checkbox(button2, ex_2_name),
+        button2 = tk.Button(self, image=button2_photo,
+                            command=lambda: which_checkbox(button2, ex_2_name),
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=295, y=440)
-        self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text2.place(x=225, y=85)
+        button2.place(x=535, y=290)
+        self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text2.place(x=455, y=85)
         count += 1
 
-
         self.label3 = tk.Label(self)
-        self.label3.place(x=430, y=125)  # Adjust x and y coordinates for the third video
-        button3_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
+        self.label3.place(x=670, y=125)  # Adjust x and y coordinates for the third video
+        button3_image = Image.open(
+            f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
-        button3 = tk.Button(self, image=button3_photo, command=lambda: which_checkbox(button3, ex_3_name),
+        button3 = tk.Button(self, image=button3_photo,
+                            command=lambda: which_checkbox(button3, ex_3_name),
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=495, y=440)
+        button3.place(x=760, y=290)
         self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
                                     justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text3.place(x=425, y=85)
+        self.label_text3.place(x=680, y=85)
         count += 1
 
-
         self.label4 = tk.Label(self)
-        self.label4.place(x=630, y=125)  # Adjust x and y coordinates for the fourth video
+        self.label4.place(x=330, y=365)  # Adjust x and y coordinates for the third video
         button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_4_name)}.png')
         button4_photo = ImageTk.PhotoImage(button4_image)
-        button4 = tk.Button(self, image=button4_photo,  command=lambda: which_checkbox(button4, ex_4_name),
+        button4 = tk.Button(self, image=button4_photo,
+                            command=lambda: which_checkbox(button4, ex_4_name),
                             width=button4_photo.width(), height=button4_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=695, y=440)
+        button4.place(x=410, y=530)
         self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
                                     justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text4.place(x=625, y=85)
+        self.label_text4.place(x=340, y=325)
         count += 1
 
-
         self.label5 = tk.Label(self)
-        self.label5.place(x=830, y=125)  # Adjust x and y coordinates for the fifth video
+        self.label5.place(x=555, y=365)  # Adjust x and y coordinates for the third video
         button5_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_5_name)}.png')
         button5_photo = ImageTk.PhotoImage(button5_image)
-        button5 = tk.Button(self, image=button5_photo,  command=lambda: which_checkbox(button5, ex_5_name),
+        button5 = tk.Button(self, image=button5_photo,
+                            command=lambda: which_checkbox(button5, ex_5_name),
                             width=button5_photo.width(), height=button5_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button5.image = button5_photo  # Store reference to image to prevent garbage collection
-        button5.place(x=895, y=440)
-        self.label_text5 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_5_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text5.place(x=825, y=85)
+        button5.place(x=645, y=530)
+        self.label_text5 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_5_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text5.place(x=565, y=325)
         count += 1
 
-
         # Video paths
-        video_file1 = f'Videos//{ex_1_name}_vid.mp4'
+        video_file1 = f'Videos//{ex_1_name}_2.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
 
-        video_file2 = f'Videos//{ex_2_name}_vid.mp4'
+        video_file2 = f'Videos//{ex_2_name}_2.mp4'
         video_path2 = os.path.join(os.getcwd(), video_file2)
         self.cap2 = cv2.VideoCapture(video_path2)
 
-        video_file3 = f'Videos//{ex_3_name}_vid.mp4'
+        video_file3 = f'Videos//{ex_3_name}_2.mp4'
         video_path3 = os.path.join(os.getcwd(), video_file3)
         self.cap3 = cv2.VideoCapture(video_path3)
 
-        video_file4 = f'Videos//{ex_4_name}_vid.mp4'
+        video_file4 = f'Videos//{ex_4_name}_2.mp4'
         video_path4 = os.path.join(os.getcwd(), video_file4)
         self.cap4 = cv2.VideoCapture(video_path4)
 
-        video_file5 = f'Videos//{ex_5_name}_vid.mp4'
+        video_file5 = f'Videos//{ex_5_name}_2.mp4'
         video_path5 = os.path.join(os.getcwd(), video_file5)
         self.cap5 = cv2.VideoCapture(video_path5)
 
-
         # Check if videos are opened successfully
-        if not (self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened() and self.cap5.isOpened()):
+        if not (
+                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened() and self.cap5.isOpened()):
             print("Error opening video streams or files")
 
         else:
             # Play videos
-            play_video(self.cap1, self.label1,ex_1_name, "ball")
-            play_video(self.cap2, self.label2, ex_2_name, "ball")  # Change "Page2" to the name of the page you want to switch to
-            play_video(self.cap3, self.label3, ex_3_name, "ball")  # Change "Page3" to the name of the page you want to switch to
-            play_video(self.cap4, self.label4, ex_4_name, "ball")  # Change "Page4" to the name of the page you want to switch to
-            play_video(self.cap5, self.label5, ex_5_name, "ball")  # Change "Page5" to the name of the page you want to switch to
-
-
+            play_video(self.cap1, self.label1, ex_1_name, "ball")
+            play_video(self.cap2, self.label2, ex_2_name, "ball")
+            play_video(self.cap3, self.label3, ex_3_name, "ball")
+            play_video(self.cap4, self.label4, ex_4_name, "ball")
+            play_video(self.cap5, self.label5, ex_5_name, "ball")
 
 
     def on_arrow_click(self):
-        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(), "rate": self.selected_option_rate.get()})
-
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
+                                               "rate": self.selected_option_rate.get()})
         s.screen.switch_frame(ChooseRubberBandExercisesPage)
+
 
     def to_previous_button_click(self):
         num_of_exercises_in_training=Excel.count_number_of_exercises_in_training_by_ID()
@@ -1125,12 +1228,12 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         tk.Frame.__init__(self, master)
 
         # Load background image
-        background_image = Image.open('Pictures//background.jpg')
+        background_image = Image.open('Pictures//background_empty.jpg')
         self.background_photo = ImageTk.PhotoImage(background_image)
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        add_to_exercise_page(self)
+        add_to_exercise_page(self, "תרגילים עם גומייה")
 
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
@@ -1167,31 +1270,33 @@ class ChooseRubberBandExercisesPage(tk.Frame):
         ex_1_name = "band_open_arms"
         ex_2_name = "band_open_arms_and_up"
         ex_3_name = "band_up_and_lean"
-        formatted_ex_1_name = ex_1_name.replace('_', ' ')
-        formatted_ex_2_name = ex_2_name.replace('_', ' ')
-        formatted_ex_3_name = ex_3_name.replace('_', ' ')
+        ex_4_name = "band_straighten_left_arm_elbows_bend_to_sides"
+        ex_5_name = "band_straighten_right_arm_elbows_bend_to_sides"
+        formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
+        formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
+        formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
+        formatted_ex_4_name = Excel.get_name_by_exercise(ex_4_name)
+        formatted_ex_5_name = Excel.get_name_by_exercise(ex_5_name)
 
 
-        #create labels for videos
-
+        # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=230, y=125)  # Adjust x and y coordinates for the first video
+        self.label1.place(x=220, y=125)  # Adjust x and y coordinates for the first video
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
         button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, ex_1_name),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=295, y=440)
-        self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text1.place(x=225, y=85)
+        button1.place(x=310, y=290)
+        self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text1.place(x=230, y=85)
         count += 1
 
-
         self.label2 = tk.Label(self)
-        self.label2.place(x=430, y=125)  # Adjust x and y coordinates for the second video
-
+        self.label2.place(x=445, y=125)  # Adjust x and y coordinates for the second video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_2_name)}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
         button2 = tk.Button(self, image=button2_photo,
@@ -1199,15 +1304,15 @@ class ChooseRubberBandExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=495, y=440)
-        self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text2.place(x=425, y=85)
+        button2.place(x=535, y=290)
+        self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text2.place(x=455, y=85)
         count += 1
 
-
         self.label3 = tk.Label(self)
-        self.label3.place(x=630, y=125)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=670, y=125)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(
             f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
@@ -1216,40 +1321,78 @@ class ChooseRubberBandExercisesPage(tk.Frame):
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=695, y=440)
-        self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text3.place(x=625, y=85)
+        button3.place(x=760, y=290)
+        self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text3.place(x=680, y=85)
         count += 1
 
+        self.label4 = tk.Label(self)
+        self.label4.place(x=330, y=365)  # Adjust x and y coordinates for the third video
+        button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_4_name)}.png')
+        button4_photo = ImageTk.PhotoImage(button4_image)
+        button4 = tk.Button(self, image=button4_photo,
+                            command=lambda: which_checkbox(button4, ex_4_name),
+                            width=button4_photo.width(), height=button4_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button4.image = button4_photo  # Store reference to image to prevent garbage collection
+        button4.place(x=410, y=530)
+        self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text4.place(x=340, y=325)
+        count += 1
 
+        self.label5 = tk.Label(self)
+        self.label5.place(x=555, y=365)  # Adjust x and y coordinates for the third video
+        button5_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_5_name)}.png')
+        button5_photo = ImageTk.PhotoImage(button5_image)
+        button5 = tk.Button(self, image=button5_photo,
+                            command=lambda: which_checkbox(button5, ex_5_name),
+                            width=button5_photo.width(), height=button5_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button5.image = button5_photo  # Store reference to image to prevent garbage collection
+        button5.place(x=645, y=530)
+        self.label_text5 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_5_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text5.place(x=565, y=325)
+        count += 1
 
         # Video paths
-        video_file1 = f'Videos//{ex_1_name}_vid.mp4'
+        video_file1 = f'Videos//{ex_1_name}_2.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
 
-        video_file2 = f'Videos//{ex_2_name}_vid.mp4'
+        video_file2 = f'Videos//{ex_2_name}_2.mp4'
         video_path2 = os.path.join(os.getcwd(), video_file2)
         self.cap2 = cv2.VideoCapture(video_path2)
 
-        video_file3 = f'Videos//{ex_3_name}_vid.mp4'
+        video_file3 = f'Videos//{ex_3_name}_2.mp4'
         video_path3 = os.path.join(os.getcwd(), video_file3)
         self.cap3 = cv2.VideoCapture(video_path3)
 
+        video_file4 = f'Videos//{ex_4_name}_2.mp4'
+        video_path4 = os.path.join(os.getcwd(), video_file4)
+        self.cap4 = cv2.VideoCapture(video_path4)
 
+        video_file5 = f'Videos//{ex_5_name}_2.mp4'
+        video_path5 = os.path.join(os.getcwd(), video_file5)
+        self.cap5 = cv2.VideoCapture(video_path5)
 
         # Check if videos are opened successfully
         if not (
-                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened()):
+                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened()  and self.cap5.isOpened()):
             print("Error opening video streams or files")
 
         else:
             # Play videos
             play_video(self.cap1, self.label1, ex_1_name, "band")
-            play_video(self.cap2, self.label2,ex_2_name, "band")  # Change "Page2" to the name of the page you want to switch to
-            play_video(self.cap3, self.label3,ex_3_name, "band")  # Change "Page3" to the name of the page you want to switch to
-
+            play_video(self.cap2, self.label2, ex_2_name, "band")
+            play_video(self.cap3, self.label3, ex_3_name, "band")
+            play_video(self.cap4, self.label4, ex_4_name, "band")
+            play_video(self.cap5, self.label5, ex_5_name, "band")
 
     def on_arrow_click_forward(self):
         Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
@@ -1277,20 +1420,17 @@ class ChooseRubberBandExercisesPage(tk.Frame):
 
 
 
-
-
-
 class ChooseStickExercisesPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
 
         # Load background image
-        background_image = Image.open('Pictures//background.jpg')
+        background_image = Image.open('Pictures//background_empty.jpg')
         self.background_photo = ImageTk.PhotoImage(background_image)
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        add_to_exercise_page(self)
+        add_to_exercise_page(self, "תרגילים עם מקל/בר")
 
 
         forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
@@ -1333,30 +1473,33 @@ class ChooseStickExercisesPage(tk.Frame):
         ex_2_name = "stick_bend_elbows_and_up"
         ex_3_name = "stick_raise_arms_above_head"
         ex_4_name =  "stick_switch"
-        formatted_ex_1_name = ex_1_name.replace('_', ' ')
-        formatted_ex_2_name = ex_2_name.replace('_', ' ')
-        formatted_ex_3_name = ex_3_name.replace('_', ' ')
-        formatted_ex_4_name = ex_4_name.replace('_', ' ')
+        ex_5_name =  "stick_up_and_lean"
+
+        formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
+        formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
+        formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
+        formatted_ex_4_name = Excel.get_name_by_exercise(ex_4_name)
+        formatted_ex_5_name = Excel.get_name_by_exercise(ex_5_name)
 
 
         # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=125, y=125)  # Adjust x and y coordinates for the first video
+        self.label1.place(x=220, y=125)  # Adjust x and y coordinates for the first video
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
         button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, ex_1_name),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=190, y=440)
+        button1.place(x=310, y=290)
         self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
             justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text1.place(x=120, y=85)
+        self.label_text1.place(x=230, y=85)
         count += 1
 
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=325, y=125)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=445, y=125)  # Adjust x and y coordinates for the second video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_2_name)}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
         button2 = tk.Button(self, image=button2_photo,
@@ -1364,15 +1507,15 @@ class ChooseStickExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=390, y=440)
+        button2.place(x=535, y=290)
         self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
             justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text2.place(x=320, y=85)
+        self.label_text2.place(x=455, y=85)
         count += 1
 
 
         self.label3 = tk.Label(self)
-        self.label3.place(x=525, y=125)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=670, y=125)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(
             f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
@@ -1381,15 +1524,15 @@ class ChooseStickExercisesPage(tk.Frame):
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=590, y=440)
+        button3.place(x=760, y=290)
         self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
             justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text3.place(x=520, y=85)
+        self.label_text3.place(x=680, y=85)
         count += 1
 
 
         self.label4 = tk.Label(self)
-        self.label4.place(x=725, y=125)  # Adjust x and y coordinates for the third video
+        self.label4.place(x=330, y=365)  # Adjust x and y coordinates for the third video
         button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_4_name)}.png')
         button4_photo = ImageTk.PhotoImage(button4_image)
         button4 = tk.Button(self, image=button4_photo,
@@ -1397,37 +1540,53 @@ class ChooseStickExercisesPage(tk.Frame):
                             width=button4_photo.width(), height=button4_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=790, y=440)
+        button4.place(x=410, y=530)
         self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
             justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text4.place(x=720, y=85)
+        self.label_text4.place(x=340, y=325)
+        count += 1
+
+        self.label5 = tk.Label(self)
+        self.label5.place(x=555, y=365)  # Adjust x and y coordinates for the third video
+        button5_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_5_name)}.png')
+        button5_photo = ImageTk.PhotoImage(button5_image)
+        button5 = tk.Button(self, image=button5_photo,
+                            command=lambda: which_checkbox(button5, ex_5_name),
+                            width=button5_photo.width(), height=button5_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button5.image = button5_photo  # Store reference to image to prevent garbage collection
+        button5.place(x=645, y=530)
+        self.label_text5 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_5_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
+            justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text5.place(x=565, y=325)
         count += 1
 
 
-
-
         # Video paths
-        video_file1 = f'Videos//{ex_1_name}_vid.mp4'
+        video_file1 = f'Videos//{ex_1_name}_2.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
 
-        video_file2 = f'Videos//{ex_2_name}_vid.mp4'
+        video_file2 = f'Videos//{ex_2_name}_2.mp4'
         video_path2 = os.path.join(os.getcwd(), video_file2)
         self.cap2 = cv2.VideoCapture(video_path2)
 
-        video_file3 = f'Videos//{ex_3_name}_vid.mp4'
+        video_file3 = f'Videos//{ex_3_name}_2.mp4'
         video_path3 = os.path.join(os.getcwd(), video_file3)
         self.cap3 = cv2.VideoCapture(video_path3)
 
-        video_file4 = f'Videos//{ex_4_name}_vid.mp4'
+        video_file4 = f'Videos//{ex_4_name}_2.mp4'
         video_path4 = os.path.join(os.getcwd(), video_file4)
         self.cap4 = cv2.VideoCapture(video_path4)
 
+        video_file5 = f'Videos//{ex_5_name}_2.mp4'
+        video_path5 = os.path.join(os.getcwd(), video_file5)
+        self.cap5 = cv2.VideoCapture(video_path5)
 
 
         # Check if videos are opened successfully
         if not (
-                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened()):
+                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened()  and self.cap5.isOpened()):
             print("Error opening video streams or files")
 
         else:
@@ -1436,12 +1595,13 @@ class ChooseStickExercisesPage(tk.Frame):
             play_video(self.cap2, self.label2,ex_2_name, "stick")
             play_video(self.cap3, self.label3,ex_3_name, "stick")
             play_video(self.cap4, self.label4,ex_4_name, "stick")
+            play_video(self.cap5, self.label5,ex_5_name, "stick")
 
 
     def on_arrow_click_forward(self):
         Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
                                                "rate": self.selected_option_rate.get()})
-        s.screen.switch_frame(ChooseNoToolExercisesPage)
+        s.screen.switch_frame(ChooseWeightsExercisesPage)
 
     def on_arrow_click_back(self):
         Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
@@ -1464,17 +1624,192 @@ class ChooseStickExercisesPage(tk.Frame):
 
 
 
+
+class ChooseWeightsExercisesPage(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+
+        # Load background image
+        background_image = Image.open('Pictures//background_empty.jpg')
+        self.background_photo = ImageTk.PhotoImage(background_image)
+        self.background_label = tk.Label(self, image=self.background_photo)
+        self.background_label.pack()
+
+        add_to_exercise_page(self, "תרגילים עם משקולות")
+
+
+        forward_arrow_button_img = Image.open("Pictures//forward_arrow.jpg")
+        forward_arrow_button_photo = ImageTk.PhotoImage(forward_arrow_button_img)
+        forward_arrow_button = tk.Button(self, image=forward_arrow_button_photo, command=lambda: self.on_arrow_click_forward(),
+                                   width=forward_arrow_button_img.width, height=forward_arrow_button_img.height, bd=0,
+                                   highlightthickness=0)
+        forward_arrow_button.image = forward_arrow_button_photo
+        forward_arrow_button.place(x=50, y=480)
+
+        backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
+        backward_arrow_button_photo = ImageTk.PhotoImage(backward_arrow_button_img)
+        backward_arrow_button = tk.Button(self, image=backward_arrow_button_photo, command=lambda: self.on_arrow_click_back(),
+                                   width=backward_arrow_button_img.width, height=backward_arrow_button_img.height, bd=0,
+                                   highlightthickness=0)
+        backward_arrow_button.image = backward_arrow_button_photo
+        backward_arrow_button.place(x=913, y=480)
+
+        to_patients_list_button_img = Image.open("Pictures//previous.jpg")
+        to_patients_list_button_photo = ImageTk.PhotoImage(to_patients_list_button_img)
+        to_patients_list_button = tk.Button(self, image=to_patients_list_button_photo,
+                                   command=lambda: self.to_previous_button_click(),
+                                   width=to_patients_list_button_img.width, height=to_patients_list_button_img.height,
+                                   bd=0,
+                                   highlightthickness=0)  # Set border width to 0 to remove button border
+        to_patients_list_button.image = to_patients_list_button_photo  # Store reference to image to prevent garbage collection
+        to_patients_list_button.place(x=30, y=30)
+
+        row_of_patient = get_row_of_exercises_patient()
+        count= 1 + s.ball_exercises_number + s.band_exercises_number + s.stick_exercises_number
+        self.background_color = "#deeaf7"  # Set the background color to light blue
+
+        ex_1_name = "weights_right_hand_up_and_bend"
+        ex_2_name = "weights_left_hand_up_and_bend"
+        ex_3_name = "weights_open_arms_and_forward"
+        ex_4_name = "weights_abduction"
+        formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
+        formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
+        formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
+        formatted_ex_4_name = Excel.get_name_by_exercise(ex_4_name)
+
+
+        # Create labels for videos
+        self.label1 = tk.Label(self)
+        self.label1.place(x=320, y=125)  # Adjust x and y coordinates for the first video
+        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
+        button1_photo = ImageTk.PhotoImage(button1_image)
+        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, ex_1_name),
+                            width=button1_photo.width(), height=button1_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button1.image = button1_photo  # Store reference to image to prevent garbage collection
+        button1.place(x=410, y=290)
+        self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text1.place(x=330, y=85)
+        count += 1
+
+        self.label2 = tk.Label(self)
+        self.label2.place(x=545, y=125)  # Adjust x and y coordinates for the second video
+        button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_2_name)}.png')
+        button2_photo = ImageTk.PhotoImage(button2_image)
+        button2 = tk.Button(self, image=button2_photo,
+                            command=lambda: which_checkbox(button2, ex_2_name),
+                            width=button2_photo.width(), height=button2_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button2.image = button2_photo  # Store reference to image to prevent garbage collection
+        button2.place(x=635, y=290)
+        self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text2.place(x=555, y=85)
+        count += 1
+
+        self.label3 = tk.Label(self)
+        self.label3.place(x=320, y=365)  # Adjust x and y coordinates for the third video
+        button3_image = Image.open(
+            f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
+        button3_photo = ImageTk.PhotoImage(button3_image)
+        button3 = tk.Button(self, image=button3_photo,
+                            command=lambda: which_checkbox(button3, ex_3_name),
+                            width=button3_photo.width(), height=button3_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button3.image = button3_photo  # Store reference to image to prevent garbage collection
+        button3.place(x=410, y=530)
+        self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=30, wraplength=200, anchor='center')
+        self.label_text3.place(x=310, y=325)
+        count += 1
+
+        self.label4 = tk.Label(self)
+        self.label4.place(x=545, y=365)  # Adjust x and y coordinates for the third video
+        button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_4_name)}.png')
+        button4_photo = ImageTk.PhotoImage(button4_image)
+        button4 = tk.Button(self, image=button4_photo,
+                            command=lambda: which_checkbox(button4, ex_4_name),
+                            width=button4_photo.width(), height=button4_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button4.image = button4_photo  # Store reference to image to prevent garbage collection
+        button4.place(x=635, y=530)
+        self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text4.place(x=555, y=325)
+        count += 1
+
+
+        # Video paths
+        video_file1 = f'Videos//{ex_1_name}_2.mp4'
+        video_path1 = os.path.join(os.getcwd(), video_file1)
+        self.cap1 = cv2.VideoCapture(video_path1)
+
+        video_file2 = f'Videos//{ex_2_name}_2.mp4'
+        video_path2 = os.path.join(os.getcwd(), video_file2)
+        self.cap2 = cv2.VideoCapture(video_path2)
+
+        video_file3 = f'Videos//{ex_3_name}_2.mp4'
+        video_path3 = os.path.join(os.getcwd(), video_file3)
+        self.cap3 = cv2.VideoCapture(video_path3)
+
+        video_file4 = f'Videos//{ex_4_name}_2.mp4'
+        video_path4 = os.path.join(os.getcwd(), video_file4)
+        self.cap4 = cv2.VideoCapture(video_path4)
+
+
+        # Check if videos are opened successfully
+        if not (
+                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened() and self.cap4.isOpened()):
+            print("Error opening video streams or files")
+
+        else:
+            # Play videos
+            play_video(self.cap1, self.label1, ex_1_name, "weights")
+            play_video(self.cap2, self.label2, ex_2_name, "weights")
+            play_video(self.cap3, self.label3, ex_3_name, "weights")
+            play_video(self.cap4, self.label4, ex_4_name, "weights")
+
+    def on_arrow_click_forward(self):
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
+                                               "rate": self.selected_option_rate.get()})
+        s.screen.switch_frame(ChooseNoToolExercisesPage)
+
+    def on_arrow_click_back(self):
+        Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
+                                               "rate": self.selected_option_rate.get()})
+        s.screen.switch_frame(ChooseStickExercisesPage)
+
+    def to_previous_button_click(self):
+        num_of_exercises_in_training = Excel.count_number_of_exercises_in_training_by_ID()
+        if num_of_exercises_in_training < 5:
+            back = Image.open('Pictures//not_enough_exercises_chosen.jpg')
+            background_img = ImageTk.PhotoImage(back)
+
+            self.label = tk.Label(self, image=background_img, compound=tk.CENTER, highlightthickness=0)
+            self.label.place(x=170, y=20)
+            self.label.image = background_img
+
+        else:
+            Excel.find_and_change_values_patients({"number of exercises": num_of_exercises_in_training, "number of repetitions in each exercise": self.selected_option_rep.get(), "rate": self.selected_option_rate.get()})
+            s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
+
+
 class ChooseNoToolExercisesPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
 
         # Load background image
-        background_image = Image.open('Pictures//background.jpg')
+        background_image = Image.open('Pictures//background_empty.jpg')
         self.background_photo = ImageTk.PhotoImage(background_image)
         self.background_label = tk.Label(self, image=self.background_photo)
         self.background_label.pack()
 
-        add_to_exercise_page(self)
+        add_to_exercise_page(self, "תרגילים ללא אביזר")
 
         end_button_img = Image.open("Pictures//end_button.jpg")
         end_button_photo = ImageTk.PhotoImage(end_button_img)
@@ -1498,36 +1833,40 @@ class ChooseNoToolExercisesPage(tk.Frame):
 
         row_of_patient=get_row_of_exercises_patient()
 
-        count= 1 + s.ball_exercises_number + s.band_exercises_number + s.stick_exercises_number
+        count= 1 + s.ball_exercises_number + s.band_exercises_number + s.stick_exercises_number + s.weights_exercises_number
         self.background_color = "#deeaf7"  # Set the background color to light blue
 
         ex_1_name = "notool_hands_behind_and_lean"
         ex_2_name = "notool_right_hand_up_and_bend"
         ex_3_name = "notool_left_hand_up_and_bend"
-        ex_4_name =  "notool_raising_hands_diagonally"
-        formatted_ex_1_name = ex_1_name.replace('_', ' ')
-        formatted_ex_2_name = ex_2_name.replace('_', ' ')
-        formatted_ex_3_name = ex_3_name.replace('_', ' ')
-        formatted_ex_4_name = ex_4_name.replace('_', ' ')
-
+        ex_4_name = "notool_raising_hands_diagonally"
+        ex_5_name = "notool_right_bend_left_up_from_side"
+        ex_6_name = "notool_left_bend_right_up_from_side"
+        formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
+        formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
+        formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
+        formatted_ex_4_name = Excel.get_name_by_exercise(ex_4_name)
+        formatted_ex_5_name = Excel.get_name_by_exercise(ex_5_name)
+        formatted_ex_6_name = Excel.get_name_by_exercise(ex_6_name)
 
         # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=125, y=125)  # Adjust x and y coordinates for the first video
+        self.label1.place(x=220, y=125)  # Adjust x and y coordinates for the first video
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
         button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, ex_1_name),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=190, y=440)
-        self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text1.place(x=120, y=85)
+        button1.place(x=310, y=290)
+        self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text1.place(x=230, y=85)
         count += 1
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=325, y=125)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=445, y=125)  # Adjust x and y coordinates for the second video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_2_name)}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
         button2 = tk.Button(self, image=button2_photo,
@@ -1535,15 +1874,15 @@ class ChooseNoToolExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=390, y=440)
-        self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text2.place(x=320, y=85)
+        button2.place(x=535, y=290)
+        self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text2.place(x=455, y=85)
         count += 1
 
-
         self.label3 = tk.Label(self)
-        self.label3.place(x=525, y=125)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=670, y=125)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(
             f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
@@ -1552,14 +1891,15 @@ class ChooseNoToolExercisesPage(tk.Frame):
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=590, y=440)
-        self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text3.place(x=520, y=85)
+        button3.place(x=760, y=290)
+        self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text3.place(x=680, y=85)
         count += 1
 
         self.label4 = tk.Label(self)
-        self.label4.place(x=725, y=125)  # Adjust x and y coordinates for the third video
+        self.label4.place(x=220, y=365)  # Adjust x and y coordinates for the third video
         button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_4_name)}.png')
         button4_photo = ImageTk.PhotoImage(button4_image)
         button4 = tk.Button(self, image=button4_photo,
@@ -1567,44 +1907,83 @@ class ChooseNoToolExercisesPage(tk.Frame):
                             width=button4_photo.width(), height=button4_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=790, y=440)
-        self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'), bg=self.background_color,
-            justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text4.place(x=720, y=85)
+        button4.place(x=310, y=530)
+        self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=170, anchor='center')
+        self.label_text4.place(x=230, y=325)
         count += 1
 
+        self.label5 = tk.Label(self)
+        self.label5.place(x=445, y=365)  # Adjust x and y coordinates for the third video
+        button5_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_5_name)}.png')
+        button5_photo = ImageTk.PhotoImage(button5_image)
+        button5 = tk.Button(self, image=button5_photo,
+                            command=lambda: which_checkbox(button5, ex_5_name),
+                            width=button5_photo.width(), height=button5_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button5.image = button5_photo  # Store reference to image to prevent garbage collection
+        button5.place(x=535, y=530)
+        self.label_text5 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_5_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=25, wraplength=200, anchor='center')
+        self.label_text5.place(x=447, y=325)
+        count += 1
 
-
+        self.label6 = tk.Label(self)
+        self.label6.place(x=670, y=365)  # Adjust x and y coordinates for the third video
+        button6_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_6_name)}.png')
+        button6_photo = ImageTk.PhotoImage(button6_image)
+        button6 = tk.Button(self, image=button6_photo,
+                            command=lambda: which_checkbox(button6, ex_6_name),
+                            width=button6_photo.width(), height=button6_photo.height(), bd=0,
+                            highlightthickness=0)  # Set border width to 0 to remove button border
+        button6.image = button6_photo  # Store reference to image to prevent garbage collection
+        button6.place(x=760, y=530)
+        self.label_text6 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_6_name}', font=("Thaoma", 9, 'bold'),
+                                    bg=self.background_color,
+                                    justify='center', width=27, wraplength=200, anchor='center')
+        self.label_text6.place(x=663, y=325)
+        count += 1
 
         # Video paths
-        video_file1 = f'Videos//{ex_1_name}_vid.mp4'
+        video_file1 = f'Videos//{ex_1_name}_2.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
 
-        video_file2 = f'Videos//{ex_2_name}_vid.mp4'
+        video_file2 = f'Videos//{ex_2_name}_2.mp4'
         video_path2 = os.path.join(os.getcwd(), video_file2)
         self.cap2 = cv2.VideoCapture(video_path2)
 
-        video_file3 = f'Videos//{ex_3_name}_vid.mp4'
+        video_file3 = f'Videos//{ex_3_name}_2.mp4'
         video_path3 = os.path.join(os.getcwd(), video_file3)
         self.cap3 = cv2.VideoCapture(video_path3)
 
-        video_file4 = f'Videos//{ex_4_name}_vid.mp4'
+        video_file4 = f'Videos//{ex_4_name}_2.mp4'
         video_path4 = os.path.join(os.getcwd(), video_file4)
         self.cap4 = cv2.VideoCapture(video_path4)
 
+        video_file5 = f'Videos//{ex_5_name}_2.mp4'
+        video_path5 = os.path.join(os.getcwd(), video_file5)
+        self.cap5 = cv2.VideoCapture(video_path5)
 
+        video_file6 = f'Videos//{ex_6_name}_2.mp4'
+        video_path6 = os.path.join(os.getcwd(), video_file6)
+        self.cap6 = cv2.VideoCapture(video_path6)
 
         # Check if videos are opened successfully
         if not (
-                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened()):
+                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened() and self.cap5.isOpened() and self.cap6.isOpened()):
             print("Error opening video streams or files")
+
         else:
             # Play videos
-            play_video(self.cap1, self.label1, ex_1_name, "no_tool")
-            play_video(self.cap2, self.label2,ex_2_name, "no_tool")
-            play_video(self.cap3, self.label3,ex_3_name, "no_tool")
-            play_video(self.cap4, self.label4,ex_4_name, "no_tool")
+            play_video(self.cap1, self.label1, ex_1_name, "notool")
+            play_video(self.cap2, self.label2, ex_2_name, "notool")
+            play_video(self.cap3, self.label3, ex_3_name, "notool")
+            play_video(self.cap4, self.label4, ex_4_name, "notool")
+            play_video(self.cap5, self.label5, ex_5_name, "notool")
+            play_video(self.cap6, self.label6, ex_6_name, "notool")
 
 
     def on_end_click(self):
@@ -1624,7 +2003,7 @@ class ChooseNoToolExercisesPage(tk.Frame):
     def on_arrow_click_back(self):
         Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
                                                "rate": self.selected_option_rate.get()})
-        s.screen.switch_frame(ChooseStickExercisesPage)
+        s.screen.switch_frame(ChooseWeightsExercisesPage)
 
 
 
@@ -1808,7 +2187,7 @@ class ChooseTrainingOrExerciseInformation(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
 
-        image = Image.open('Pictures//background.jpg')
+        image = Image.open('Pictures//background_empty.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         name_label(self)
@@ -2162,6 +2541,8 @@ class TablesPage(tk.Frame):
             previous_page = ChooseRubberBandExercisesPage
         elif previous == "stick":
             previous_page = ChooseStickExercisesPage
+        elif previous == "weights":
+            previous_page = ChooseWeightsExercisesPage
         elif previous == "no_tool":
             previous_page = ChooseNoToolExercisesPage
 
@@ -2466,10 +2847,11 @@ class TablesPage(tk.Frame):
 
 
 
-def add_to_exercise_page(self):
+def add_to_exercise_page(self, page_name):
     name_label(self)
     how_many_repetitions_of_exercises(self)
     rate_of_exercises(self)
+    page_name_label(self,page_name)
 
 
 def name_label(self):
@@ -2483,10 +2865,21 @@ def name_label(self):
 
     self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
                            compound=tk.CENTER,
-                           font=("Thaoma", 26, 'bold'), width=350, height=50, bg=self.background_color)
-    self.label1.place(x=270, y=27)
+                           font=("Ariel", 20, 'bold'), width=350, height=30, bg=self.background_color)
+    self.label1.place(x=350, y=45)
     self.label1.image = background_img
 
+
+def page_name_label(self, page_name):
+    back = Image.open('Pictures//empty.JPG')
+    background_img = ImageTk.PhotoImage(back)
+    self.background_color = "#deeaf7"  # Set the background color to light blue
+
+    self.label1 = tk.Label(self, text=page_name, image=background_img,
+                           compound=tk.CENTER,
+                           font=("Thaoma", 26, 'bold'), width=350, height=30, bg=self.background_color)
+    self.label1.place(x=350, y=12)
+    self.label1.image = background_img
 
 def how_many_repetitions_of_exercises(self):
     # List of options for the dropdown
@@ -2518,7 +2911,7 @@ def how_many_repetitions_of_exercises(self):
     self.option_menu = ttk.OptionMenu(self, self.selected_option_rep, self.selected_option_rep.get(), *self.options)
     self.option_menu['style'] = 'Custom.TMenubutton'  # Apply the custom style
     self.option_menu.config(width=4)  # Adjust the width of the dropdown
-    self.option_menu.place(x=520, y=480)
+    self.option_menu.place(x=45, y=200)
 
 
     # Adjust dropdown items font
@@ -2528,8 +2921,8 @@ def how_many_repetitions_of_exercises(self):
     self.background_color = "#deeaf7"
     background_img = ImageTk.PhotoImage(Image.open('Pictures//empty.JPG'))
     self.label1 = tk.Label(self, text=":מספר חזרות ", image=background_img, compound=tk.CENTER,
-                           font=("Thaoma", 16, 'bold'), width=110, height=50, bg=self.background_color)
-    self.label1.place(x=620, y=480)
+                           font=("Ariel", 16, 'bold'), width=110, height=50, bg=self.background_color)
+    self.label1.place(x=35, y=140)
     self.label1.image = background_img
 
 
@@ -2558,32 +2951,25 @@ def rate_of_exercises(self):
                     padding=[10, 10], anchor='center')  # Add padding and set anchor to 'center'
 
     # To configure the dropdown font (for the items inside the menu), modify the 'TMenu' style
-    style.configure('Custom.TMenu', font=('Arial', 16))  # Increase font for dropdown items
+    style.configure('Custom.TMenu', font=('Arial', 14))  # Increase font for dropdown items
 
-    # Configure the appearance of the OptionMenu and the dropdown items
-    style.configure('Custom.TMenubutton', font=('Arial', 16, 'bold'), background='lightgray', foreground='black',
-                    padding=[10, 10], anchor='center')  # Add padding and set anchor to 'center'
-
-    # To configure the dropdown font (for the items inside the menu), modify the 'TMenu' style
-    style.configure('Custom.TMenu', font=('Arial', 16))  # Increase font for dropdown items
 
     # Create the OptionMenu with the custom style
     self.option_menu_rate = ttk.OptionMenu(self, self.selected_option_rate, self.selected_option_rate.get(), *self.options_rate)
     self.option_menu_rate['style'] = 'Custom.TMenubutton'  # Apply the custom style
-    self.option_menu_rate.config(width=11)  # Adjust the width of the dropdown
-    self.option_menu_rate.place(x=270, y=480)
-
-
+    self.option_menu_rate.config(width=8)  # Adjust the width of the dropdown
+    self.option_menu_rate.place(x=20, y=340)
     # Adjust dropdown items font
-    self.option_menu_rate['menu'].config(font=('Arial', 16))
+    self.option_menu['menu'].config(font=('Arial', 14))
+
     # Background and label setup
     self.background_color = "#deeaf7"
     background_img = ImageTk.PhotoImage(Image.open('Pictures//empty.JPG'))
 
 
     self.label2 = tk.Label(self, text=":קצב ", image=background_img, compound=tk.CENTER,
-                           font=("Thaoma", 16, 'bold'), width=50, height=50, bg=self.background_color)
-    self.label2.place(x=450, y=480)
+                           font=("Ariel", 16, 'bold'), width=50, height=50, bg=self.background_color)
+    self.label2.place(x=60, y=280)
     self.label2.image = background_img
 
 
@@ -2702,7 +3088,7 @@ class ExplanationPage(tk.Frame):
 
         self.label = tk.Label(self)
         self.label.place(x=400, y=120)
-        video_file = f'Videos//{exercise}_vid.mp4'
+        video_file = f'Videos//{exercise}.mp4'
         video_path = os.path.join(os.getcwd(), video_file)
         self.cap = cv2.VideoCapture(video_path)
 
@@ -2720,10 +3106,16 @@ class ExplanationPage(tk.Frame):
 
         else:
             # Play videos
-            play_video(self.cap, self.label, exercise, None, 0.5, 0.5)
-            say(exercise, True) #True so the system will know that it is an explanation
-            x= get_wav_duration(exercise)
-            self.after(get_wav_duration(exercise)*1000+1500, lambda: self.end_of_explanation())
+            play_video_explanation(self.cap, self.label, exercise, None, 0.5)
+            if exercise =="notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side":
+                say("notool_arm_bend_arm_up_from_side", True)
+                x = get_wav_duration("notool_arm_bend_arm_up_from_side")
+
+            else:
+                say(exercise, True) #True so the system will know that it is an explanation
+                x = get_wav_duration(exercise)
+
+            self.after(x*1000+1500, lambda: self.end_of_explanation())
 
     def end_of_explanation(self):
         if not s.explanation_over:
@@ -3194,16 +3586,16 @@ if __name__ == "__main__":
     # s.list_effort_each_exercise= {}
     s.chosen_patient_ID='314808981'
     s.ball_exercises_number = 5
-    s.band_exercises_number = 3
-    s.stick_exercises_number = 4
+    s.band_exercises_number = 5
+    s.stick_exercises_number = 5
     s.weights_exercises_number = 4
-    s.no_tool_exercises_number = 4
+    s.no_tool_exercises_number = 6
     #s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
     s.gymmy_done=False
     s.camera_done= False
     s.rep=5
     s.audio_path = 'audio files/Hebrew/Male/'
     s.patient_repetitions_counting_in_exercise = 1
-    s.screen.switch_frame(PatientRegistration)
+    s.screen.switch_frame(ChooseNoToolExercisesPage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

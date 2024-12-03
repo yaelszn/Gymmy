@@ -175,26 +175,19 @@ def create_graphs_and_tables(exercise, list_joints):
         # Handle other specific errors
         pass  # Continue to the next iteration
 
+def get_name_by_exercise(exercise_value):
+    data = pd.read_excel("exercises_table.xlsx")
+    result = data.loc[data['exercise'] == exercise_value, 'name']
+    # Return the exact value, including formatting (e.g., RTL or LTR)
+    return result.iloc[0] if not result.empty else None
 
-def get_number_of_angles_in_exercise(exercise):
-    try:
-        # Load the workbook
-        workbook = openpyxl.load_workbook("exercises_table.xlsx")
-
-        # Select the desired sheet
-        sheet = workbook[workbook.sheetnames[0]]
-
-        # Iterate through rows starting from the specified row
-        for row_number in range(1, sheet.max_row + 1):
-            first_cell_value = sheet.cell(row=row_number, column=1).value
-
-            if first_cell_value == exercise:
-                return sheet.cell(row=row_number, column=2).value
+def get_number_of_angles_in_exercise(exercise_value):
+    data = pd.read_excel("exercises_table.xlsx")
+    result = data.loc[data['exercise'] == exercise_value, 'number of angles']
+    return result.iloc[0] if not result.empty else None
 
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return False
+
 
 def one_angle_graph_and_table(exercise_name, list_joints):
     if (list_joints!=[]):

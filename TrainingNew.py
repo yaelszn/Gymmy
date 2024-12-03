@@ -37,9 +37,11 @@ class Training(threading.Thread):
 
 
         while s.ex_in_training==[]:
+            time.sleep(0.1)
             if s.finish_program:
                 break
-            time.sleep(1)
+
+        time.sleep(1)
 
         if not s.finish_program:
             s.turn_camera_on= True
@@ -79,11 +81,22 @@ class Training(threading.Thread):
                         s.gymmy_done= False
                         s.camera_done= False
                         #s.demo_finish = False
+                        exercise = e
                         s.number_of_repetitions_in_training =0
                         s.max_repetitions_in_training =0
                         time.sleep(1)
+                        self.first_coordination_ex = True
+
                         self.run_exercise(e)
-                        self.end_exercise()
+
+                        if not (exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side") or not self.first_coordination_ex:
+                            self.end_exercise()
+
+                        if exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side":
+                            if self.first_coordination_ex == True:
+                                    self.first_coordination_ex = False
+                            else:
+                                self.first_coordination_ex = True
 
                             # while (not s.gymmy_done) or (not s.camera_done):
                             #     # print("not done")
@@ -165,8 +178,8 @@ class Training(threading.Thread):
             s.starts_and_ends_of_stops= []
 
 
-        else:
 
+        else:
             Excel.success_worksheet()
             Excel.find_and_add_training_to_patient()
             Excel.close_workbook()
@@ -175,6 +188,7 @@ class Training(threading.Thread):
             print("TRAINING DONE")
             time.sleep(1)
             self.reset()
+
 
     def end_exercise(self):
         if s.rep - 2 > s.patient_repetitions_counting_in_exercise:
@@ -212,20 +226,28 @@ class Training(threading.Thread):
     def run_exercise(self, name):
         time.sleep(0.1)  # wait between exercises
         s.success_exercise = False
-        s.patient_repetitions_counting_in_exercise=0
+        s.patient_repetitions_counting_in_exercise = 0
 
         print("TRAINING: Exercise ", name, " start")
         s.explanation_over = False
         s.req_exercise = name
-        s.screen.switch_frame(ExplanationPage, exercise= name)
-        speak_time = get_wav_duration(name)+get_wav_duration(f'{str(s.rep)} times')
-        time.sleep(speak_time+1) #wait the time of the audio
 
-        while s.gymmy_finished_demo == False:
-            time.sleep(0.001)
+        if self.first_coordination_ex == True:
+            s.screen.switch_frame(ExplanationPage, exercise= name)
+            if name == "notool_right_bend_left_up_from_side" or name == "notool_left_bend_right_up_from_side":
+                name = "notool_arm_bend_arm_up_from_side"
+            speak_time = get_wav_duration(name) + get_wav_duration(f'{str(s.rep)} times')
+            time.sleep(speak_time+1) #wait the time of the audio
 
-        time.sleep(1)
+            while s.gymmy_finished_demo == False:
+                time.sleep(0.001)
 
+            time.sleep(1)
+
+        else:
+            say("notool_arm_bend_arm_up_from_side_continue")
+
+        name = s.req_exercise
         s.screen.switch_frame(ExercisePage)
         while s.req_exercise == name:
             time.sleep(0.00000001)
@@ -235,6 +257,8 @@ class Training(threading.Thread):
         s.gymmy_finished_demo = False
         time.sleep(3)
         # time.sleep(1)
+
+
 
     def get_video_duration(self, exercise):
         video_file = f'Videos//{exercise}_vid.mp4'
@@ -322,7 +346,13 @@ if __name__ == "__main__":
     s.finish_program= False
     s.asked_for_measurement= False
     s.rep = 5
-    s.ex_in_training=["notool_left_hand_up_and_bend"]
+    s.ex_in_training=["ball_bend_elbows", "ball_raise_arms_above_head", "ball_switch", "ball_open_arms_and_forward", "ball_open_arms_above_head"]
+
+
+
+
+
+
     s.chosen_patient_ID="314808981"
     s.req_exercise=""
     s.ex_list = {}
@@ -336,10 +366,10 @@ if __name__ == "__main__":
     s.training.start()
     s.robot.start()
     s.did_training_paused = False
-    s.volume = 0.4
+    s.volume = 0.3
     s.additional_audio_playing = False
     s.gymmy_finished_demo = False
-    s.gender= "Female"
+    s.gender= "Male"
     s.audio_path = f'audio files/Hebrew/{s.gender}/'
 
     s.rate= "moderate"
