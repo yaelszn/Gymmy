@@ -1,17 +1,21 @@
 # class represent skeleton joint
 import math
 
+
+
 class Joint(object):
 
     def __init__(self, type, kp_3d):
         self.type = type
         #self.kp_3d_joint=kp_3d
+        self.position = []  # Initialize an empty list to store previous positions
 
         if self.is_Nan(kp_3d):
             self.x = 0
             self.y = 0
             self.z = 0
             self.visible=0
+
 
         else:
             self.x = kp_3d[0]

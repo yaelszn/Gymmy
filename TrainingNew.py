@@ -1,16 +1,18 @@
 import os
 import threading
 import time
-
+import re
 import cv2
 import pygame
+from fontTools.varLib.avarPlanner import WEIGHTS
+from openpyxl.descriptors import DateTime
 from reportlab.platypus.figures import FlexFigure
 
 from Camera import Camera
 from Gymmy import Gymmy
 from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
     EffortScale, EntrancePage, ExplanationPage, ExercisePage, Repeat_training_or_not, FailPage, AlmostExcellent, \
-    Number_of_good_repetitions_page, Excellent, Well_done, Very_good, ClappingPage
+    Number_of_good_repetitions_page, Excellent, Well_done, Very_good, ClappingPage, Weights
 import Settings as s
 import Excel
 import random
@@ -56,12 +58,13 @@ class Training(threading.Thread):
 
             s.starts_and_ends_of_stops.append(datetime.now())
 
-            categories = ["ball", "stick", "notool", "band"]
+            categories = ["ball", "stick", "notool", "band", "weights"]
             random.shuffle(categories)
 
             Excel.create_workbook_for_training() #create workbook in excel for this session
 
             s.exercises_by_order=[]
+
 
             for i in categories:
                 if s.stop_requested or s.finish_program:
@@ -69,14 +72,15 @@ class Training(threading.Thread):
 
                 exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
                 random.shuffle(exercises_in_category)
-                s.waved_has_tool= True
+                s.waved_has_tool= False
                 if exercises_in_category!=[]:
-                    #time.sleep(1)
-                    #self.show_screen_category(i)
+                    time.sleep(1)
+                    self.show_screen_category(i)
                     while not s.waved_has_tool:
                         time.sleep(0.0001)
 
                     for e in exercises_in_category:
+                        s.general_sayings = self.get_motivation_file_names()
                         s.exercises_by_order.append(e)
                         s.gymmy_done= False
                         s.camera_done= False
@@ -118,8 +122,42 @@ class Training(threading.Thread):
             s.screen.switch_frame(Stick)
         elif category=="band":
             s.screen.switch_frame(Rubber_Band)
+        elif category == "weights":
+            s.screen.switch_frame(Weights)
         else:
             s.screen.switch_frame(NoTool)
+
+
+
+    def get_motivation_file_names(self):
+        """
+        Retrieves all file names in a directory that:
+        - Start with 'faster_' followed by a number.
+        - Start with 'motivation_' followed by a number and optionally '_start', '_middle', '_end', or '_end_good'.
+
+        Returns:
+        - List[str]: A list of matching file names without extensions.
+        """
+        # Updated regex pattern
+        pattern = r'^(faster_\d+|motivation_\d+_(start|middle|end|end_good))\.\w+$'
+
+        # Initialize a list to store matching file names
+        matching_file_names = []
+
+        # Verify the directory exists
+        if not os.path.exists(s.audio_path):
+            print(f"Directory does not exist: {s.audio_path}")
+            return matching_file_names
+
+        # Check all files in the directory
+        for file_name in os.listdir(s.audio_path):
+            # Match the file name against the pattern
+            if re.match(pattern, file_name):
+                # Remove the file extension
+                name_without_extension, _ = os.path.splitext(file_name)
+                matching_file_names.append(name_without_extension)
+
+        return matching_file_names
 
     def finish_training(self):
         #time.sleep(3)
@@ -176,7 +214,7 @@ class Training(threading.Thread):
             s.number_of_repetitions_in_training=0
             s.did_training_paused= False
             s.starts_and_ends_of_stops= []
-
+            s.general_sayings = ["", "", ""]
 
 
         else:
@@ -191,6 +229,8 @@ class Training(threading.Thread):
 
 
     def end_exercise(self):
+        s.screen.switch_frame(Number_of_good_repetitions_page)
+        time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep"))
         if s.rep - 2 > s.patient_repetitions_counting_in_exercise:
             time.sleep(1)
             s.screen.switch_frame(FailPage)
@@ -207,8 +247,6 @@ class Training(threading.Thread):
             time.sleep(1)
             self.random_encouragement()
 
-        s.screen.switch_frame(Number_of_good_repetitions_page)
-        time.sleep(get_wav_duration("you managed to perform")+ get_wav_duration(str(s.patient_repetitions_counting_in_exercise))+get_wav_duration("good repetitions out of")+get_wav_duration(str(s.rep))+3.5) #the time that the Number_of_good_repetitions_page screen needs to appear
 
 
 
@@ -236,13 +274,13 @@ class Training(threading.Thread):
             s.screen.switch_frame(ExplanationPage, exercise= name)
             if name == "notool_right_bend_left_up_from_side" or name == "notool_left_bend_right_up_from_side":
                 name = "notool_arm_bend_arm_up_from_side"
-            speak_time = get_wav_duration(name) + get_wav_duration(f'{str(s.rep)} times')
-            time.sleep(speak_time+1) #wait the time of the audio
+            time.sleep(get_wav_duration(name)) #wait the time of the audio
 
             while s.gymmy_finished_demo == False:
                 time.sleep(0.001)
 
-            time.sleep(1)
+            say(str(f'{s.rep}_times'))
+            time.sleep(get_wav_duration(f'{str(s.rep)}_times')+1)
 
         else:
             say("notool_arm_bend_arm_up_from_side_continue")
@@ -299,6 +337,7 @@ class Training(threading.Thread):
         s.did_training_paused= False
         s.starts_and_ends_of_stops= []
         time.sleep(2)
+        s.general_sayings = ["", "", ""]
 
         s.screen.switch_frame(EntrancePage)
 
@@ -335,8 +374,10 @@ class Training(threading.Thread):
             Email.email_sending_not_level_up()
 
 if __name__ == "__main__":
-    # s.picture_path = 'audio files/' + language + '/' + gender + '/'
-    # s.str_to_say = ""
+    s.gender= "Male"
+    s.audio_path = f'audio files/Hebrew/{s.gender}/'
+    general_sayings = Training.get_motivation_file_names(Training)
+
     current_time = datetime.now()
     s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
                          str(current_time.minute) + "." + str(current_time.second)
@@ -345,13 +386,19 @@ if __name__ == "__main__":
     #s.exercise_amount = 6
     s.finish_program= False
     s.asked_for_measurement= False
-    s.rep = 5
-    s.ex_in_training=["ball_bend_elbows", "ball_raise_arms_above_head", "ball_switch", "ball_open_arms_and_forward", "ball_open_arms_above_head"]
+    s.rep = 10
 
-
-
-
-
+    s.ex_in_training=["ball_raise_arms_above_head"]
+        #"ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
+                    #"band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"
+                    # "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head", "stick_switch", "stick_up_and_lean"
+                    # weights_right_hand_up_and_bend, weights_left_hand_up_and_bend, weights_open_arms_and_forward, weights_abduction
+    # notool_hands_behind_and_lean
+    # notool_right_hand_up_and_bend
+    # notool_left_hand_up_and_bend
+    # notool_raising_hands_diagonally
+    # notool_right_bend_left_up_from_side
+    # notool_left_bend_right_up_from_side
 
     s.chosen_patient_ID="314808981"
     s.req_exercise=""
@@ -369,9 +416,8 @@ if __name__ == "__main__":
     s.volume = 0.3
     s.additional_audio_playing = False
     s.gymmy_finished_demo = False
-    s.gender= "Male"
-    s.audio_path = f'audio files/Hebrew/{s.gender}/'
-
+    s.robot_counter = 0
+    s.last_saying_time = datetime.now()
     s.rate= "moderate"
     pygame.mixer.init()
     s.stop_song = False

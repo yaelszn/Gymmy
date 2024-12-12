@@ -57,7 +57,7 @@ if __name__ == '__main__':
     s.gymmy_finished_demo = False
     s.last_saying_time = datetime.now()
     s.robot_counter = 0
-
+    s.general_sayings = ["","",""]
 
     # Create all components
     s.camera = Camera()

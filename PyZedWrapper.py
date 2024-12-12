@@ -46,6 +46,9 @@ class PyZedWrapper(threading.Thread):
         positional_tracking_parameters = sl.PositionalTrackingParameters()
         positional_tracking_parameters.set_as_static = True
         self.zed.enable_positional_tracking(positional_tracking_parameters)
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, 100)  # Range: 0 to 100
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAIN, 60)  # Range: 0 to 100
+
 
         # Enable body tracking
         zed_error = self.zed.enable_body_tracking(body_params)

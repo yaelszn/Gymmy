@@ -493,6 +493,25 @@ def find_and_add_training_to_patient(headers_row=1):
     workbook.save(file_path)
 
 
+def find_patient_row(headers_row=1):
+    import openpyxl
+
+    # Load the workbook
+    file_path = "Patients.xlsx"
+    workbook = openpyxl.load_workbook(file_path)
+
+    # Select the desired sheet
+    sheet = workbook["patients_details"]
+
+    # Iterate through the rows to find the value in the first column
+    for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column):
+        if str(row[0].value) == s.chosen_patient_ID:
+            # Return the entire row as a list of cell objects
+            return row
+
+    # Return None if no matching patient is found
+    return None
+
 # counts number of exercises in a training by ID by counting the true value
 def count_number_of_exercises_in_training_by_ID():
     # Select the specific sheet

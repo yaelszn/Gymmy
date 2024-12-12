@@ -22,9 +22,8 @@ from scipy.signal import savgol_filter
 
 import numpy as np
 
-
 class MovingAverageFilter:
-    def __init__(self, window_size=3, max_null_extrapolation=50, max_jump=70.0):
+    def __init__(self, window_size=3, max_null_extrapolation=500, max_jump=200.0):
         self.window_size = window_size  # Number of previous measurements to consider for moving average
         self.max_null_extrapolation = max_null_extrapolation  # Max nulls before fallback
         self.max_jump = max_jump  # Maximum allowable jump between consecutive positions
@@ -99,13 +98,7 @@ class MovingAverageFilter:
             return np.zeros(3)  # Return zero if no data is available
         return np.mean(self.previous_positions, axis=0)
 
-    def reset(self):
-        """Reset the filter (clear stored positions and last valid measurement)."""
-        self.previous_positions.clear()
-        self.last_valid_position = None
-        self.last_velocity = None
-        self.consecutive_invalid_measurements = 0
-        print("Filter reset.")
+
 
 
 class Camera(threading.Thread):
@@ -159,7 +152,7 @@ class Camera(threading.Thread):
         self.frame_count = 0
         self.start_time = None
         self.joints = {}  # Store joints data
-        self.max_angle_jump = 12  # Maximum allowed jump between consecutive angle calculations
+        self.max_angle_jump = 20  # Maximum allowed jump between consecutive angle calculations
         self.previous_angle = {}
         s.general_sayings=["","",""]
 
@@ -193,8 +186,7 @@ class Camera(threading.Thread):
                 ex = s.req_exercise
                 print("CAMERA: Exercise ", ex, " start")
                 if s.req_exercise != "hello_waving":
-                    # audio = s.req_exercise
-                    # time.sleep(get_wav_duration(audio) + get_wav_duration("start_ex"))
+                    time.sleep(3)
                     s.max_repetitions_in_training += s.rep  # Number of repetitions expected in this exercise
                 self.joints = {}  # Clear joints data for each new exercise
                 self.previous_angles={}
@@ -339,14 +331,39 @@ class Camera(threading.Thread):
     #         time.sleep(1)
     #         self.random_encouragement()
 
-    def sayings_generator(self):
-        if s.robot_counter < s.rep-1:
-            random_number_for_general_saying = random.randint(1, s.rep*30) #the number of frames probably in an exercise, devided by 6 to have the chance for several sayings
+    def sayings_generator(self, counter):
+        if s.robot_counter < s.rep - 1 and s.robot_counter >= 2:
+            random_number_for_general_saying = random.randint(1, s.rep*30)  # Random frame condition
 
-        if random_number_for_general_saying==1 or random_number_for_general_saying==2 and  (datetime.now() - timedelta(seconds=10) < s.last_saying_time):
-            random_saying_name = random.choice(self.general_sayings)
-            say(random_saying_name)
-            s.last_saying_time= datetime.now()
+            if (random_number_for_general_saying in range (1,5)) and \
+                    datetime.now() - s.last_saying_time >= timedelta(seconds=10):
+                if s.general_sayings:  # Ensure the list is not empty
+                    # Filter sayings based on the counter condition
+                    num = random.randint(2, 5)
+                    filtered_sayings = s.general_sayings
+                    if s.robot_counter <=2 :
+                        filtered_sayings = []
+
+                    else: # אם הרובוט גדול מ-2
+                        if s.rep - s.robot_counter > 3 :  # לא לקראת הסוף
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith(("_end", "_end_good"))]
+                        else:
+                            if s.rep - counter > 4:#אם לקראת הסוף ולא הצלחתי הרבה
+                                filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith(("_end_good"))]
+
+                        if counter <= 3: #אם לא עשיתי הרבה חזרות
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith("_middle")]
+
+                        if s.robot_counter - num < counter: #אם הספירה של הרובוט קרובה לספירה של האדם
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.startswith("faster")]
+
+
+
+                    if filtered_sayings:  # Ensure the filtered list is not empty
+                        random_saying_name = random.choice(filtered_sayings)
+                        s.general_sayings.remove(random_saying_name)  # Remove the selected saying
+                        say(random_saying_name)  # Call the function to say it
+                        s.last_saying_time = datetime.now()
 
 
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
@@ -363,7 +380,7 @@ class Camera(threading.Thread):
                 while s.did_training_paused and not s.stop_requested:
                     time.sleep(0.01)
 
-
+                self.sayings_generator(counter)
                 #for i in range (1,200):
                 joints = self.get_skeleton_data()
                 if joints is not None:
@@ -1058,7 +1075,7 @@ class Camera(threading.Thread):
 
 if __name__ == '__main__':
     s.camera_num = 1  # 0 - webcam, 2 - second USB in maya's computer
-
+    s.robot_counter = 0
     # Audio variables initialization
     language = 'Hebrew'
     gender = 'Male'
@@ -1091,7 +1108,7 @@ if __name__ == '__main__':
     ############################# להוריד את הסולמיות
     s.ex_list = {}
     s.chosen_patient_ID="314808981"
-    s.req_exercise = "ball_bend_elbows"
+    s.req_exercise = "ball_raise_arms_above_head"
     time.sleep(2)
     s.asked_for_measurement = False
     # Create all components
@@ -1105,10 +1122,9 @@ if __name__ == '__main__':
     # Start all threads
     s.camera.start()
     Excel.create_workbook_for_training()  # create workbook in excel for this session
-    time.sleep(60)
+    time.sleep(30)
     s.req_exercise=""
     Excel.success_worksheet()
     # Excel.find_and_add_training_to_patient()
     Excel.close_workbook()
-
 

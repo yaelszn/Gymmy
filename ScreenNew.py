@@ -925,56 +925,85 @@ def play_video(cap, label, exercise, previous, scale_factor=0.22, slow_factor=10
     # Start the worker thread
     threading.Thread(target=video_worker, daemon=True).start()
 
+import time
 
-def play_video_explanation(cap, label, exercise, previous, scale_factor=0.35, slow_factor=2):
+import cv2
+import time
+from tkinter import Label
+from PIL import Image, ImageTk
+
+def play_video_explanation(cap, label, video_path, scale_factor=0.65):
     """
-    Plays a video frame by frame in a Tkinter label widget without requiring mouse click interaction.
+    Plays a video frame by frame in a Tkinter label widget at the original video rate in real-time.
+    Crops out black parts dynamically and plays continuously. When the video ends, it switches to a second video
+    with '_2' appended to the original file name.
 
     Parameters:
     - cap: OpenCV video capture object.
     - label: Tkinter label widget to display the video.
-    - exercise: The exercise name (used if navigating to another screen).
-    - previous: Reference to the previous page (for navigation).
+    - video_path: Path to the current video file.
     - scale_factor: Scale factor for resizing the video frame.
-    - slow_factor: Factor to slow down the video playback.
     """
+    start_time = time.time()
 
-    # Function for switching to the TablesPage (optional, can be adjusted for other use cases)
-    def switch_frame():
-        if previous is not None:
-            s.screen.switch_frame(TablesPage, exercise=exercise, previous=previous)
-            print("Frame switched to TablesPage!")
+    def play_frame():
+        nonlocal start_time, cap
 
-    # Read the next frame from the video
-    ret, frame = cap.read()
+        ret, frame = cap.read()
 
-    if ret:
-        # Resize the frame
-        frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+        if ret:
+            # Detect and crop black margins
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray_frame, 10, 255, cv2.THRESH_BINARY)
+            x, y, w, h = cv2.boundingRect(thresh)  # Get bounding box of non-black areas
+            cropped_frame = frame[y:y + h, x:x + w] if w > 0 and h > 0 else frame
 
-        # Convert BGR to RGB
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # Convert to PhotoImage
-        photo = ImageTk.PhotoImage(image=Image.fromarray(image))
+            # Resize the cropped frame
+            frame_resized = cv2.resize(cropped_frame, (0, 0), fx=scale_factor, fy=scale_factor)
 
-        # Update the label with the current video frame
-        label.config(image=photo)
-        label.image = photo
+            # Convert BGR to RGB
+            image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
 
-        # Adjust the frame rate
-        frame_rate = cap.get(cv2.CAP_PROP_FPS)
-        adjusted_frame_rate = frame_rate * slow_factor
-        delay = int(1000 / adjusted_frame_rate)  # Delay in milliseconds
+            # Convert to PhotoImage
+            photo = ImageTk.PhotoImage(image=Image.fromarray(image))
 
-        # Schedule the next frame update
-        after_id = label.after(delay, lambda: play_video_explanation(cap, label, exercise, previous, scale_factor, slow_factor))
-    else:
-        # Video reached the end, reset the video capture to play again
-        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        after_id = label.after(25, lambda: play_video_explanation(cap, label, exercise, previous, scale_factor, slow_factor))
+            # Update the label with the current video frame
+            label.config(image=photo)
+            label.image = photo
 
-    # Return the after_id to have a reference for canceling the scheduled function
-    return after_id
+            # Adjust timing for real-time playback
+            frame_rate = cap.get(cv2.CAP_PROP_FPS)  # Get the original video frame rate
+            interval = 1 / frame_rate  # Interval in seconds
+            elapsed_time = time.time() - start_time
+
+            if elapsed_time < interval:
+                time.sleep(interval - elapsed_time)  # Ensure the frame timing matches the video rate
+
+            start_time = time.time()  # Reset start time for the next frame
+
+            # Schedule the next frame
+            label.after(1, play_frame)
+        else:
+            # End of the video, load the next video if available
+            print("Video playback finished.")
+            next_video_path = video_path.replace('.mp4', '_2.mp4')  # Append '_2' to the video file name
+            cap.release()  # Release the current video
+            try:
+                cap = cv2.VideoCapture(next_video_path)  # Try loading the next video
+                if not cap.isOpened():
+                    print(f"Next video '{next_video_path}' not found.")
+                    label.image = None
+                else:
+                    print(f"Playing next video: {next_video_path}")
+                    play_frame()  # Start playing the next video
+            except Exception as e:
+                print(f"Error loading next video: {e}")
+                label.image = None
+
+    # Start playing frames
+    play_frame()
+
+
 
 
 
@@ -3087,7 +3116,7 @@ class ExplanationPage(tk.Frame):
         tk.Label(self, image=self.photo_image).pack()
 
         self.label = tk.Label(self)
-        self.label.place(x=400, y=120)
+        self.label.place(x=300, y=85)
         video_file = f'Videos//{exercise}.mp4'
         video_path = os.path.join(os.getcwd(), video_file)
         self.cap = cv2.VideoCapture(video_path)
@@ -3106,7 +3135,7 @@ class ExplanationPage(tk.Frame):
 
         else:
             # Play videos
-            play_video_explanation(self.cap, self.label, exercise, None, 0.5)
+            play_video_explanation(self.cap, self.label, video_path)
             if exercise =="notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side":
                 say("notool_arm_bend_arm_up_from_side", True)
                 x = get_wav_duration("notool_arm_bend_arm_up_from_side")
@@ -3115,11 +3144,10 @@ class ExplanationPage(tk.Frame):
                 say(exercise, True) #True so the system will know that it is an explanation
                 x = get_wav_duration(exercise)
 
-            self.after(x*1000+1500, lambda: self.end_of_explanation())
+            self.after(x*1000+2000, lambda: self.end_of_explanation())
 
     def end_of_explanation(self):
         if not s.explanation_over:
-            say(str(f'{s.rep} times'))
             s.explanation_over = True
 
     def on_click_skip(self):
@@ -3245,7 +3273,7 @@ class Ball(tk.Frame):
         image = Image.open('Pictures//ball.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        say("Ball")
+        say("ball")
         self.after(6000,lambda: wait_until_waving())
 
 
@@ -3255,19 +3283,27 @@ class Stick(tk.Frame):
         image = Image.open('Pictures//stick.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        say("Stick")
+        say("stick")
         self.after(6000,lambda: wait_until_waving())
 
 
 class Rubber_Band(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//rubber_band.jpg')
+        image = Image.open('Pictures//rubberband.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        say("Band")
+        say("band")
         self.after(6000,lambda: wait_until_waving())
 
+class Weights(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        image = Image.open('Pictures//weights.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+        say("weights")
+        self.after(6000,lambda: wait_until_waving())
 
 class NoTool(tk.Frame):
     def __init__(self, master):
@@ -3275,7 +3311,7 @@ class NoTool(tk.Frame):
         image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        say("NoTool")
+        say("notool")
         self.after(6000,lambda: wait_until_waving())
 
 
