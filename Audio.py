@@ -9,7 +9,7 @@ import time
 import wave  # To get the length of the audio file
 
 class ContinuousAudio(threading.Thread):
-    def __init__(self,):
+    def __init__(self):
         threading.Thread.__init__(self)
         random_number = random.randint(1, 6)
         self.file_name = f'song_{random_number}'
@@ -50,14 +50,21 @@ class ContinuousAudio(threading.Thread):
 
             # If additional audio is playing, lower the volume
             if s.additional_audio_playing:
-                pygame.mixer.music.set_volume(0.1)  # Lower volume to 10%
+                if s.volume>=0.1:
+                    pygame.mixer.music.set_volume(0.1)  # Lower volume to 10%
+                else:
+                    pygame.mixer.music.set_volume(s.volume)
                 self.last_additional_audio_time = current_time  # Update last play time
             else:
                 # Restore the volume if at least 1 second has passed since the last additional audio
                 if current_time - self.last_additional_audio_time >= 1:
-                    if s.volume != 0.1:
+                    if pygame.mixer.music.get_volume() != s.volume:
                         pygame.mixer.music.set_volume(s.volume)
                         self.current_volume = s.volume  # Update the stored volume
+
+            # Dynamically update the volume to match the current `s.volume`
+            if not s.additional_audio_playing:
+                pygame.mixer.music.set_volume(s.volume)
 
             # Check if the music is still playing, and replay if necessary
             if not pygame.mixer.music.get_busy():

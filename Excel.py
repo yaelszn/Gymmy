@@ -103,6 +103,10 @@ def get_success_number(file_path, exercise):
         print(f"File success not found.")
         return None
 
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
 
 # #returns the value of effort rate in a specific training and specific exercise
 # def get_effort_number(file_path, exercise):
@@ -334,7 +338,7 @@ def create_and_save_graph(data, exercise):
 
         plt.xlabel('מספר מדידה'[::-1], fontsize=fontsize, weight='bold')
         plt.ylabel('זווית'[::-1], fontsize=fontsize, weight='bold')
-        plt.title(plot_name[:-2], fontsize=fontsize + 2, weight='bold')
+        plt.title(plot_name[:-2], fontsize=fontsize, weight='bold')
 
         # # Filter out None values from plot_data['y']
 
@@ -432,6 +436,7 @@ def calculate_training_length():
     # Return the total time in seconds
     return training_length.total_seconds()
 
+
 def find_and_change_values_patients(new_values_dict, headers_row=1):
     # Load the workbook
     file_path = "Patients.xlsx"
@@ -493,24 +498,26 @@ def find_and_add_training_to_patient(headers_row=1):
     workbook.save(file_path)
 
 
-def find_patient_row(headers_row=1):
-    import openpyxl
+def which_welcome_record_to_say(headers_row=1):
 
     # Load the workbook
     file_path = "Patients.xlsx"
     workbook = openpyxl.load_workbook(file_path)
 
     # Select the desired sheet
-    sheet = workbook["patients_details"]
+    sheet = workbook["patients_history_of_trainings"]
 
     # Iterate through the rows to find the value in the first column
     for row in sheet.iter_rows(min_row=headers_row + 1, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column):
-        if str(row[0].value) == s.chosen_patient_ID:
-            # Return the entire row as a list of cell objects
-            return row
+        if str(row[0].value) == str(s.chosen_patient_ID):  # Ensure comparison works for different types
+            # Check if other cells in the row are not None or empty
+            if any(cell.value for cell in row[1:]):  # Check if any other cell in the row has a value
+                return "welcome"
+            else:
+                return "welcome_with_gymmy"
 
     # Return None if no matching patient is found
-    return None
+    return "welcome_with_gymmy"
 
 # counts number of exercises in a training by ID by counting the true value
 def count_number_of_exercises_in_training_by_ID():
@@ -553,17 +560,24 @@ def create_and_save_table_with_calculations(data, exercise):
         y_values = y_series.dropna().tolist()
 
 
-        if y_values:
+        if len(y_values)>0:
             min_val = f"{min(y_values):.2f}"
             max_val = f"{max(y_values):.2f}"
             average = f"{(sum(y_values) / len(y_values)):.2f}"
             stdev = f"{np.std(y_values):.2f}"
+
+        else:
+            min_val = "0.00"
+            max_val = "0.00"
+            average = "0.00"
+            stdev = "0.00"
 
         # Prepare data for the table
         calculation_data = {
             'ערכים'[::-1]: [min_val, max_val, average, stdev],  # Reverse Hebrew labels
             'מדדים'[::-1]: [s[::-1] for s in ['מינימום', 'מקסימום', 'ממוצע', 'סטיית תקן']]  # Reverse Hebrew labels
         }
+
 
         # Create a pandas DataFrame
         df = pd.DataFrame(calculation_data)
@@ -576,7 +590,7 @@ def create_and_save_table_with_calculations(data, exercise):
         ax.axis('off')
 
         # Add the table name as a header to the top of the figure
-        ax.text(0.5, 1, table_name[:-2], ha='center', fontsize=16, weight='bold', transform=ax.transAxes)
+        ax.text(0.5, 0.9, table_name[:-2], ha='center', fontsize=13, weight='bold', transform=ax.transAxes)
 
         # Add the table to the figure with bold headers
         table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
@@ -592,7 +606,7 @@ def create_and_save_table_with_calculations(data, exercise):
         # Set the background color for the cells and the text properties
         for (i, j), cell in table.get_celld().items():
             if i == 0:  # Header row
-                cell.set_text_props(weight='bold', fontsize=14)  # Set bold and increase font size
+                cell.set_text_props(weight='bold', fontsize=12)  # Set bold and increase font size
                 cell.set_facecolor('#ffffff')  # White background for header cells
             else:
                 cell.set_fontsize(12)  # Set a slightly smaller font for data rows
@@ -662,14 +676,7 @@ def close_workbook():
 
 
 if __name__ == "__main__":
-    data = {
-        'aaa 4': {
-            'x': [1, 2, 3, 4, 5],
-            'y': [10, 15, 20, 25, 30]  # Example data for y-values
-        }
-    }
 
-    s.start_dt= "11-02-1999 12-13-45"
-    s.chosen_patient_ID="1111"
+    s.chosen_patient_ID="55581599"
+    print(which_welcome_record_to_say())
     # Example usage
-    create_and_save_table_with_calculations(data, 'exercise_name')

@@ -2,6 +2,8 @@ import os
 import threading
 import time
 import re
+from random import randint
+
 import cv2
 import pygame
 from fontTools.varLib.avarPlanner import WEIGHTS
@@ -11,8 +13,8 @@ from reportlab.platypus.figures import FlexFigure
 from Camera import Camera
 from Gymmy import Gymmy
 from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
-    EffortScale, EntrancePage, ExplanationPage, ExercisePage, Repeat_training_or_not, FailPage, AlmostExcellent, \
-    Number_of_good_repetitions_page, Excellent, Well_done, Very_good, ClappingPage, Weights
+    EffortScale, EntrancePage, ExplanationPage, ExercisePage, Repeat_training_or_not, \
+    Number_of_good_repetitions_page, ClappingPage, Weights
 import Settings as s
 import Excel
 import random
@@ -40,6 +42,7 @@ class Training(threading.Thread):
 
         while s.ex_in_training==[]:
             time.sleep(0.1)
+
             if s.finish_program:
                 break
 
@@ -54,7 +57,9 @@ class Training(threading.Thread):
             if not s.is_second_repetition_or_more and not s.finish_program:
                 selected_exercises = random.sample(s.ex_in_training, min(8, len(s.ex_in_training))) # select 8 random strings, or all of them if there are fewer than 8
                 s.ex_in_training = selected_exercises
-                time.sleep(7)
+
+                while not s.explanation_over:
+                    time.sleep(0.5)
 
             s.starts_and_ends_of_stops.append(datetime.now())
 
@@ -90,7 +95,7 @@ class Training(threading.Thread):
                         s.max_repetitions_in_training =0
                         time.sleep(1)
                         self.first_coordination_ex = True
-
+                        s.num_exercises_started +=1
                         self.run_exercise(e)
 
                         if not (exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side") or not self.first_coordination_ex:
@@ -215,6 +220,8 @@ class Training(threading.Thread):
             s.did_training_paused= False
             s.starts_and_ends_of_stops= []
             s.general_sayings = ["", "", ""]
+            s.num_exercises_started = 0
+
 
 
         else:
@@ -231,21 +238,31 @@ class Training(threading.Thread):
     def end_exercise(self):
         s.screen.switch_frame(Number_of_good_repetitions_page)
         time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep"))
-        if s.rep - 2 > s.patient_repetitions_counting_in_exercise:
-            time.sleep(1)
-            s.screen.switch_frame(FailPage)
-            time.sleep(get_wav_duration("fail")+1)
+        time.sleep(2)
 
 
-        if (s.rep - 2) <= s.patient_repetitions_counting_in_exercise <= (s.rep - 1):
-            time.sleep(1)
-            s.screen.switch_frame(AlmostExcellent)
-            time.sleep(get_wav_duration("almostexcellent")+1)
+        # if len(s.exercises_by_order) - s.num_exercises_started > 0: #if this is not the last exercise
+        #
+        #     rnd_num = randint(1,10)
+        #     if rnd_num>=1 and rnd_num<=5:
+        #         say(f'continue_{rnd_num}')
 
 
-        if s.patient_repetitions_counting_in_exercise == s.rep:
-            time.sleep(1)
-            self.random_encouragement()
+        # if s.rep - 2 > s.patient_repetitions_counting_in_exercise:
+        #     time.sleep(1)
+        #     # s.screen.switch_frame(FailPage)
+        #     # time.sleep(get_wav_duration("fail")+1)
+        #
+        #
+        # if (s.rep - 2) <= s.patient_repetitions_counting_in_exercise <= (s.rep - 1):
+        #     time.sleep(1)
+        #     # s.screen.switch_frame(AlmostExcellent)
+        #     # time.sleep(get_wav_duration("almostexcellent")+1)
+        #
+        #
+        # if s.patient_repetitions_counting_in_exercise == s.rep:
+        #     time.sleep(1)
+        #     self.random_encouragement()
 
 
 
@@ -338,6 +355,8 @@ class Training(threading.Thread):
         s.starts_and_ends_of_stops= []
         time.sleep(2)
         s.general_sayings = ["", "", ""]
+        s.num_exercises_started = 0
+        s.dist_between_shoulders = 0
 
         s.screen.switch_frame(EntrancePage)
 
@@ -419,8 +438,10 @@ if __name__ == "__main__":
     s.robot_counter = 0
     s.last_saying_time = datetime.now()
     s.rate= "moderate"
+    s.num_exercises_started = 0
     pygame.mixer.init()
     s.stop_song = False
+    s.explanation_over = False
     # Start continuous audio in a separate thread
     s.continuous_audio = ContinuousAudio()
     s.continuous_audio.start()

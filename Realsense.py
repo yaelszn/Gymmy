@@ -10,8 +10,7 @@ from PyZedWrapper import PyZedWrapper
 import Settings as s
 import time
 import Excel
-from ScreenNew import Screen, FullScreenApp, OnePage, TwoPage, ThreePage, FourPage, FivePage, SixPage, SevenPage, \
-    EightPage, NinePage, TenPage, Very_good, Excellent, Well_done, AlmostExcellent, FailPage
+from ScreenNew import Screen, FullScreenApp
 import numpy as np
 from openpyxl import Workbook
 from scipy.signal import savgol_filter

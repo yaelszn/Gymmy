@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import queue
 import threading
-import time
 import tkinter as tk
 from datetime import datetime
 from statistics import mean, stdev
@@ -21,12 +20,14 @@ import pygame
 from PIL import Image, ImageTk
 from email_validator import validate_email, EmailNotValidError
 import Settings as s
-from Audio import say, get_wav_duration
+from Audio import say, get_wav_duration, ContinuousAudio
 from gtts import gTTS
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import Excel
 import re
+import cv2
+import time
 
 
 
@@ -37,6 +38,31 @@ class Screen(tk.Tk):
         self._frame = None
         self["bg"]="#F3FCFB"
         #self.after(1000, lambda: self.pause_execution())
+
+        # # Create a top bar
+        # self.bar = tk.Frame(self, bg="#4CAF50", height=50)
+        # self.bar.place(x=0, y=0, width=self.winfo_screenwidth(), height=50)
+        #
+        # # Add a scale to the bar
+        # self.scale = tk.Scale(
+        #     self.bar,
+        #     from_=0, to=100,
+        #     orient="horizontal",
+        #     bg="#4CAF50",
+        #     fg="white",
+        #     highlightthickness=0,
+        #     font=("Arial", 10),
+        #     length=200
+        # )
+        # self.scale.pack(side="left", padx=20)
+
+        shut_down_button_img = Image.open("Pictures//shut_down.jpg")  # Change path to your image file
+        shut_down_button_photo = ImageTk.PhotoImage(shut_down_button_img)
+
+        shut_down_button = tk.Button(self, image=shut_down_button_photo, command=lambda: self.on_click_shut_down(),
+                                              width=shut_down_button_img.width, height=shut_down_button_img.height, bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
+        shut_down_button.image = shut_down_button_photo  # Store reference to image to prevent garbage collection
+        shut_down_button.place(x=60, y=60)
 
     def pause_execution(self):
         # Create a dummy function that does nothing
@@ -105,6 +131,9 @@ class EntrancePage(tk.Frame):
                                               width=shut_down_button_img.width, height=shut_down_button_img.height, bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
         shut_down_button.image = shut_down_button_photo  # Store reference to image to prevent garbage collection
         shut_down_button.place(x=30, y=30)
+
+
+
 
         s.ex_in_training = []
 
@@ -209,6 +238,8 @@ class ID_patient_fill_page(tk.Frame):
                     s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
                     s.rep= int(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "number of repetitions in each exercise"))
                     s.gender = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "gender")
+                    s.rate = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "rate")
+                    s.dist_between_shoulders = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "dist between shoulders")
                     s.full_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "first name") + " " + Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "last name")
                     s.audio_path = 'audio files/Hebrew/' + s.gender + '/'
 
@@ -653,7 +684,7 @@ class PatientRegistration(tk.Frame):
             self.labels.append(self.label)
 
         elif s.average_dist is None:
-            error = Image.open('Pictures//didnt_do_calibration.jpg.jpg')
+            error = Image.open('Pictures//didnt_do_calibration.jpg')
             id_already_in_system = ImageTk.PhotoImage(error)
             self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
             self.label.place(x=230, y=490)
@@ -831,22 +862,33 @@ class PatientDisplaying(tk.Frame):
 
 
 
-def play_video(cap, label, exercise, previous, scale_factor=0.22, slow_factor=10):
-    # Shared variable to control the playback
+def play_video(cap, label, exercise, previous, scale_factor=0.22, slow_factor=5):
+    # Define the on_click function
+    if previous is not None:
+        def on_click(event):
+            s.screen.switch_frame(TablesPage, exercise=exercise, previous=previous)
+            print("video clicked!")
+    else:
+        def on_click(event):
+            print()
+
+    # Shared variable to control playback
     label.playing = False
+    label.after_id = None  # To store the ID of the scheduled `after` callback
 
     def show_static_frame():
         """Display a static frame from the video when the mouse is not hovering."""
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset to the first frame
         ret, frame = cap.read()
         if ret:
             # Detect and crop black margins
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             _, thresh = cv2.threshold(gray_frame, 10, 255, cv2.THRESH_BINARY)
-            x, y, w, h = cv2.boundingRect(thresh)  # Get the bounding box of non-black areas
+            x, y, w, h = cv2.boundingRect(thresh)
             cropped_frame = frame[y:y + h, x:x + w]
 
             # Resize the cropped frame
-            frame = cv2.resize(cropped_frame, (0, 0), fx=scale_factor+0.02, fy=scale_factor)
+            frame = cv2.resize(cropped_frame, (0, 0), fx=scale_factor + 0.02, fy=scale_factor)
 
             # Convert BGR to RGB
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -854,85 +896,73 @@ def play_video(cap, label, exercise, previous, scale_factor=0.22, slow_factor=10
             # Convert to PhotoImage
             photo = ImageTk.PhotoImage(image=Image.fromarray(image))
 
+            # Update the label
             label.config(image=photo)
             label.image = photo
 
-    def video_worker():
-        """Worker thread to play video frames."""
-        while True:
-            if label.playing:
-                ret, frame = cap.read()
+    def update_frame():
+        """Play video frames when label is hovered."""
+        if label.playing:
+            ret, frame = cap.read()
+            if ret:
+                # Detect and crop black margins
+                gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                _, thresh = cv2.threshold(gray_frame, 10, 255, cv2.THRESH_BINARY)
+                x, y, w, h = cv2.boundingRect(thresh)
+                cropped_frame = frame[y:y + h, x:x + w]
 
-                if ret:
-                    # Detect and crop black margins
-                    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    _, thresh = cv2.threshold(gray_frame, 10, 255, cv2.THRESH_BINARY)
-                    x, y, w, h = cv2.boundingRect(thresh)  # Get the bounding box of non-black areas
-                    cropped_frame = frame[y:y + h, x:x + w]
+                # Resize the cropped frame
+                frame = cv2.resize(cropped_frame, (0, 0), fx=scale_factor + 0.02, fy=scale_factor)
 
-                    # Resize the cropped frame
-                    frame = cv2.resize(cropped_frame, (0, 0), fx=scale_factor+0.02, fy=scale_factor)
+                # Convert BGR to RGB
+                image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-                    # Convert BGR to RGB
-                    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                # Convert to PhotoImage
+                photo = ImageTk.PhotoImage(image=Image.fromarray(image))
 
-                    # Convert to PhotoImage
-                    photo = ImageTk.PhotoImage(image=Image.fromarray(image))
+                # Update the label
+                label.config(image=photo)
+                label.image = photo
 
-                    # Update the label on the main thread
-                    label.after(0, lambda: label.config(image=photo))
-                    label.image = photo
+                # Adjust the frame rate
+                frame_rate = cap.get(cv2.CAP_PROP_FPS)
+                adjusted_frame_rate = frame_rate * slow_factor
+                delay = int(1000 / adjusted_frame_rate)
 
-                    # Adjust the frame rate
-                    frame_rate = cap.get(cv2.CAP_PROP_FPS)
-                    adjusted_frame_rate = frame_rate * slow_factor
-                    delay = 1 / adjusted_frame_rate  # Delay in seconds
-                    time.sleep(delay)
-                else:
-                    # Video reached the end, reset the video capture to play again
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                # Schedule the next frame update
+                label.after_id = label.after(delay, update_frame)
             else:
-                # time.sleep(0.1)  # Prevent busy-waiting when not playing
-                time.sleep(0.1)
+                # Reset to the first frame if the video ends
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                update_frame()
 
-    # Event handlers for hover
     def on_enter(event):
+        """Start video playback on hover."""
         label.playing = True
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset video to the first frame
+        if label.after_id:  # Cancel any existing scheduled updates
+            label.after_cancel(label.after_id)
+        update_frame()
 
     def on_leave(event):
+        """Stop video playback and show a static frame."""
         label.playing = False
-        show_static_frame()  # Show a static frame when the mouse leaves
+        if label.after_id:  # Cancel any scheduled updates
+            label.after_cancel(label.after_id)
+            label.after_id = None
+        show_static_frame()
 
-    # Bind hover events to the label
+    # Bind hover and click events to the label
     label.bind("<Enter>", on_enter)
     label.bind("<Leave>", on_leave)
-
-    # Bind click event if necessary
-    if previous is not None:
-        def on_click(event):
-            # Call the Graph function with the exercise name
-            s.screen.switch_frame(TablesPage, exercise=exercise, previous=previous)
-            print("video clicked!")
-    else:
-        def on_click(event):
-            print()
-
     label.bind("<Button-1>", on_click)
 
     # Show the initial static frame
     show_static_frame()
 
-    # Start the worker thread
-    threading.Thread(target=video_worker, daemon=True).start()
 
-import time
 
-import cv2
-import time
-from tkinter import Label
-from PIL import Image, ImageTk
-
-def play_video_explanation(cap, label, video_path, scale_factor=0.65):
+def play_video_explanation(cap, label, video_path, scale_factor_x = 0.65, scale_factor_y = 0.65, slow_factor = 1):
     """
     Plays a video frame by frame in a Tkinter label widget at the original video rate in real-time.
     Crops out black parts dynamically and plays continuously. When the video ends, it switches to a second video
@@ -959,7 +989,7 @@ def play_video_explanation(cap, label, video_path, scale_factor=0.65):
             cropped_frame = frame[y:y + h, x:x + w] if w > 0 and h > 0 else frame
 
             # Resize the cropped frame
-            frame_resized = cv2.resize(cropped_frame, (0, 0), fx=scale_factor, fy=scale_factor)
+            frame_resized = cv2.resize(cropped_frame, (0, 0), fx=scale_factor_x, fy=scale_factor_y)
 
             # Convert BGR to RGB
             image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
@@ -973,7 +1003,7 @@ def play_video_explanation(cap, label, video_path, scale_factor=0.65):
 
             # Adjust timing for real-time playback
             frame_rate = cap.get(cv2.CAP_PROP_FPS)  # Get the original video frame rate
-            interval = 1 / frame_rate  # Interval in seconds
+            interval = (1 / frame_rate) / slow_factor  # Interval in seconds
             elapsed_time = time.time() - start_time
 
             if elapsed_time < interval:
@@ -2136,6 +2166,21 @@ class ExercisePage(tk.Frame):
         # Start the loop using after()
         self.update_exercise()
 
+        # Add a scale widget
+        self.scale_value_label = tk.Label(self, text="Volume \n 50", font=("Arial", 16, "bold"), bg="white", fg="black")
+        self.scale_value_label.place(x=5, y=100)
+
+        self.scale = tk.Scale(self, from_=100, to=0, orient="vertical", length=300,
+                              command=self.update_scale_value, bg="#50a6ad", fg="black",
+                              troughcolor="#83c2c6", highlightthickness=0, showvalue=0)
+        self.scale.set(50)  # Set initial value
+        self.scale.place(x=35, y=160)
+
+
+    def update_scale_value(self, value):
+        self.scale_value_label.config(text=f"Volume \n {value}")
+        s.volume = int(value)*0.01
+
     def update_exercise(self):
         # Non-blocking exercise loop using after()
 
@@ -2645,23 +2690,11 @@ class TablesPage(tk.Frame):
         first_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details", s.chosen_patient_ID, "first name")
         last_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details", s.chosen_patient_ID, "last name")
 
-        self.label1 = tk.Label(self, text=f'{last_name_of_patient} {first_name_of_patient}', image=background_img, compound=tk.CENTER,
-                               font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
-        self.label1.place(x=160, y=5)
-        self.label1.image = background_img
-
-
-        # Format the date and time from the folder name
-        date_part, time_part = sorted_folder[place].split(' ')
-        formatted_date = date_part.replace('-', '/')
-        formatted_time = time_part.replace('-', ':')
-        formatted_text = f'{formatted_date} {formatted_time}'
-
-        # Display date and time with custom background color
-        self.label2 = tk.Label(self, text=f'{formatted_text}', image=background_img, compound=tk.CENTER,
-                               font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
-        self.label2.place(x=160, y=30)
-        self.label2.image = background_img
+        if first_name_of_patient is not None and last_name_of_patient is not None:
+            self.label1 = tk.Label(self, text=f'{last_name_of_patient} {first_name_of_patient}', image=background_img, compound=tk.CENTER,
+                                   font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
+            self.label1.place(x=160, y=5)
+            self.label1.image = background_img
 
         success_number = Excel.get_success_number(directory, exercise)
 
@@ -2679,6 +2712,18 @@ class TablesPage(tk.Frame):
             self.two_angles_graph(exercise, sorted_folder[place])
         if num_of_angles == 3:
             self.three_angles_graph(exercise, sorted_folder[place])
+
+        # Format the date and time from the folder name
+        date_part, time_part = sorted_folder[place].split(' ')
+        formatted_date = date_part.replace('-', '/')
+        formatted_time = time_part.replace('-', ':')
+        formatted_text = f'{formatted_date} {formatted_time}'
+
+        # Display date and time with custom background color
+        self.label2 = tk.Label(self, text=f'{formatted_text}', image=background_img, compound=tk.CENTER,
+                               font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
+        self.label2.place(x=160, y=30)
+        self.label2.image = background_img
 
     def help_function(self, sorted_folder, place_to_put, num_of_angles, exercise):
         # Clean up previous labels and buttons
@@ -2717,10 +2762,10 @@ class TablesPage(tk.Frame):
 
             # Iterate through rows starting from the specified row
             for row_number in range(1,sheet.max_row + 1):
-                first_cell_value = sheet.cell(row=row_number, column=1).value
+                first_cell_value = sheet.cell(row=row_number, column=2).value
 
                 if first_cell_value == exercise:
-                    return sheet.cell(row=row_number, column=2).value
+                    return sheet.cell(row=row_number, column=3).value
 
 
         except Exception as e:
@@ -2728,153 +2773,194 @@ class TablesPage(tk.Frame):
             return False
 
     def three_angles_graph(self, exercise, folder):
-        # Determine the resize factor
-        resize_factor_width = 0.55
-        resize_factor_height = 0.4
+        try:
+            # Determine the resize factor
+            resize_factor_width = 0.3
+            resize_factor_height = 0.55
 
-        # Load the image for table 1
-        dir1 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
-        table1 = Image.open(dir1)
-        new_width1 = int(table1.width * resize_factor_width)
-        new_height1 = int(table1.height * resize_factor_height)
-        table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
-        self.table1 = ImageTk.PhotoImage(table1_resized)
-        self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
-        self.table1_label.place(x=100, y=90)
+            dir1 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
+            table1 = Image.open(dir1)
+            dir2 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
+            table2 = Image.open(dir2)
+            dir3 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 3)
+            table3 = Image.open(dir3)
+            dir4 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 4)
+            table4 = Image.open(dir4)
+            dir5 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 5)
+            table5 = Image.open(dir5)
+            dir6 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 6)
+            table6 = Image.open(dir6)
 
-        # Load the image for table 2
-        dir2 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
-        table2 = Image.open(dir2)
-        new_width2 = int(table2.width * resize_factor_width)
-        new_height2 = int(table2.height * resize_factor_height)
-        table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
-        self.table2 = ImageTk.PhotoImage(table2_resized)
-        self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
-        self.table2_label.place(x=100, y=325)
+            # Load the image for table 1
 
-        # Load the image for table 3
-        dir3 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 3)
-        table3 = Image.open(dir3)
-        new_width3 = int(table3.width * resize_factor_width)
-        new_height3 = int(table3.height * resize_factor_height)
-        table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
-        self.table3 = ImageTk.PhotoImage(table3_resized)
-        self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
-        self.table3_label.place(x=380, y=90)
+            new_width1 = int(table1.width * resize_factor_width)
+            new_height1 = int(table1.height * resize_factor_height)
+            table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+            self.table1 = ImageTk.PhotoImage(table1_resized)
+            self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
+            self.table1_label.place(x=95, y=90)
 
-        # Load the image for table 4
-        dir4 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 4)
-        table4 = Image.open(dir4)
-        new_width4 = int(table4.width * resize_factor_width)
-        new_height4 = int(table4.height * resize_factor_height)
-        table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
-        self.table4 = ImageTk.PhotoImage(table4_resized)
-        self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
-        self.table4_label.place(x=380, y=325)
+            # Load the image for table 2
 
-        # Load the image for table 5
-        dir5 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 5)
-        table5 = Image.open(dir5)
-        new_width5 = int(table5.width * resize_factor_width)
-        new_height5 = int(table5.height * resize_factor_height)
-        table5_resized = table5.resize((new_width5, new_height5), Image.Resampling.LANCZOS)
-        self.table5 = ImageTk.PhotoImage(table5_resized)
-        self.table5_label = tk.Label(self, image=self.table5, bd=0, bg='#deeaf7')  # Set background color here
-        self.table5_label.place(x=660, y=90)
+            new_width2 = int(table2.width * resize_factor_width)
+            new_height2 = int(table2.height * resize_factor_height)
+            table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+            self.table2 = ImageTk.PhotoImage(table2_resized)
+            self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
+            self.table2_label.place(x=95, y=325)
 
-        # Load the image for table 6
-        dir6 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 6)
-        table6 = Image.open(dir6)
-        new_width6 = int(table6.width * resize_factor_width)
-        new_height6 = int(table6.height * resize_factor_height)
-        table6_resized = table6.resize((new_width6, new_height6), Image.Resampling.LANCZOS)
-        self.table6 = ImageTk.PhotoImage(table6_resized)
-        self.table6_label = tk.Label(self, image=self.table6, bd=0, bg='#deeaf7')  # Set background color here
-        self.table6_label.place(x=660, y=325)
+            # Load the image for table 3
+
+            new_width3 = int(table3.width * resize_factor_width)
+            new_height3 = int(table3.height * resize_factor_height)
+            table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+            self.table3 = ImageTk.PhotoImage(table3_resized)
+            self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
+            self.table3_label.place(x=375, y=90)
+
+            # Load the image for table 4
+
+            new_width4 = int(table4.width * resize_factor_width)
+            new_height4 = int(table4.height * resize_factor_height)
+            table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+            self.table4 = ImageTk.PhotoImage(table4_resized)
+            self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
+            self.table4_label.place(x=375, y=325)
+
+            # Load the image for table 5
+
+            new_width5 = int(table5.width * resize_factor_width)
+            new_height5 = int(table5.height * resize_factor_height)
+            table5_resized = table5.resize((new_width5, new_height5), Image.Resampling.LANCZOS)
+            self.table5 = ImageTk.PhotoImage(table5_resized)
+            self.table5_label = tk.Label(self, image=self.table5, bd=0, bg='#deeaf7')  # Set background color here
+            self.table5_label.place(x=655, y=90)
+
+            # Load the image for table 6
+
+            new_width6 = int(table6.width * resize_factor_width)
+            new_height6 = int(table6.height * resize_factor_height)
+            table6_resized = table6.resize((new_width6, new_height6), Image.Resampling.LANCZOS)
+            self.table6 = ImageTk.PhotoImage(table6_resized)
+            self.table6_label = tk.Label(self, image=self.table6, bd=0, bg='#deeaf7')  # Set background color here
+            self.table6_label.place(x=655, y=325)
+
+        except FileNotFoundError:
+            # Handle case where the path does not exist
+            didnt_do_before = Image.open('Pictures//patient_didnt_do.jpg')
+            self.didnt_do_before = ImageTk.PhotoImage(didnt_do_before)
+            self.didnt_do_before_label = tk.Label(self, image=self.didnt_do_before, bd=0, bg=self.background_color)
+            self.didnt_do_before_label.place(x=270, y=75)
+            print(f"Error: The path 'Patients/{s.chosen_patient_ID}/Tables/{exercise}' does not exist.")
+
 
     def two_angles_graph(self, exercise, folder):
-        # Determine the resize factor
-        resize_factor_width = 0.55
-        resize_factor_height = 0.4
+        try:
+            # Determine the resize factor
+            resize_factor_width = 0.45
+            resize_factor_height = 0.55
 
-        # Load the image for table 1
-        dir1 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
-        table1 = Image.open(dir1)
-        new_width1 = int(table1.width * resize_factor_width)
-        new_height1 = int(table1.height * resize_factor_height)
-        table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
-        self.table1 = ImageTk.PhotoImage(table1_resized)
-        self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
-        self.table1_label.place(x=230, y=90)
+            dir1 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
+            table1 = Image.open(dir1)
+            dir2 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
+            table2 = Image.open(dir2)
+            dir3 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 3)
+            table3 = Image.open(dir3)
+            dir4 = self.find_image(
+                f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 4)
+            table4 = Image.open(dir4)
 
-        # Load the image for table 2
-        dir2 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
-        table2 = Image.open(dir2)
-        new_width2 = int(table2.width * resize_factor_width)
-        new_height2 = int(table2.height * resize_factor_height)
-        table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
-        self.table2 = ImageTk.PhotoImage(table2_resized)
-        self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
-        self.table2_label.place(x=230, y=325)
+            # Load the image for table 1
 
-        # Load the image for table 3
-        dir3 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 3)
-        table3 = Image.open(dir3)
-        new_width3 = int(table3.width * resize_factor_width)
-        new_height3 = int(table3.height * resize_factor_height)
-        table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
-        self.table3 = ImageTk.PhotoImage(table3_resized)
-        self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
-        self.table3_label.place(x=510, y=90)
+            new_width1 = int(table1.width * resize_factor_width)
+            new_height1 = int(table1.height * resize_factor_height)
+            table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+            self.table1 = ImageTk.PhotoImage(table1_resized)
+            self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
+            self.table1_label.place(x=120, y=90)
 
-        # Load the image for table 4
-        dir4 = self.find_image(
-            f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 4)
-        table4 = Image.open(dir4)
-        new_width4 = int(table4.width * resize_factor_width)
-        new_height4 = int(table4.height * resize_factor_height)
-        table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
-        self.table4 = ImageTk.PhotoImage(table4_resized)
-        self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
-        self.table4_label.place(x=510, y=325)
+            # Load the image for table 2
+
+            new_width2 = int(table2.width * resize_factor_width)
+            new_height2 = int(table2.height * resize_factor_height)
+            table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+            self.table2 = ImageTk.PhotoImage(table2_resized)
+            self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
+            self.table2_label.place(x=120, y=325)
+
+            # Load the image for table 3
+
+            new_width3 = int(table3.width * resize_factor_width)
+            new_height3 = int(table3.height * resize_factor_height)
+            table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+            self.table3 = ImageTk.PhotoImage(table3_resized)
+            self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
+            self.table3_label.place(x=550, y=90)
+
+            # Load the image for table 4
+
+            new_width4 = int(table4.width * resize_factor_width)
+            new_height4 = int(table4.height * resize_factor_height)
+            table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+            self.table4 = ImageTk.PhotoImage(table4_resized)
+            self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
+            self.table4_label.place(x=550, y=325)
+
+        except FileNotFoundError:
+            # Handle case where the path does not exist
+            didnt_do_before = Image.open('Pictures//patient_didnt_do.jpg')
+            self.didnt_do_before = ImageTk.PhotoImage(didnt_do_before)
+            self.didnt_do_before_label = tk.Label(self, image=self.didnt_do_before, bd=0, bg=self.background_color)
+            self.didnt_do_before_label.place(x=270, y=75)
+            print(f"Error: The path 'Patients/{s.chosen_patient_ID}/Tables/{exercise}' does not exist.")
+
 
 
 
     def one_angle_graph(self, exercise, folder):
-        # Determine the resize factor
-        resize_factor_width = 0.15
-        resize_factor_height = 0.4
+        try:
+            # Determine the resize factor
+            resize_factor_width = 0.55
+            resize_factor_height = 0.55
 
-        # Load the image for table 1
-        dir1 = self.find_image(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
-        table1 = Image.open(dir1)
-        new_width1 = int(table1.width * resize_factor_width)
-        new_height1 = int(table1.height * resize_factor_height)
-        table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
-        self.table1 = ImageTk.PhotoImage(table1_resized)
-        self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
-        self.table1_label.place(x=370, y=90)
+            dir1 = self.find_image(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
+            table1 = Image.open(dir1)
+            dir2 = self.find_image(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
+            table2 = Image.open(dir2)
+            # Load the image for table 1
 
-        # Load the image for table 2
-        dir2 = self.find_image(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 2)
-        table2 = Image.open(dir2)
-        new_width2 = int(table2.width * resize_factor_width)
-        new_height2 = int(table2.height * resize_factor_height)
-        table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
-        self.table2 = ImageTk.PhotoImage(table2_resized)
-        self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
-        self.table2_label.place(x=370, y=325)
+            new_width1 = int(table1.width * resize_factor_width)
+            new_height1 = int(table1.height * resize_factor_height)
+            table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+            self.table1 = ImageTk.PhotoImage(table1_resized)
+            self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
+            self.table1_label.place(x=300, y=90)
 
+            # Load the image for table 2
 
+            new_width2 = int(table2.width * resize_factor_width)
+            new_height2 = int(table2.height * resize_factor_height)
+            table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+            self.table2 = ImageTk.PhotoImage(table2_resized)
+            self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
+            self.table2_label.place(x=300, y=325)
+
+        except FileNotFoundError:
+            # Handle case where the path does not exist
+            didnt_do_before = Image.open('Pictures//patient_didnt_do.jpg')
+            self.didnt_do_before = ImageTk.PhotoImage(didnt_do_before)
+            self.didnt_do_before_label = tk.Label(self, image=self.didnt_do_before, bd=0, bg=self.background_color)
+            self.didnt_do_before_label.place(x=270, y=75)
+            print(f"Error: The path 'Patients/{s.chosen_patient_ID}/Tables/{exercise}' does not exist.")
 
 def add_to_exercise_page(self, page_name):
     name_label(self)
@@ -3163,19 +3249,30 @@ class Number_of_good_repetitions_page(tk.Frame):
         self.canvas.pack(fill="both", expand=True)
 
         # Load and display the background image
-        image = Image.open('Pictures//good_repetitions.jpg')
+        image = Image.open("C:/Users/Administrator/Downloads/july-4-fireworks-gettyimages-530944604 (2).jpg")
         self.photo_image = ImageTk.PhotoImage(image)
         self.canvas.create_image(0, 0, image=self.photo_image, anchor="nw")
 
+        if s.patient_repetitions_counting_in_exercise == 10:
+            alignment1 = "center"
+        else:
+            alignment1= "e"
+
+        if s.rep == 10:
+            alignment3= "center"
+        else:
+            alignment3 = "w"
+
         # Overlay text directly on the canvas instead of using Labels
-        self.canvas.create_text(480, 190, text=str(s.patient_repetitions_counting_in_exercise),
-                                font=("Arial", 100, "bold"), fill="black")
+        self.canvas.create_text(960, 450, text= f'{s.patient_repetitions_counting_in_exercise}',
+                                font=("Arial", 65, "bold"), fill="white", anchor=alignment1)
+        self.canvas.create_text(520, 450, text= "חזרות מוצלחות מתוך",
+                                font=("Arial", 65, "bold"), fill="white", anchor="center")
+        self.canvas.create_text(70, 450, text= f'{s.rep}',
+                                font=("Arial", 65, "bold"), fill="white", anchor=alignment3)
 
-        self.canvas.create_text(480, 450, text=str(s.rep),
-                                font=("Arial", 100, "bold"), fill="black")
 
-
-        say("you managed to perform")
+        say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
         first_delay = get_wav_duration("you managed to perform") * 1000 + 500
 
         # First after delay
@@ -3211,48 +3308,51 @@ class Number_of_good_repetitions_page(tk.Frame):
 
 ########################################### Encouragemennts Pages ######################################################
 
-class Very_good(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//verygood.jpg')
-        self.photo_image = ImageTk.PhotoImage(image)
-        tk.Label(self, image=self.photo_image).pack()
-        say('Very_good')
+import tkinter as tk
+from PIL import Image, ImageTk
 
 
-class Excellent(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//excellent.jpg')
-        self.photo_image = ImageTk.PhotoImage(image)
-        tk.Label(self, image=self.photo_image).pack()
-        say('Excellent')
-
-class Well_done(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//welldone.jpg')
-        self.photo_image = ImageTk.PhotoImage(image)
-        tk.Label(self, image=self.photo_image).pack()
-        say('Well_done')
-
-
-class AlmostExcellent(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//almostexcellent.jpg')
-        self.photo_image = ImageTk.PhotoImage(image)
-        tk.Label(self, image=self.photo_image).pack()
-        say('almostexcellent')
-
-
-class FailPage(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//fail.jpg')
-        self.photo_image = ImageTk.PhotoImage(image)
-        tk.Label(self, image=self.photo_image).pack()
-        say('fail')
+# class Very_good(tk.Frame):
+#     def __init__(self, master):
+#         tk.Frame.__init__(self, master)
+#         image = Image.open('Pictures//verygood.jpg')
+#         self.photo_image = ImageTk.PhotoImage(image)
+#         tk.Label(self, image=self.photo_image).pack()
+#         say('Very_good')
+#
+# class Excellent(tk.Frame):
+#     def __init__(self, master):
+#         tk.Frame.__init__(self, master)
+#         image = Image.open('Pictures//excellent.jpg')
+#         self.photo_image = ImageTk.PhotoImage(image)
+#         tk.Label(self, image=self.photo_image).pack()
+#         say('Excellent')
+#
+# class Well_done(tk.Frame):
+#     def __init__(self, master):
+#         tk.Frame.__init__(self, master)
+#         image = Image.open('Pictures//welldone.jpg')
+#         self.photo_image = ImageTk.PhotoImage(image)
+#         tk.Label(self, image=self.photo_image).pack()
+#         say('Well_done')
+#
+#
+# class AlmostExcellent(tk.Frame):
+#     def __init__(self, master):
+#         tk.Frame.__init__(self, master)
+#         image = Image.open('Pictures//almostexcellent.jpg')
+#         self.photo_image = ImageTk.PhotoImage(image)
+#         tk.Label(self, image=self.photo_image).pack()
+#         say('almostexcellent')
+#
+#
+# class FailPage(tk.Frame):
+#     def __init__(self, master):
+#         tk.Frame.__init__(self, master)
+#         image = Image.open('Pictures//fail.jpg')
+#         self.photo_image = ImageTk.PhotoImage(image)
+#         tk.Label(self, image=self.photo_image).pack()
+#         say('fail')
 
 
 ################################################# Categories Screens ##############################################
@@ -3262,7 +3362,51 @@ class StartOfTraining(tk.Frame):
         image = Image.open('Pictures//hello.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        say("welcome")
+        welcome_to_say = Excel.which_welcome_record_to_say()
+        say(welcome_to_say)
+        self.after(get_wav_duration(welcome_to_say)*1000 +1000,lambda: s.screen.switch_frame(StartExplanationPage))
+
+
+class StartExplanationPage(tk.Frame):
+    def __init__(self, master, **kwargs):
+        tk.Frame.__init__(self, master, **kwargs)
+        image = Image.open('Pictures//background.jpg')
+        self.photo_image = ImageTk.PhotoImage(image)
+        tk.Label(self, image=self.photo_image).pack()
+
+        s.explanation_over = False
+        self.label = tk.Label(self)
+        self.label.place(x=200, y=85)
+        video_file = f'Videos//start_explanation.mp4'
+        video_path = os.path.join(os.getcwd(), video_file)
+        self.cap = cv2.VideoCapture(video_path)
+
+        skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
+        skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
+        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo, command=lambda: self.on_click_skip(),
+                                width=skip_explanation_button_img.width, height=skip_explanation_button_img.height, bd=0,
+                                highlightthickness=0)
+        skip_explanation_button.image = skip_explanation_button_photo
+        skip_explanation_button.place(x=30, y=30)
+
+
+        if not (self.cap.isOpened()):
+            print("Error opening video streams or files")
+
+        else:
+            # Play videos
+            play_video_explanation(self.cap, self.label, video_path, 0.8, 0.8, 1.2)
+            say("start_explanation", True)  # True so the system will know that it is an explanation
+            x = get_wav_duration("start_explanation")
+            self.after(x*1000+1000, lambda: self.end_of_explanation())
+
+    def end_of_explanation(self):
+        if not s.explanation_over:
+            s.explanation_over = True
+
+    def on_click_skip(self):
+        s.explanation_over = True
+
 
 def wait_until_waving():
     s.req_exercise="hello_waving"
@@ -3629,9 +3773,17 @@ if __name__ == "__main__":
     #s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
     s.gymmy_done=False
     s.camera_done= False
-    s.rep=5
+    s.rep=10
+    s.volume = 0.3
     s.audio_path = 'audio files/Hebrew/Male/'
-    s.patient_repetitions_counting_in_exercise = 1
-    s.screen.switch_frame(ChooseNoToolExercisesPage)
+    s.finish_workout = False
+    pygame.mixer.init()
+    s.stop_song = False
+    s.additional_audio_playing =False
+    # Start continuous audio in a separate thread
+    s.continuous_audio = ContinuousAudio()
+    s.continuous_audio.start()
+    s.patient_repetitions_counting_in_exercise = 10
+    s.screen.switch_frame(ExercisePage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

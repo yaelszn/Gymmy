@@ -38,6 +38,7 @@ if __name__ == '__main__':
     s.camera_done = False
     s.robot_count = False
     s.demo_finish= False
+    s.num_exercises_started = 0
     s.ex_in_training=[]
     s.finish_program= False #will turn to true only when the user will press on the exit button
     #s.exercises_start=False
@@ -58,6 +59,7 @@ if __name__ == '__main__':
     s.last_saying_time = datetime.now()
     s.robot_counter = 0
     s.general_sayings = ["","",""]
+    s.dist_between_shoulders = 0
 
     # Create all components
     s.camera = Camera()

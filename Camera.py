@@ -13,8 +13,7 @@ from PyZedWrapper import PyZedWrapper
 import Settings as s
 import time
 import Excel
-from ScreenNew import Screen, FullScreenApp, OnePage, TwoPage, ThreePage, FourPage, FivePage, SixPage, SevenPage, \
-    EightPage, NinePage, TenPage, FailPage, Very_good, Excellent, Well_done, AlmostExcellent
+from ScreenNew import Screen, FullScreenApp
 import numpy as np
 from openpyxl import Workbook
 from scipy.signal import savgol_filter
@@ -628,9 +627,7 @@ class Camera(threading.Thread):
         flag = True
         counter = 0
         list_joints = []
-        sum_distance_between_shoulders=0
-        number_in_distance = 0
-        distance_between_shoulders=0
+
 
         while s.req_exercise == exercise_name:
             while s.did_training_paused and not s.stop_requested:
@@ -638,14 +635,7 @@ class Camera(threading.Thread):
         #for i in range (1,100):
             joints = self.get_skeleton_data()
             if joints is not None:
-                if number_in_distance<10:
-                    sum_distance_between_shoulders+= abs(joints["L_shoulder"].x - joints["R_shoulder"].x)
-                    number_in_distance+=1
 
-                if number_in_distance==10:
-                    distance_between_shoulders = sum_distance_between_shoulders/10
-
-                print("distance_between_shoulders: "+ str(distance_between_shoulders))
 
                 right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
                                                  joints[str("R_" + joint3)], "R_1")
@@ -705,7 +695,7 @@ class Camera(threading.Thread):
                         if check_nose:
                             if ((up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
                                     (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & \
+                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & \
                                     (joints[str("nose")].y-50>joints[str("R_wrist")].y or joints[str("nose")].y-50>joints[str("L_wrist")].y) & (not flag)):
                                 flag = True
                                 counter += 1
@@ -717,7 +707,7 @@ class Camera(threading.Thread):
                                 say(str(counter))
                             elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
                                     (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & \
+                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & \
                                     (joints[str("nose")].y-50>joints[str("R_wrist")].y or joints[str("nose")].y-50>joints[str("L_wrist")].y) & (flag):
 
                                 flag = False
@@ -726,7 +716,7 @@ class Camera(threading.Thread):
                         else:
                             if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
                                     (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & (not flag):
+                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (not flag):
                                 flag = True
                                 counter += 1
                                 s.number_of_repetitions_in_training += 1
@@ -737,7 +727,7 @@ class Camera(threading.Thread):
                                 say(str(counter))
                             elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
                                     (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & (flag):
+                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (flag):
                                 flag = False
 
 
@@ -862,7 +852,6 @@ class Camera(threading.Thread):
         flag = True
         counter = 0
         list_joints = []
-        distance_between_shoulders = 285
         while s.req_exercise == exercise_name:
             while s.did_training_paused and not s.stop_requested:
                 time.sleep(0.01)
@@ -893,7 +882,7 @@ class Camera(threading.Thread):
                 if side == 'right':
                     if right_angle is not None and left_angle is not None:
                         if (one_lb < right_angle < one_ub)  & (joints[str("nose")].y-50>joints[str("R_wrist")].y) & \
-                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & (not flag):
+                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (not flag):
                             flag = True
                             counter += 1
                             s.patient_repetitions_counting_in_exercise += 1
@@ -908,7 +897,7 @@ class Camera(threading.Thread):
                 else:
                     if right_angle is not None and left_angle is not None:
                         if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-50>joints[str("L_wrist")].x)& (joints[str("nose")].y - 50 > joints[str("L_wrist")].y) & \
-                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < distance_between_shoulders - differ) & (not flag):
+                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (not flag):
                             flag = True
                             counter += 1
                             s.number_of_repetitions_in_training += 1
@@ -1108,7 +1097,7 @@ if __name__ == '__main__':
     ############################# להוריד את הסולמיות
     s.ex_list = {}
     s.chosen_patient_ID="314808981"
-    s.req_exercise = "ball_raise_arms_above_head"
+    s.req_exercise = "band_open_arms_and_up"
     time.sleep(2)
     s.asked_for_measurement = False
     # Create all components
@@ -1117,12 +1106,12 @@ if __name__ == '__main__':
     s.patient_repetitions_counting_in_exercise=0
     s.starts_and_ends_of_stops=[]
     s.starts_and_ends_of_stops.append(datetime.now())
-
+    s.dist_between_shoulders =280
     pygame.mixer.init()
     # Start all threads
     s.camera.start()
     Excel.create_workbook_for_training()  # create workbook in excel for this session
-    time.sleep(30)
+    time.sleep(10)
     s.req_exercise=""
     Excel.success_worksheet()
     # Excel.find_and_add_training_to_patient()
