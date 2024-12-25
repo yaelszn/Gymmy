@@ -2167,19 +2167,31 @@ class ExercisePage(tk.Frame):
         self.update_exercise()
 
         # Add a scale widget
-        self.scale_value_label = tk.Label(self, text="Volume \n 50", font=("Arial", 16, "bold"), bg="white", fg="black")
+        self.scale_value_label = tk.Label(self, text=f"Volume \n {s.volume*100}", font=("Arial", 16, "bold"), bg="white", fg="black")
         self.scale_value_label.place(x=5, y=100)
 
         self.scale = tk.Scale(self, from_=100, to=0, orient="vertical", length=300,
-                              command=self.update_scale_value, bg="#50a6ad", fg="black",
+                              command=self.on_scale_moved, bg="#50a6ad", fg="black",
                               troughcolor="#83c2c6", highlightthickness=0, showvalue=0)
-        self.scale.set(50)  # Set initial value
+        self.scale.set(s.volume*100)  # Set initial value
         self.scale.place(x=35, y=160)
 
 
+        # Time of the last update
+        self.last_update_time = 0
+
+    def on_scale_moved(self, value):
+        current_time = time.time()  # Get the current time
+        if current_time - self.last_update_time >= 0.01:  # Check if 0.1 seconds have passed
+            self.update_scale_value(value)
+            self.last_update_time = current_time  # Update the last update time
+
     def update_scale_value(self, value):
+        # Update the volume and label
         self.scale_value_label.config(text=f"Volume \n {value}")
-        s.volume = int(value)*0.01
+        s.volume = round(int(value) * 0.01, 2)
+        print(f"Updated volume to {s.volume}")
+
 
     def update_exercise(self):
         # Non-blocking exercise loop using after()
@@ -3273,27 +3285,6 @@ class Number_of_good_repetitions_page(tk.Frame):
 
 
         say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
-        first_delay = get_wav_duration("you managed to perform") * 1000 + 500
-
-        # First after delay
-        self.after(first_delay, lambda: self.say_repetitions())
-
-    def say_repetitions(self):
-        say(str(s.patient_repetitions_counting_in_exercise))
-        second_delay = get_wav_duration(str(s.patient_repetitions_counting_in_exercise)) * 1000 + 500
-
-        # Second after delay
-        self.after(second_delay, lambda: self.say_good_repetitions())
-
-    def say_good_repetitions(self):
-        say("good repetitions out of")
-        third_delay = get_wav_duration("good repetitions out of") * 1000 + 500
-
-        # Third after delay
-        self.after(third_delay, lambda: self.say_rep_count())
-
-    def say_rep_count(self):
-        say(str(s.rep))
 
 
     # class ExercisePage(tk.Frame):
@@ -3452,7 +3443,7 @@ class Weights(tk.Frame):
 class NoTool(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//background.jpg')
+        image = Image.open('Pictures//notool.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
         say("notool")

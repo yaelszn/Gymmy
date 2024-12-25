@@ -1,87 +1,56 @@
-import tkinter as tk
-from PIL import Image, ImageTk
+import cv2
+import numpy as np
+
+from cv_viewer.utils import *
+import pyzed.sl as sl
+
+#----------------------------------------------------------------------
+#       2D VIEW
+#----------------------------------------------------------------------
+def cvt(pt, scale):
+    '''
+    Function that scales point coordinates
+    '''
+    out = [pt[0]*scale[0], pt[1]*scale[1]]
+    return out
+
+def render_sk(left_display, img_scale, obj, color, BODY_BONES):
+    # Draw skeleton bones
+    for part in BODY_BONES:
+        kp_a = cvt(obj.keypoint_2d[part[0].value], img_scale)
+        kp_b = cvt(obj.keypoint_2d[part[1].value], img_scale)
+        # Check that the keypoints are inside the image
+        if(kp_a[0] < left_display.shape[1] and kp_a[1] < left_display.shape[0]
+        and kp_b[0] < left_display.shape[1] and kp_b[1] < left_display.shape[0]
+        and kp_a[0] > 0 and kp_a[1] > 0 and kp_b[0] > 0 and kp_b[1] > 0 ):
+            cv2.line(left_display, (int(kp_a[0]), int(kp_a[1])), (int(kp_b[0]), int(kp_b[1])), color, 1, cv2.LINE_AA)
+
+    # Skeleton joints
+    for kp in obj.keypoint_2d:
+        cv_kp = cvt(kp, img_scale)
+        if(cv_kp[0] < left_display.shape[1] and cv_kp[1] < left_display.shape[0]):
+            cv2.circle(left_display, (int(cv_kp[0]), int(cv_kp[1])), 3, color, -1)
 
 
-class App(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Multi-Page Application Example")
-        self.geometry("800x600")
+def render_2D(left_display, img_scale, objects, is_tracking_on, body_format):
+    '''
+    Parameters
+        left_display (np.array): numpy array containing image data
+        img_scale (list[float])
+        objects (list[sl.ObjectData])
+    '''
+    overlay = left_display.copy()
 
-        # Add a shared label (e.g., title bar)
-        self.shared_label = tk.Label(self, text="Shared Header", bg="#333", fg="white", font=("Arial", 16))
-        self.shared_label.pack(side="top", fill="x")
+    # Render skeleton joints and bones
+    for obj in objects:
+        if render_object(obj, is_tracking_on):
+            if len(obj.keypoint_2d) > 0:
+                color = generate_color_id_u(obj.id)
+                if body_format == sl.BODY_FORMAT.BODY_18:
+                    render_sk(left_display, img_scale, obj, color, sl.BODY_18_BONES)
+                elif body_format == sl.BODY_FORMAT.BODY_34:
+                    render_sk(left_display, img_scale, obj, color, sl.BODY_34_BONES)
+                elif body_format == sl.BODY_FORMAT.BODY_38:
+                    render_sk(left_display, img_scale, obj, color, sl.BODY_38_BONES)
 
-        # Container for frames (pages)
-        container = tk.Frame(self)
-        container.pack(fill="both", expand=True)
-
-        # Shared navigation
-        self.pages = {}
-        for Page in (EntrancePage, ID_therapist_fill_page, ID_patient_fill_page):
-            page = Page(container, self)
-            self.pages[Page] = page
-            page.grid(row=0, column=0, sticky="nsew")
-
-        self.switch_frame(EntrancePage)
-
-    def switch_frame(self, page_class):
-        """Bring the desired page to the front."""
-        page = self.pages[page_class]
-        page.tkraise()
-
-class EntrancePage(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent)
-
-        # Background image
-        image = Image.open('Pictures/background.jpg')
-        self.photo_image = ImageTk.PhotoImage(image)
-        tk.Label(self, image=self.photo_image).pack()
-
-        # Load button images
-        therapist_image = Image.open("Pictures/therapist_entrance_button.jpg")
-        therapist_photo = ImageTk.PhotoImage(therapist_image)
-        patient_image = Image.open("Pictures/patient_entrance_button.jpg")
-        patient_photo = ImageTk.PhotoImage(patient_image)
-
-        # Therapist button
-        therapist_button = tk.Button(self, image=therapist_photo, command=lambda: controller.switch_frame(ID_therapist_fill_page))
-        therapist_button.photo = therapist_photo  # Prevent garbage collection
-        therapist_button.place(x=160, y=130)
-
-        # Patient button
-        patient_button = tk.Button(self, image=patient_photo, command=lambda: controller.switch_frame(ID_patient_fill_page))
-        patient_button.photo = patient_photo  # Prevent garbage collection
-        patient_button.place(x=540, y=130)
-
-        # Shut down button
-        shutdown_image = Image.open("Pictures/shut_down.jpg")
-        shutdown_photo = ImageTk.PhotoImage(shutdown_image)
-        shutdown_button = tk.Button(self, image=shutdown_photo, command=self.on_click_shut_down)
-        shutdown_button.photo = shutdown_photo  # Prevent garbage collection
-        shutdown_button.place(x=30, y=30)
-
-    def on_click_shut_down(self):
-        print("Shutdown triggered.")
-        self.quit()
-
-class ID_therapist_fill_page(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent)
-        label = tk.Label(self, text="Therapist Fill Page")
-        label.pack(pady=20)
-        back_button = tk.Button(self, text="Back", command=lambda: controller.switch_frame(EntrancePage))
-        back_button.pack()
-
-class ID_patient_fill_page(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent)
-        label = tk.Label(self, text="Patient Fill Page")
-        label.pack(pady=20)
-        back_button = tk.Button(self, text="Back", command=lambda: controller.switch_frame(EntrancePage))
-        back_button.pack()
-
-if __name__ == "__main__":
-    app = App()
-    app.mainloop()
+    cv2.addWeighted(left_display, 0.9, overlay, 0.1, 0.0, left_display)

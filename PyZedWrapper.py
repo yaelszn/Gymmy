@@ -35,7 +35,7 @@ class PyZedWrapper(threading.Thread):
         body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_FAST
         body_params.enable_tracking = True
         body_params.enable_body_fitting = False
-        body_params.body_format = sl.BODY_FORMAT.BODY_38
+        body_params.body_format = sl.BODY_FORMAT.BODY_18
 
         # Set runtime parameters
         runtime = sl.RuntimeParameters()

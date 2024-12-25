@@ -54,9 +54,65 @@ class Training(threading.Thread):
             s.stop_requested = False
 
             time.sleep(1) #wait another second so that s.ex_in_training will contain all of the exercises
+            # הגדרת זוגות התרגילים
+            exercise_pairs = [
+                ("band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"),
+                ("weights_right_hand_up_and_bend", "weights_left_hand_up_and_bend"),
+                ("notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"),
+                ("notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side"),
+            ]
+
             if not s.is_second_repetition_or_more and not s.finish_program:
-                selected_exercises = random.sample(s.ex_in_training, min(8, len(s.ex_in_training))) # select 8 random strings, or all of them if there are fewer than 8
-                s.ex_in_training = selected_exercises
+                if len(s.ex_in_training) <= 10:
+                    # אם מספר התרגילים קטן או שווה ל-10, כל התרגילים נכנסים
+                    s.ex_in_training = s.ex_in_training
+                else:
+                    selected_exercises = []
+                    exercise_counts = {"ball": 0, "weights": 0, "stick": 0, "band": 0,
+                                       "notool": 0}  # ספירה של תרגילים לפי קטגוריות
+                    pairs_selected = 0  # ספירת מספר הזוגות שנבחרו
+                    used_pairs = set()  # סט למעקב אחר זוגות שכבר נבחרו
+                    count = 10  # מספר מקסימלי של תרגילים
+
+                    while len(selected_exercises) < count:
+                        # בחירת תרגיל רנדומלי
+                        exercise = random.choice(s.ex_in_training)
+
+                        # מציאת הקטגוריה של התרגיל (המילה הראשונה)
+                        category = next((key for key in exercise_counts.keys() if exercise.startswith(key)), None)
+
+                        # בדיקה אם התרגיל כבר נבחר או אם עבר את המגבלה של 4 תרגילים באותה קטגוריה
+                        if exercise not in selected_exercises and category and exercise_counts[category] < 4:
+                            pair_found = False
+                            for pair in exercise_pairs:
+                                if exercise in pair:
+                                    pair_found = True
+                                    # מציאת בן הזוג
+                                    partner = pair[0] if exercise == pair[1] else pair[1]
+
+                                    # בדיקה אם בן הזוג כבר ברשימה או אם הזוג כבר נבחר
+                                    if partner not in selected_exercises and pair not in used_pairs and pairs_selected < 1:
+                                        # הוספת הזוג ונעילת הבחירה
+                                        selected_exercises.append(exercise)
+                                        selected_exercises.append(partner)
+                                        exercise_counts[category] += 2  # עדכון הספירה לקטגוריה
+                                        used_pairs.add(pair)
+                                        pairs_selected += 1  # עדכון ספירת הזוגות
+                                    break
+
+                            # אם התרגיל אינו חלק מזוג או שהזוג כבר נבחר, הוספה של תרגיל יחיד
+                            if not pair_found:
+                                selected_exercises.append(exercise)
+                                exercise_counts[category] += 1  # עדכון הספירה לקטגוריה
+
+                    random.shuffle(selected_exercises)
+
+                    # שמירת התרגילים שנבחרו
+                    s.ex_in_training = selected_exercises
+
+                    # הדפסת התרגילים שנבחרו
+                    for item in selected_exercises:
+                        print(item)
 
                 while not s.explanation_over:
                     time.sleep(0.5)
@@ -84,6 +140,8 @@ class Training(threading.Thread):
                     while not s.waved_has_tool:
                         time.sleep(0.0001)
 
+                    self.first_coordination_ex = True
+
                     for e in exercises_in_category:
                         s.general_sayings = self.get_motivation_file_names()
                         s.exercises_by_order.append(e)
@@ -94,18 +152,18 @@ class Training(threading.Thread):
                         s.number_of_repetitions_in_training =0
                         s.max_repetitions_in_training =0
                         time.sleep(1)
-                        self.first_coordination_ex = True
                         s.num_exercises_started +=1
                         self.run_exercise(e)
 
-                        if not (exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side") or not self.first_coordination_ex:
-                            self.end_exercise()
-
+                        # if not (exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side") or not self.first_coordination_ex:
+                        #     self.end_exercise()
                         if exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side":
                             if self.first_coordination_ex == True:
                                     self.first_coordination_ex = False
                             else:
                                 self.first_coordination_ex = True
+
+                        self.end_exercise()
 
                             # while (not s.gymmy_done) or (not s.camera_done):
                             #     # print("not done")
@@ -301,6 +359,9 @@ class Training(threading.Thread):
 
         else:
             say("notool_arm_bend_arm_up_from_side_continue")
+            say(str(f'{s.rep}_times'))
+            time.sleep(get_wav_duration(f'{str(s.rep)}_times')+1)
+            s.explanation_over = True
 
         name = s.req_exercise
         s.screen.switch_frame(ExercisePage)
@@ -407,7 +468,7 @@ if __name__ == "__main__":
     s.asked_for_measurement= False
     s.rep = 10
 
-    s.ex_in_training=["ball_raise_arms_above_head"]
+    s.ex_in_training=["notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side"]
         #"ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
                     #"band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"
                     # "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head", "stick_switch", "stick_up_and_lean"
