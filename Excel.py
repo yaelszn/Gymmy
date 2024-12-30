@@ -185,6 +185,7 @@ def get_name_by_exercise(exercise_value):
     # Return the exact value, including formatting (e.g., RTL or LTR)
     return result.iloc[0] if not result.empty else None
 
+
 def get_number_of_angles_in_exercise(exercise_value):
     data = pd.read_excel("exercises_table.xlsx")
     result = data.loc[data['exercise'] == exercise_value, 'number of angles']
@@ -493,6 +494,7 @@ def find_and_add_training_to_patient(headers_row=1):
             sheet.cell(row=cell.row, column=next_column + 2, value=s.effort)  # percent of the training that the patient managed to do
             sheet.cell(row=cell.row, column=next_column + 3, value=calculate_training_length())  # percent of the training that the patient managed to do
 
+            break  # Stop searching after finding the value
             break  # Stop searching after finding the value
 
     workbook.save(file_path)

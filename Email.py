@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
@@ -19,229 +21,149 @@ import smtplib
 import fitz  # PyMuPDF
 from io import BytesIO
 
-def get_percentage_of_successes_in_last_10_training():
-    df = pd.read_excel("Patients.xlsx", sheet_name="patients_history_of_trainings")
-    df.iloc[:, 0] = df.iloc[:, 0].astype(str)
-    filtered_rows = df[df.iloc[:, 0] == s.chosen_patient_ID]
 
-    x_values = []
-    y_values = []
+def reverse_hebrew_sequence_in_text(text):
+    # Regular expression to detect Hebrew sequences (words and spaces between them)
+    hebrew_sequence_pattern = re.compile(r'([\u0590-\u05FF\s]+)')
 
-    row = filtered_rows.iloc[0]  # Get the first (and only) row
-    row_values_without_id= row.iloc[1:]
+    # Replace Hebrew sequences with their reversed version
+    def reverse_match(match):
+        return match.group()[::-1]
 
-    # Extracting first and second values in every group of three
-    row_values = []
-    for i in range(0, len(row_values_without_id), 3):
-        row_values.append(row_values_without_id.iloc[i])  # First value
-        if i + 1 < len(row_values_without_id):
-            row_values.append(row_values_without_id.iloc[i + 1])  # Second value
+    return hebrew_sequence_pattern.sub(reverse_match, text)
 
-    if len(row_values) > 20:
-        last_20_values = row_values[-20:]  # Get the last 20 values
+def create_table_for_patients_email():
+    # Create table data
+    table_data = {}
+    for exercise, rep_num in s.ex_list.items():
+        formatted_ex_1_name = Excel.get_name_by_exercise(exercise)
+        # Reverse only the Hebrew sequences in the text
+        formatted_ex_1_name = reverse_hebrew_sequence_in_text(formatted_ex_1_name)
+        table_data[formatted_ex_1_name] = str(rep_num)
+
+    if table_data:
+        # Define the name of the file for saving the table image
+        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+
+        # Create and open the folder to save the tables
+        folder_path = f'Patients/{s.chosen_patient_ID}/Table_to_Patient_Email'
+        Excel.create_and_open_folder(folder_path)
+
+        # Prepare data for the table
+        table_df = pd.DataFrame(list((value, key) for key, value in table_data.items()), columns=[f'מספר חזרות מוצלחות מתוך {str(s.rep)[::-1]}'[::-1], 'שם התרגיל'[::-1]])
+
+        # Dynamically adjust the figure size based on content
+        max_text_width = max([len(str(value)) for value in table_data.values()] + [len(str(key)) for key in table_data.keys()])
+        max_including_title = max(len(f'מספר חזרות מוצלחות מתוך {str(s.rep)[::-1]}'[::-1]), max_text_width)
+        fig_width = max(4, max_including_title * 0.2 + 1)  # Adjust figure width based on max text length
+        fig_height = max(1, len(table_df) * 0.5 + 1)  # Adjust figure height based on number of rows
+
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+        ax.axis('off')
+
+        # Add the table to the figure
+        table = ax.table(cellText=table_df.values, colLabels=table_df.columns, cellLoc='center', loc='center')
+
+        # Style the table
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.2, 1.2)
+
+        # Dynamically adjust column widths
+        for (row, col), cell in table.get_celld().items():
+            if row == 0:  # Header row
+                cell.set_text_props(weight='bold', fontsize=12)  # Set bold and slightly larger font size
+                cell.set_facecolor('#f0f0f0')  # Optional: Add a light gray background for headers
+            cell.set_width(1.0 / len(table_df.columns))  # Dynamically set cell width
+
+        # Save the table as an image
+        filename = f'{folder_path}/{start_dt}.png'
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0, dpi=300)
+        plt.close()
+
+        print(f"Table saved as {filename}")
+        return filename  # Return the file path
     else:
-        last_20_values = row_values  # Take all values if there are less than 20
-
-    count = 1
-    for index, cell_value in enumerate(last_20_values):
-        if index % 2 != 0:  # Check if index is odd
-            y_values.append(cell_value)
-        else:
-            x_values.append(count)
-            count += 1
-
-    return x_values, y_values
+        print("There is no data")
+        return None  # Explicitly return None if no data
 
 
-def draw_a_success_graph_and_save():
-    x_values, y_values = get_percentage_of_successes_in_last_10_training()
+def email_to_patient():
+    import os
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.image import MIMEImage
 
-    # Create a new plot
-    if len(x_values) == 1:
-        plt.scatter(x_values, y_values)  # Use scatter plot for a single data point
-    else:
-        plt.plot(x_values, y_values, marker='o')  # Add markers to ensure single points are visible
+    start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
 
-    plt.xlabel('תאריך'[::-1])
-    plt.ylabel('אחוזי הצלחה'[::-1])
-    #plt.title("גרף אחוזי הצלחה באימון"[::-1])
+    # Create and open the folder to save the tables
+    folder_path = f'Patients/{s.chosen_patient_ID}/Tables/{start_dt}'
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
 
-    # Save the plot to a file
-    graph_file_path = "graph.jpg"
-    plt.savefig(graph_file_path)
+    # Generate the table file
+    table_file_path = create_table_for_patients_email()
 
-    # Clear the plot
-    plt.clf()
-
-    return graph_file_path
-
-
-def add_text_to_image(level):
-    # Open the image
-    image = Image.open("C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Pictures/level_for_email.png")
-
-    # Initialize ImageDraw object
-    draw = ImageDraw.Draw(image)
-
-    # Choose a font (default font)
-    font = ImageFont.truetype("arial.ttf", 50)
-
-    # Define text color
-    text_color = (0, 0, 0)  # white
-
-    # Define text position
-    text_width, text_height = draw.textsize(str(level), font)
-    image_width, image_height = image.size
-    text_x = (image_width - text_width) // 2
-    text_y = (image_height - text_height) // 2 -10
-
-    # Add text to the image
-    draw.text((text_x, text_y), str(level), fill=text_color, font=font)
-
-    # Save the image with text
-    image_with_text_path = "C:/Users/yaels/יעל פרוייקט גמר/zedcheck/Pictures/temp_level_for_email.png"
-    image.save(image_with_text_path)
-
-    return image_with_text_path
-
-
-def email_sending_level_up():
-    # Generate the graph file path
-    graph_file_path = draw_a_success_graph_and_save()
-
-    # Generate the graph and get its buffer
-    buffer = BytesIO()
-    plt.savefig(buffer, format='jpg')
-    buffer.seek(0)
+    if table_file_path is None:
+        print("Error: Table file creation failed.")
+        return
 
     # Email configuration
     sender_email = 'yaelszn@gmail.com'
     receiver_email = s.email_of_patient
-    password = 'diyf cxzc tifj sotp'
+    password = 'diyf cxzc tifj sotp'  # Replace with your actual password or app password
 
-    # Read the PNG file and add text
-    png_path_with_text = add_text_to_image(s.current_level_of_patient)
+    if s.email_of_patient is not None:
+        try:
+            with open(table_file_path, 'rb') as table_file:
+                table_data = table_file.read()
 
-    with open(png_path_with_text, "rb") as file:
-        png_data = file.read()
+            # Create message container
+            message = MIMEMultipart("related")
+            message['From'] = sender_email
+            message['To'] = receiver_email
+            message['Subject'] = 'לגימי יש משהו לומר לך!'
+            name = 'יעל'
 
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
+            # Create HTML content with embedded image
+            html_content = f'''
+            <html>
+              <body style="direction: rtl;">
+                <p>{name}, כל הכבוד על האימון היום! </p>
+                <p>האימון שביצעת היום כלל {str(len(s.ex_list))} תרגילים</p>
+                <p>דירגת את האימון בדרגת קושי:  {str(s.effort)} </p>
+                <p>סיכום האימון:</p>
+                <img src="cid:image" alt="Image" style="display: block; margin: 0 auto;">
+                <div style="height: 20px;"></div>
+                <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
+              </body>
+            </html>
+            '''
 
-    # Create message container
-    message = MIMEMultipart("related")
-    message['From'] = sender_email
-    message['To'] = receiver_email
-    message['Subject'] = 'לגימי יש משהו לומר לך!'
-    name = 'יעל'
-    # Create HTML content with embedded image and graph
-    html_content = f'''
-    <html>
-      <body style="direction: rtl;">
-        <p>{name}, כל הכבוד על ההשגים שלך! </p>
-        <p>באימון האחרון עלית לרמה </p>
-        <img src="cid:image" alt="Image" style="display: block; margin: 0 auto;">
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p>גרף ההתקדמות באחוזי ההצלחה שלך בכל אימון: </p>
-        <img src="cid:graph" alt="Image">
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
-      </body>
-    </html>
-    '''
+            # Attach HTML content
+            message.attach(MIMEText(html_content, 'html'))
 
-    # Attach HTML content
-    message.attach(MIMEText(html_content, 'html'))
+            # Attach the PNG image as inline content
+            png_image = MIMEImage(table_data, 'png')
+            png_image.add_header('Content-ID', '<image>')
+            message.attach(png_image)
 
-    # Attach the PNG image as inline content
-    png_image = MIMEImage(png_data, 'png')
-    png_image.add_header('Content-ID', '<image>')
-    message.attach(png_image)
+            # Connect to SMTP server and send email
+            with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                server.starttls()  # Secure the connection
+                server.login(sender_email, password)
+                server.sendmail(sender_email, receiver_email, message.as_string())
+                print('Email sent successfully!')
 
-    # Attach the graph as inline content
-    graph_image = MIMEImage(graph_data, 'jpeg')
-    graph_image.add_header('Content-ID', '<graph>')
-    message.attach(graph_image)
-
-    # Attach the graph file
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
-        graph_attachment = MIMEImage(graph_data, 'jpeg')
-        graph_attachment.add_header('Content-Disposition', 'attachment', filename='graph.jpg')
-        message.attach(graph_attachment)
-
-    # Connect to SMTP server
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
-        server.starttls()  # Secure the connection
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-        print('Email sent successfully!')
-
-
-
-
-def email_sending_not_level_up():
-    # Generate the graph file path
-    graph_file_path = draw_a_success_graph_and_save()
-
-    # Generate the graph and get its buffer
-    buffer = BytesIO()
-    plt.savefig(buffer, format='jpg')
-    buffer.seek(0)
-
-    # Email configuration
-    sender_email = 'yaelszn@gmail.com'
-    receiver_email = s.email_of_patient
-    password = 'diyf cxzc tifj sotp'
-
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
-
-    # Create message container
-    message = MIMEMultipart("related")
-    message['From'] = sender_email
-    message['To'] = receiver_email
-    message['Subject'] = 'לגימי יש משהו לומר לך!'
-    name = 'יעל'
-    # Create HTML content with embedded image and graph
-    html_content = f'''
-    <html>
-      <body style="direction: rtl;">
-        <p>{name}, כל הכבוד על האימון היום! </p>
-        <p> הרמה הנוכחית שלך היא רמה  {s.current_level_of_patient} </p>
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-weight: bold;">גרף ההתקדמות באחוזי ההצלחה שלך בכל אימון: </p>
-        <img src="cid:graph" alt="Image">
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
-      </body>
-    </html>
-    '''
-
-    # Attach HTML content
-    message.attach(MIMEText(html_content, 'html'))
-
-    # Attach the graph as inline content
-    graph_image = MIMEImage(graph_data, 'jpeg')
-    graph_image.add_header('Content-ID', '<graph>')
-    message.attach(graph_image)
-
-    # Attach the graph file
-    with open(graph_file_path, 'rb') as graph_file:
-        graph_data = graph_file.read()
-        graph_attachment = MIMEImage(graph_data, 'jpeg')
-        graph_attachment.add_header('Content-Disposition', 'attachment', filename='graph.jpg')
-        message.attach(graph_attachment)
-
-    # Connect to SMTP server
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
-        server.starttls()  # Secure the connection
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-        print('Email sent successfully!')
-
+        except FileNotFoundError:
+            print("Error: Table file not found. Please check the file path.")
+        except smtplib.SMTPAuthenticationError:
+            print("Error: Unable to log in. Please check your email credentials.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+    else:
+        print("Error: No email address provided for the patient.")
 
 
 
@@ -434,7 +356,6 @@ def create_pdf():
 
 
 def data_creation_to_create_pdf():
-    # Example usage
     exercises = s.exercises_by_order
     image_groups = []
     section_headers = []
@@ -446,12 +367,10 @@ def data_creation_to_create_pdf():
     last_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", s.chosen_patient_ID,
                                                        "last name")
 
-    start_time = s.starts_and_ends_of_stops[-1]
+    start_time = s.starts_and_ends_of_stops[0]
 
-    date_part, time_part = start_time.split(' ')
-    formatted_date = date_part.replace('-', '/')
-    formatted_time = time_part.replace('-', ':')
-    formatted_dt = f'{formatted_date} {formatted_time}'
+    # Convert datetime object to a formatted string
+    formatted_dt = start_time.strftime('%Y/%m/%d %H:%M:%S')
 
     # Global header with 3 lines
     global_header_line1 = f' סיכום אימון של המטופל: {first_name} {last_name}'[::-1]
@@ -461,21 +380,21 @@ def data_creation_to_create_pdf():
     for exercise_name in exercises:
         # Collect the images for each exercise
         table_images, graph_images = collect_images_from_folders(s.chosen_patient_ID, exercise_name,
-                                                                 s.starts_and_ends_of_stops[-1])
+                                                                 start_time.strftime("%d-%m-%Y %H-%M-%S"))
 
         # Add images and section headers to the lists (Tables first, then Graphs)
         image_groups.append(table_images + graph_images)  # Add all images for the exercise
         section_headers.append(f"Exercise name: {exercise_name.capitalize()}")  # Section header for the exercise
 
     # Define the directory path where you want to save the PDF
-    output_directory = f'Patients/{s.chosen_patient_ID}/'
+    output_directory = f'Patients/{s.chosen_patient_ID}/PDF_to_Therapist_Email'
 
     # Check if the directory exists, if not, create it
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
 
     # Define the full path including the filename
-    output_path = os.path.join(output_directory, f'{start_time}.pdf')
+    output_path = os.path.join(output_directory, f'{ start_time.strftime("%d-%m-%Y %H-%M-%S")}.pdf')
 
     # Create the PDF with images, headers, and a global title
     return output_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3
@@ -564,10 +483,11 @@ def email_to_physical_therapist():
         <p>תצוגה מקדימה של סיכום האימון:</p>
         <img src="cid:preview_image" alt="PDF Preview">
         <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
       </body>
     </html>
     '''
+
+    #        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
 
     # Attach HTML content
     message.attach(MIMEText(html_content, 'html'))
@@ -594,9 +514,16 @@ def email_to_physical_therapist():
 
 
 if __name__ == '__main__':
+    s.rep=10
     s.email_of_patient = "yaelszn@gmail.com"
     s.full_name = "יעל שניידמן"
+    s.chosen_patient_ID= "314808981"
     s.stop_requested = True
-    s.starts_and_ends_of_stops=[1,2,3,4,5]
+    s.starts_and_ends_of_stops=[datetime.now()]
+    s.ex_list = {"ball_bend_elbows": 3,
+                 "ball_raise_arms_above_head": 4,
+                 "ball_open_arms_and_forward": 5}
 
-    email_to_physical_therapist()
+    s.effort= 5
+
+    email_to_patient()

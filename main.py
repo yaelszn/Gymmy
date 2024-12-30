@@ -1,13 +1,9 @@
-import threading
 from datetime import datetime
-
 import pygame
-
 import Settings as s
 from Audio import ContinuousAudio
 from Camera import Camera
 from Gymmy import Gymmy
-from Realsense import Realsense
 from TrainingNew import Training
 from ScreenNew import Screen, FullScreenApp, EntrancePage
 
@@ -47,6 +43,7 @@ if __name__ == '__main__':
     # Excel variable
     ############################# להוריד את הסולמיות
     s.ex_list = {}
+    s.effort=0
     s.starts_and_ends_of_stops =[]
     s.stop_requested = False
     s.is_second_repetition_or_more=False

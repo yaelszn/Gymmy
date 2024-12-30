@@ -922,7 +922,7 @@ class Camera(threading.Thread):
                                     "elbow", "shoulder", "shoulder", 60, 120, 140,180,True)
 
     def ball_open_arms_above_head(self):  # EX5
-        self.exercise_two_angles_3d("ball_open_arms_above_head", "elbow", "shoulder", "hip", 130,180, 80, 110,
+        self.exercise_two_angles_3d("ball_open_arms_above_head", "elbow", "shoulder", "hip", 140,180, 80, 110,
                                    "shoulder", "elbow", "wrist", 130, 180, 130, 180)
 
 

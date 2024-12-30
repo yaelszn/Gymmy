@@ -286,7 +286,8 @@ class Training(threading.Thread):
             Excel.success_worksheet()
             Excel.find_and_add_training_to_patient()
             Excel.close_workbook()
-            self.check_points_and_send_email()
+            Email.email_to_patient()
+            # self.check_points_and_send_email()
             Email.email_to_physical_therapist()
             print("TRAINING DONE")
             time.sleep(1)
@@ -349,7 +350,7 @@ class Training(threading.Thread):
             s.screen.switch_frame(ExplanationPage, exercise= name)
             if name == "notool_right_bend_left_up_from_side" or name == "notool_left_bend_right_up_from_side":
                 name = "notool_arm_bend_arm_up_from_side"
-            time.sleep(get_wav_duration(name)) #wait the time of the audio
+            # time.sleep(get_wav_duration(name)) #wait the time of the audio
 
             while s.gymmy_finished_demo == False:
                 time.sleep(0.001)
