@@ -137,8 +137,8 @@ class Training(threading.Thread):
                 if exercises_in_category!=[]:
                     time.sleep(1)
                     self.show_screen_category(i)
-                    while not s.waved_has_tool:
-                        time.sleep(0.0001)
+                    # while not s.waved_has_tool:
+                    #     time.sleep(0.0001)
 
                     self.first_coordination_ex = True
 
@@ -467,9 +467,9 @@ if __name__ == "__main__":
     #s.exercise_amount = 6
     s.finish_program= False
     s.asked_for_measurement= False
-    s.rep = 10
+    s.rep = 5
 
-    s.ex_in_training=["notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side"]
+    s.ex_in_training=["ball_open_arms_and_forward"]
         #"ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
                     #"band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"
                     # "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head", "stick_switch", "stick_up_and_lean"
@@ -484,6 +484,7 @@ if __name__ == "__main__":
     s.chosen_patient_ID="314808981"
     s.req_exercise=""
     s.ex_list = {}
+    s.dist_between_shoulders = 280
     s.is_second_repetition_or_more =False
     #s.demo_finish = False
     s.screen = Screen()
@@ -494,16 +495,20 @@ if __name__ == "__main__":
     s.training.start()
     s.robot.start()
     s.did_training_paused = False
-    s.volume = 0.3
+    s.volume = 0
     s.additional_audio_playing = False
     s.gymmy_finished_demo = False
     s.robot_counter = 0
     s.last_saying_time = datetime.now()
-    s.rate= "moderate"
+    s.rate= "fast"
     s.num_exercises_started = 0
     pygame.mixer.init()
+    s.full_name = "יעל שניידמן"
     s.stop_song = False
+    s.another_training_requested= False
     s.explanation_over = False
+    s.choose_continue_or_not = False
+    s.email_of_patient = "yaelszn@gmail.com"
     # Start continuous audio in a separate thread
     s.continuous_audio = ContinuousAudio()
     s.continuous_audio.start()

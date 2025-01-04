@@ -95,12 +95,12 @@ def email_to_patient():
     from email.mime.text import MIMEText
     from email.mime.image import MIMEImage
 
-    start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+    # start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
 
-    # Create and open the folder to save the tables
-    folder_path = f'Patients/{s.chosen_patient_ID}/Tables/{start_dt}'
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
+    # # Create and open the folder to save the tables
+    # folder_path = f'Patients/{s.chosen_patient_ID}/Tables/{start_dt}'
+    # if not os.path.exists(folder_path):
+    #     os.makedirs(folder_path)
 
     # Generate the table file
     table_file_path = create_table_for_patients_email()
@@ -212,7 +212,7 @@ def create_pdf():
     ordered for specific layouts depending on the number of images in each section.
     """
 
-    pdf_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3 = data_creation_to_create_pdf()
+    pdf_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4= data_creation_to_create_pdf()
 
     # Register the Hebrew-compatible font
     pdfmetrics.registerFont(TTFont('Hebrew', "arial.ttf-master/arial.ttf"))
@@ -248,8 +248,13 @@ def create_pdf():
     x_position_line3 = (width - text_width_line3) / 2  # Center the third line horizontally
     pdf_canvas.drawString(x_position_line3, start_y_position - 3 * line_height, global_header_line3)
 
+    # Line 4 (with interval)
+    text_width_line4 = pdf_canvas.stringWidth(global_header_line4, "Hebrew", 24)
+    x_position_line4 = (width - text_width_line4) / 2  # Center the third line horizontally
+    pdf_canvas.drawString(x_position_line4, start_y_position - 4.5 * line_height, global_header_line4)
+
     # Start placing content after the header
-    current_y_position = start_y_position - 3 * line_height - inch  # Adjust Y position after the header
+    current_y_position = start_y_position - 4 * line_height - inch  # Adjust Y position after the header
 
     # Set a consistent padding/margin between images and sections
     image_padding = 0.1 * inch  # Reduced padding between images
@@ -320,14 +325,23 @@ def create_pdf():
 
         # Print section header and images
         for i, image_path in enumerate(reordered_images):
-            # Print the section header once before the first image
+            # Draw the section header from the right side of the page
             if not section_header_printed:
-                # Draw the section header
-                section_header = section_headers[section_index]
-                pdf_canvas.setFont("Hebrew", 14)  # Use Hebrew font for section headers
-                pdf_canvas.drawString(1 * inch, current_y_position, section_header)
+                # Set the Hebrew font and size for the section header
+                pdf_canvas.setFont("Hebrew", 14)
+
+                # Define the section header text
+                section_header = section_headers[section_index]  # Example: 'כותרת'
+
+                # Define the X position for right alignment (e.g., 1 inch from the right margin)
+                right_margin = 1 * inch  # Margin from the right edge
+                x_position = letter[0] - right_margin  # Page width minus the margin
+
+                # Draw the text aligned to the right
+                pdf_canvas.drawRightString(x_position, current_y_position, section_header)
+
                 section_header_printed = True  # Mark that the section header has been printed
-                current_y_position -= section_padding  # Adjust Y position after section header
+                current_y_position -= section_padding  # Adjust Y position after the section header
 
             # Calculate the total width of images in the current row to center them
             row_start_index = i // images_per_row * images_per_row  # Starting index of the current row
@@ -376,6 +390,7 @@ def data_creation_to_create_pdf():
     global_header_line1 = f' סיכום אימון של המטופל: {first_name} {last_name}'[::-1]
     global_header_line2 = f'מספר מטופל: {s.chosen_patient_ID[::-1]}'[::-1]
     global_header_line3 = f'זמן האימון: {formatted_dt[::-1]}'[::-1]
+    global_header_line4= f'דירוג קושי של האימון: {str(s.effort)[::-1]}'[::-1]
 
     for exercise_name in exercises:
         # Collect the images for each exercise
@@ -384,7 +399,8 @@ def data_creation_to_create_pdf():
 
         # Add images and section headers to the lists (Tables first, then Graphs)
         image_groups.append(table_images + graph_images)  # Add all images for the exercise
-        section_headers.append(f"Exercise name: {exercise_name.capitalize()}")  # Section header for the exercise
+        formatted_ex_name= reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
+        section_headers.append(f"שם התרגיל: {formatted_ex_name}")  # Section header for the exercise
 
     # Define the directory path where you want to save the PDF
     output_directory = f'Patients/{s.chosen_patient_ID}/PDF_to_Therapist_Email'
@@ -397,7 +413,7 @@ def data_creation_to_create_pdf():
     output_path = os.path.join(output_directory, f'{ start_time.strftime("%d-%m-%Y %H-%M-%S")}.pdf')
 
     # Create the PDF with images, headers, and a global title
-    return output_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3
+    return output_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4
 
 
 def create_pdf_preview(pdf_path):
