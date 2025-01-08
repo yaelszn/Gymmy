@@ -95,10 +95,11 @@ class ContinuousAudio(threading.Thread):
 
 
 class AdditionalAudio(threading.Thread):
-    def __init__(self, file_name, is_explanation= False):
+    def __init__(self, file_name, is_explanation= False, is_effort = False):
         threading.Thread.__init__(self)
         self.file_name = file_name
         self.is_explanation = is_explanation
+        self.is_effort = is_effort
 
     def run(self):
         # Indicate that additional audio is playing
@@ -113,7 +114,7 @@ class AdditionalAudio(threading.Thread):
 
             # Wait until the additional sound finishes playing
             while channel.get_busy():
-                if self.is_explanation and s.explanation_over:
+                if (self.is_explanation and s.explanation_over) or (self.is_effort and s.finished_effort):
                     channel.stop()  # Stop the sound playback
 
                 pygame.time.Clock().tick(10)
@@ -122,12 +123,12 @@ class AdditionalAudio(threading.Thread):
         s.additional_audio_playing = False
         time.sleep(5)
 
-def say(str_to_say, is_explanation= False):
+def say(str_to_say, is_explanation= False, is_effort= False):
     """
     This function triggers additional audio playback in parallel with any other sound.
     :param str_to_say: Name of the file (without .wav extension) to play.
     """
-    additional_audio = AdditionalAudio(str_to_say, is_explanation)
+    additional_audio = AdditionalAudio(str_to_say, is_explanation, is_effort)
     additional_audio.start()
 
 def get_wav_duration(str_to_say):

@@ -272,13 +272,15 @@ class Training(threading.Thread):
             s.another_training_requested= False
             s.is_second_repetition_or_more= True
             s.finished_effort= False
-            s.effort= 0
+            s.effort= None
             s.patient_repetitions_counting_in_exercise=0
             s.number_of_repetitions_in_training=0
             s.did_training_paused= False
             s.starts_and_ends_of_stops= []
             s.general_sayings = ["", "", ""]
             s.num_exercises_started = 0
+            s.number_of_pauses = 0
+            s.needs_first_position = False
 
 
 
@@ -409,7 +411,7 @@ class Training(threading.Thread):
         s.another_training_requested= False
         s.is_second_repetition_or_more= False
         s.finished_effort= False
-        s.effort = 0
+        s.effort = None
         s.chosen_patient_ID = None
         s.patient_repetitions_counting_in_exercise=0
         s.number_of_repetitions_in_training=0
@@ -419,6 +421,8 @@ class Training(threading.Thread):
         s.general_sayings = ["", "", ""]
         s.num_exercises_started = 0
         s.dist_between_shoulders = 0
+        s.number_of_pauses = 0
+        s.needs_first_position = False
 
         s.screen.switch_frame(EntrancePage)
 

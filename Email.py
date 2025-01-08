@@ -384,7 +384,7 @@ def data_creation_to_create_pdf():
     start_time = s.starts_and_ends_of_stops[0]
 
     # Convert datetime object to a formatted string
-    formatted_dt = start_time.strftime('%Y/%m/%d %H:%M:%S')
+    formatted_dt = start_time.strftime('%d/%m/%Y %H:%M:%S')
 
     # Global header with 3 lines
     global_header_line1 = f' סיכום אימון של המטופל: {first_name} {last_name}'[::-1]
@@ -399,8 +399,10 @@ def data_creation_to_create_pdf():
 
         # Add images and section headers to the lists (Tables first, then Graphs)
         image_groups.append(table_images + graph_images)  # Add all images for the exercise
-        formatted_ex_name= reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
-        section_headers.append(f"שם התרגיל: {formatted_ex_name}")  # Section header for the exercise
+        # formatted_ex_name= reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
+        exercise_name_reversed = reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
+        exercise_label_reversed = reverse_hebrew_sequence_in_text(":שם התרגיל")
+        section_headers.append(f"{exercise_name_reversed} {exercise_label_reversed}")  # Section header for the exercise
 
     # Define the directory path where you want to save the PDF
     output_directory = f'Patients/{s.chosen_patient_ID}/PDF_to_Therapist_Email'
@@ -469,17 +471,16 @@ def email_to_physical_therapist():
     message['Subject'] = f'{s.full_name} סיכום אימון '
 
     # Set up initial variables for email content
-    number_of_pauses = 0
     did_paused = "לא"
     did_stopped = "הושלם"
 
     # Determine if the training was paused or stopped
-    if s.stop_requested and len(s.starts_and_ends_of_stops) == 2:
+    if s.stop_requested:
         did_stopped = "הופסק באמצע"
 
-    if len(s.starts_and_ends_of_stops) > 2:
+    if s.number_of_pauses > 0:
         did_paused = "כן"
-        number_of_pauses = len(s.starts_and_ends_of_stops) // 2 - 1
+
 
     # Create HTML content with the inline image
     html_content = f'''
@@ -489,8 +490,8 @@ def email_to_physical_therapist():
         <p> האם בוצעה הפסקה באימון?  <b>{did_paused}</b> </p>
     '''
 
-    if number_of_pauses != 0:
-        html_content += f'<p> בוצעו  <b>{number_of_pauses}</b> הפסקות באימון </p>'
+    if s.number_of_pauses != 0:
+        html_content += f'<p> בוצעו  <b>{s.number_of_pauses}</b> הפסקות באימון </p>'
 
     html_content += f'''
         <p> האם האימון הושלם או הופסק באמצע? <b>{did_stopped}</b> </p>

@@ -28,7 +28,11 @@ import Excel
 import re
 import cv2
 import time
-
+import os
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk
+import pandas as pd
 
 
 class Screen(tk.Tk):
@@ -2252,6 +2256,8 @@ class ExercisePage(tk.Frame):
                                                    bd=0, highlightthickness=0)
             self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
             self.pause_training_button.place(x=95, y=10)
+            s.number_of_pauses += 1 # when continuing the training after pause, we add the pause (if we add it before there is a chance that we stopped it after the pause).
+
 
         else:
             if hasattr(self, 'pause_training_button'):
@@ -2273,10 +2279,10 @@ class ChooseTrainingOrExerciseInformation(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
 
-        image = Image.open('Pictures//background_empty.jpg')
+        image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        name_label(self)
+        name_label(self, 250, 250)
 
         to_previous_button_img = Image.open("Pictures//previous.jpg")
         to_previous_button_photo = ImageTk.PhotoImage(to_previous_button_img)
@@ -2725,11 +2731,7 @@ class TablesPage(tk.Frame):
         if num_of_angles == 3:
             self.three_angles_graph(exercise, sorted_folder[place])
 
-        # Format the date and time from the folder name
-        date_part, time_part = sorted_folder[place].split(' ')
-        formatted_date = date_part.replace('-', '/')
-        formatted_time = time_part.replace('-', ':')
-        formatted_text = f'{formatted_date} {formatted_time}'
+        formatted_text = datetime.strptime(sorted_folder[place], "%d-%m-%Y %H-%M-%S").strftime("%d/%m/%Y %H:%M:%S")
 
         # Display date and time with custom background color
         self.label2 = tk.Label(self, text=f'{formatted_text}', image=background_img, compound=tk.CENTER,
@@ -2786,9 +2788,9 @@ class TablesPage(tk.Frame):
 
     def three_angles_graph(self, exercise, folder):
         try:
-            # Determine the resize factor
-            resize_factor_width = 0.3
-            resize_factor_height = 0.55
+
+            new_width = 270
+            new_height = 220
 
             dir1 = self.find_image(
                 f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
@@ -2811,54 +2813,45 @@ class TablesPage(tk.Frame):
 
             # Load the image for table 1
 
-            new_width1 = int(table1.width * resize_factor_width)
-            new_height1 = int(table1.height * resize_factor_height)
-            table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+
+            table1_resized = table1.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table1 = ImageTk.PhotoImage(table1_resized)
             self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
             self.table1_label.place(x=95, y=90)
 
             # Load the image for table 2
 
-            new_width2 = int(table2.width * resize_factor_width)
-            new_height2 = int(table2.height * resize_factor_height)
-            table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+            table2_resized = table2.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table2 = ImageTk.PhotoImage(table2_resized)
             self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
             self.table2_label.place(x=95, y=325)
 
             # Load the image for table 3
 
-            new_width3 = int(table3.width * resize_factor_width)
-            new_height3 = int(table3.height * resize_factor_height)
-            table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+
+            table3_resized = table3.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table3 = ImageTk.PhotoImage(table3_resized)
             self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
             self.table3_label.place(x=375, y=90)
 
             # Load the image for table 4
 
-            new_width4 = int(table4.width * resize_factor_width)
-            new_height4 = int(table4.height * resize_factor_height)
-            table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+
+            table4_resized = table4.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table4 = ImageTk.PhotoImage(table4_resized)
             self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
             self.table4_label.place(x=375, y=325)
 
             # Load the image for table 5
 
-            new_width5 = int(table5.width * resize_factor_width)
-            new_height5 = int(table5.height * resize_factor_height)
-            table5_resized = table5.resize((new_width5, new_height5), Image.Resampling.LANCZOS)
+            table5_resized = table5.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table5 = ImageTk.PhotoImage(table5_resized)
             self.table5_label = tk.Label(self, image=self.table5, bd=0, bg='#deeaf7')  # Set background color here
             self.table5_label.place(x=655, y=90)
 
             # Load the image for table 6
 
-            new_width6 = int(table6.width * resize_factor_width)
-            new_height6 = int(table6.height * resize_factor_height)
-            table6_resized = table6.resize((new_width6, new_height6), Image.Resampling.LANCZOS)
+            table6_resized = table6.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table6 = ImageTk.PhotoImage(table6_resized)
             self.table6_label = tk.Label(self, image=self.table6, bd=0, bg='#deeaf7')  # Set background color here
             self.table6_label.place(x=655, y=325)
@@ -2874,9 +2867,8 @@ class TablesPage(tk.Frame):
 
     def two_angles_graph(self, exercise, folder):
         try:
-            # Determine the resize factor
-            resize_factor_width = 0.45
-            resize_factor_height = 0.55
+            new_width= 350
+            new_height = 220
 
             dir1 = self.find_image(
                 f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
@@ -2893,36 +2885,31 @@ class TablesPage(tk.Frame):
 
             # Load the image for table 1
 
-            new_width1 = int(table1.width * resize_factor_width)
-            new_height1 = int(table1.height * resize_factor_height)
-            table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+
+            table1_resized = table1.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table1 = ImageTk.PhotoImage(table1_resized)
             self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
             self.table1_label.place(x=120, y=90)
 
             # Load the image for table 2
 
-            new_width2 = int(table2.width * resize_factor_width)
-            new_height2 = int(table2.height * resize_factor_height)
-            table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+
+            table2_resized = table2.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table2 = ImageTk.PhotoImage(table2_resized)
             self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
             self.table2_label.place(x=120, y=325)
 
             # Load the image for table 3
 
-            new_width3 = int(table3.width * resize_factor_width)
-            new_height3 = int(table3.height * resize_factor_height)
-            table3_resized = table3.resize((new_width3, new_height3), Image.Resampling.LANCZOS)
+            table3_resized = table3.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table3 = ImageTk.PhotoImage(table3_resized)
             self.table3_label = tk.Label(self, image=self.table3, bd=0, bg='#deeaf7')  # Set background color here
             self.table3_label.place(x=550, y=90)
 
             # Load the image for table 4
 
-            new_width4 = int(table4.width * resize_factor_width)
-            new_height4 = int(table4.height * resize_factor_height)
-            table4_resized = table4.resize((new_width4, new_height4), Image.Resampling.LANCZOS)
+
+            table4_resized = table4.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table4 = ImageTk.PhotoImage(table4_resized)
             self.table4_label = tk.Label(self, image=self.table4, bd=0, bg='#deeaf7')  # Set background color here
             self.table4_label.place(x=550, y=325)
@@ -2940,9 +2927,9 @@ class TablesPage(tk.Frame):
 
     def one_angle_graph(self, exercise, folder):
         try:
-            # Determine the resize factor
-            resize_factor_width = 0.55
-            resize_factor_height = 0.55
+
+            new_width = 350
+            new_height = 220
 
             dir1 = self.find_image(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{folder}', 1)
             table1 = Image.open(dir1)
@@ -2950,18 +2937,15 @@ class TablesPage(tk.Frame):
             table2 = Image.open(dir2)
             # Load the image for table 1
 
-            new_width1 = int(table1.width * resize_factor_width)
-            new_height1 = int(table1.height * resize_factor_height)
-            table1_resized = table1.resize((new_width1, new_height1), Image.Resampling.LANCZOS)
+
+            table1_resized = table1.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table1 = ImageTk.PhotoImage(table1_resized)
             self.table1_label = tk.Label(self, image=self.table1, bd=0, bg='#deeaf7')  # Set background color here
             self.table1_label.place(x=300, y=90)
 
             # Load the image for table 2
 
-            new_width2 = int(table2.width * resize_factor_width)
-            new_height2 = int(table2.height * resize_factor_height)
-            table2_resized = table2.resize((new_width2, new_height2), Image.Resampling.LANCZOS)
+            table2_resized = table2.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.table2 = ImageTk.PhotoImage(table2_resized)
             self.table2_label = tk.Label(self, image=self.table2, bd=0, bg='#deeaf7')  # Set background color here
             self.table2_label.place(x=300, y=325)
@@ -2981,7 +2965,7 @@ def add_to_exercise_page(self, page_name):
     page_name_label(self,page_name)
 
 
-def name_label(self):
+def name_label(self, width= None, place_x= None):
     back = Image.open('Pictures//empty.JPG')
     background_img = ImageTk.PhotoImage(back)
     first_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details",
@@ -2990,10 +2974,21 @@ def name_label(self):
                                                                   s.chosen_patient_ID, "last name")
     self.background_color = "#deeaf7"  # Set the background color to light blue
 
-    self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
-                           compound=tk.CENTER,
-                           font=("Ariel", 20, 'bold'), width=350, height=30, bg=self.background_color)
-    self.label1.place(x=350, y=45)
+    if width is None:
+        self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
+                               compound=tk.CENTER,
+                               font=("Ariel", 20, 'bold'), width=350, height=30, bg=self.background_color)
+    else:
+        self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
+                               compound=tk.CENTER,
+                               font=("Ariel", 20, 'bold'), width=width, height=30, bg=self.background_color)
+
+    if place_x is None:
+        self.label1.place(x=350, y=45)
+
+    else:
+        self.label1.place(x=place_x, y=45)
+
     self.label1.image = background_img
 
 
@@ -3100,11 +3095,14 @@ def rate_of_exercises(self):
     self.label2.image = background_img
 
 
-class InformationAboutTrainingPage (tk.Frame):
-    def __init__(self, master):
 
+
+class InformationAboutTrainingPage(tk.Frame):
+    def __init__(self, master):
         tk.Frame.__init__(self, master)
-        dates, percent_success, exertion_rate, time_in_training = self.create_data()
+        dates, percent_success, exertion_rate, time_in_training, pdf_paths = self.create_data()
+        self.pdf_mapping = pdf_paths
+
         df = pd.DataFrame({
             'זמן באימון (שניות)': time_in_training,
             'דירוג מאמץ על ידי המטופל': exertion_rate,
@@ -3115,47 +3113,40 @@ class InformationAboutTrainingPage (tk.Frame):
         # Load the background image
         image = Image.open('Pictures//training_list.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
-        # Create a label to display the background image
         self.background_label = tk.Label(self, image=self.photo_image)
         self.background_label.pack(fill="both", expand=True)
+        name_label(self, 250, 250)
 
-        name_label(self)
-
-        # Display the DataFrame in a Treeview widget
+        # Treeview setup
         self.treeview = ttk.Treeview(self, style="Treeview", show="headings")
         self.treeview["columns"] = tuple(df.columns)
 
-        # Set up a custom style for the Treeview
         style = ttk.Style(self)
         style.configure("Treeview", font=("Thaoma", 14, 'bold'), rowheight=30)
 
-        # Add columns to the Treeview
         for col in df.columns:
             self.treeview.column(col, anchor="e", width=150)
             self.treeview.heading(col, text=col, anchor="e")
 
         self.treeview.column("תאריך ושעה", anchor="e", width=200)
 
-        # Insert data into the Treeview
         for index, row in df.iterrows():
             values = tuple(row)
             self.treeview.insert("", index, values=values)
 
-        # Remove event handling for row selection
-        self.treeview.unbind("<ButtonRelease-1>")  # Disables row selection on click
-        self.treeview.config(height=10)
+        # Enable row selection
+        self.treeview.bind("<Double-1>", self.on_row_double_click)
 
-        # Pack the Treeview widget
+        self.treeview.config(height=10)
         self.treeview.place(x=150, y=180)
 
-        # Set up a vertical scrollbar
         scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
         self.treeview.configure(yscrollcommand=scrollbar.set)
         scrollbar.place(x=800, y=180, height=310)
 
         back_button_img = Image.open("Pictures//previous.jpg")
         back_button_photo = ImageTk.PhotoImage(back_button_img)
-        back_button = tk.Button(self, image=back_button_photo, command=lambda: self.on_click_to_previous(),
+        back_button = tk.Button(self, image=back_button_photo, command=self.on_click_to_previous,
                                 width=back_button_img.width, height=back_button_img.height, bd=0,
                                 highlightthickness=0)
         back_button.image = back_button_photo
@@ -3164,47 +3155,81 @@ class InformationAboutTrainingPage (tk.Frame):
     def on_click_to_previous(self):
         s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
+    def on_row_double_click(self, event):
+        # Get selected item
+        selected_item = self.treeview.focus()
+        if not selected_item:
+            return
+        row_index = self.treeview.index(selected_item)
+
+        # Get the associated PDF file
+        pdf_path = self.pdf_mapping[row_index]
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                os.startfile(pdf_path)  # For Windows
+            except AttributeError:
+                # macOS/Linux
+                import subprocess
+                subprocess.call(("open", pdf_path))  # macOS
+                # For Linux, use:
+                # subprocess.call(("xdg-open", pdf_path))
+        else:
+            print(f"No PDF found for row {row_index} or file does not exist.")
+
     def create_data(self):
         df = pd.read_excel("Patients.xlsx", sheet_name="patients_history_of_trainings")
         df.iloc[:, 0] = df.iloc[:, 0].astype(str)
         filtered_rows = df[df.iloc[:, 0] == s.chosen_patient_ID]
 
-        row = filtered_rows.iloc[0]  # Get the first (and only) row
+        row = filtered_rows.iloc[0]
         row_values_without_id = row.iloc[1:]
 
         dates = []
         percent_success = []
         exertion_rate = []
         time_in_training = []
+        pdf_paths = []
+
+        base_dir = os.path.abspath("Patients")  # Get the absolute path of the 'Patients' folder
 
         for i in range(0, len(row_values_without_id), 4):
             date_value = row_values_without_id.iloc[i]
-            if pd.notna(date_value):  # Check if not NaN
+            if pd.notna(date_value):
                 try:
-                    # Convert the string to datetime
-                    dates.append(date_value)  # Append formatted date
+                    # Parse and format the date as dd/mm/yyyy hh:mm:ss
+                    formatted_date = datetime.strptime(date_value, "%d-%m-%Y %H-%M-%S").strftime("%d/%m/%Y %H:%M:%S")
+                    dates.append(formatted_date)
                 except ValueError:
-                    # Handle cases where the date format is unexpected
+                    # If parsing fails, append the raw value
                     dates.append(date_value)
 
             if i + 1 < len(row_values_without_id):
                 success_value = row_values_without_id.iloc[i + 1]
-                if pd.notna(success_value):  # Check if not NaN
-                    percent_success.append(int(success_value))  # Append as int
+                if pd.notna(success_value):
+                    percent_success.append(int(success_value))
 
             if i + 2 < len(row_values_without_id):
                 exertion_value = row_values_without_id.iloc[i + 2]
-                if pd.notna(exertion_value):  # Check if not NaN
-                    exertion_rate.append(int(exertion_value))  # Append as int
+                if pd.notna(exertion_value):
+                    exertion_rate.append(int(exertion_value))
 
             if i + 3 < len(row_values_without_id):
                 training_time_value = row_values_without_id.iloc[i + 3]
-                if pd.notna(training_time_value):  # Check if not NaN
-                    time_in_training.append(int(training_time_value))  # Append as int
+                if pd.notna(training_time_value):
+                    time_in_training.append(int(training_time_value))
 
-        return dates, percent_success, exertion_rate, time_in_training
+                # Construct the absolute PDF path
+                pdf_path = os.path.join(base_dir, s.chosen_patient_ID, "PDF_to_Therapist_Email", f"{date_value}.pdf")
+                pdf_paths.append(pdf_path)
 
+        # Reverse all lists to show the last training first
+        dates.reverse()
+        percent_success.reverse()
+        exertion_rate.reverse()
+        time_in_training.reverse()
+        pdf_paths.reverse()
 
+        return dates, percent_success, exertion_rate, time_in_training, pdf_paths
 
 class ExplanationPage(tk.Frame):
     def __init__(self, master, exercise, **kwargs):
@@ -3544,12 +3569,13 @@ class GoodbyePage(tk.Frame):
 class ClappingPage(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        image = Image.open('Pictures//clapping_page.jpg')
+        random_number_1 = random.randint(1, 5)
+        image = Image.open(f'Pictures//clap_{random_number_1}.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
-        random_number = random.randint(1, 8)
-        say(f'clap {random_number}')
-        self.after(get_wav_duration(f'clap {random_number}')*1000+500, lambda: s.screen.switch_frame(GoodbyePage))
+        random_number_2 = random.randint(1, 8)
+        say(f'clap {random_number_2}')
+        self.after(get_wav_duration(f'clap {random_number_2}')*1000+500, lambda: s.screen.switch_frame(GoodbyePage))
 
 
 
@@ -3562,7 +3588,7 @@ class EffortScale(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image)
         self.background_label = tk.Label(self, image=self.photo_image)
         self.background_label.pack()
-        say('please_rate_effort')
+        say('please_rate_effort', False, True)
 
 
 

@@ -324,53 +324,50 @@ def create_and_save_graph(data, exercise):
     for plot_name, plot_data in data.items():
         # Create a new plot
         y_series = pd.Series(plot_data['y'])
-        y_values = y_series.dropna().tolist()
+        x_values = plot_data['x']
+        y_values = y_series.values  # Keep NaN values
 
-        # Check if the length of y_series is 1
-        if len(y_values) == 1:
-            # Save the "didnt_monitor_angle" image
+        # Check if all values in y_series are NaN or empty
+        if y_series.isnull().all():
+            # Save a "null graph"
             start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
             create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}')
             plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}/{plot_name}.jpeg'
-            didnt_monitor_image_path = 'Pictures/didnt_monitor_angle.jpeg'  # Use the uploaded image path
 
-            # Load and display the image
-            image = plt.imread(didnt_monitor_image_path)
-            plt.imshow(image)
-            plt.axis('off')  # Turn off axes
-
-            # Add the table name as text above the existing text
+            # Create a "null graph"
+            plt.figure()
             plt.text(
-                x=image.shape[1] // 2,  # Centered horizontally
-                y=120,  # A bit above the top of the current text
-                s=plot_name[:-2],  # Table name text
-                fontsize=18,  # Font size
-                color='black',  # Text color
-                weight='bold',  # Bold text
-                ha='center',  # Horizontal alignment
-                va='center',  # Vertical alignment
-                bbox=dict(facecolor=(222 / 255, 234 / 255, 246 / 255), alpha=1.0, edgecolor='none')
-                # Background color matches the image's background
+                0.5, 0.5, "No Data Available", fontsize=18, color="gray", ha="center", va="center", alpha=0.7
             )
-
-            # Save the image with the text
-            plt.savefig(plot_filename, bbox_inches='tight', pad_inches=0)  # Remove white margins
-            plt.close()  # Close the plot to clear the figure
+            plt.axis("off")  # Hide axes
+            plt.title(plot_name[:-2], fontsize=16, weight="bold")
+            plt.savefig(plot_filename, bbox_inches="tight", pad_inches=0)
+            plt.close()
             continue
 
-        # Plot the graph if y_series length is greater than 1
-        plt.plot(plot_data['x'], y_values)
+        # Plot the graph; matplotlib handles NaN by breaking the line
+        plt.plot(x_values, y_values)
+
+        # Highlight NaN values with red dots at y=0
+        nan_indices = np.where(pd.isnull(y_values))[0]  # Find indices of NaN values
+        if len(nan_indices) > 0:
+            plt.scatter(
+                [x_values[i] for i in nan_indices],
+                [0 for _ in nan_indices],  # Placeholders at y=0 for NaN
+                color='red',
+                label="No Data",
+                zorder=5
+            )
 
         # Set the font size
         fontsize = 16
 
         plt.xlabel('מספר מדידה'[::-1], fontsize=fontsize, weight='bold')
         plt.ylabel('זווית'[::-1], fontsize=fontsize, weight='bold')
-        plt.title(plot_name[:-2], fontsize=fontsize, weight='bold')
-
-        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+        plt.title(plot_name[:-2], fontsize=16, weight="bold", y=0.9)
 
         # Save the plot as an image file
+        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
         create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}')
         plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}/{plot_name}.jpeg'
         plt.savefig(plot_filename)
@@ -428,10 +425,14 @@ def find_and_change_values_exercises(new_values_dict, headers_row=1):
 
 def calculate_training_length():
     # If the number of elements is odd, remove the last one
-    if len(s.starts_and_ends_of_stops) % 2 == 0:  # Even number of elements
-        new_times_array = s.starts_and_ends_of_stops
+    if s.stop_requested:  # Even number of elements
+        new_times_array = s.starts_and_ends_of_stops[:-1]
+
+        if len(new_times_array) % 2 != 0: # if after the removal of the last one there is an odd number of cells in the array
+            new_times_array.pop(-2)
+
     else:  # Odd number of elements
-        new_times_array = s.starts_and_ends_of_stops[:-1]  # Return all elements except the last one
+        new_times_array = s.starts_and_ends_of_stops  # Return all elements except the last one
 
     training_length = timedelta(0)  # Initialize training length as zero timedelta
 
@@ -554,7 +555,6 @@ def count_number_of_exercises_in_training_by_ID():
 
     return true_count
 
-import Settings as s
 
 def create_and_save_table_with_calculations(data, exercise):
     # Define the name of the file for saving the table image
@@ -563,6 +563,8 @@ def create_and_save_table_with_calculations(data, exercise):
     # Create and open the folder to save the tables
     create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}')
 
+    # Set the maximum title length
+    max_title_length = 32  # As specified
 
     # Iterate over each table data (each table if for an angle/distance)
     for table_name, table_data in data.items():
@@ -571,36 +573,41 @@ def create_and_save_table_with_calculations(data, exercise):
         y_series = pd.Series(table_data['y'])
         y_values = y_series.dropna().tolist()
 
-        # Check if the length of y_series is 1
-        if len(y_values) == 1:
-            # Save the "didnt_monitor_angle" image
-            start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
-            create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}')
-            plot_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}/{table_name}.jpeg'
-            didnt_monitor_image_path = 'Pictures/didnt_monitor_angle.jpeg'  # Use the uploaded image path
+        # Center-pad the title to 32 characters
+        title_text = table_name[:-2]
+        display_title = title_text.center(max_title_length)  # Pad evenly on both sides
 
-            # Load and display the image
-            image = plt.imread(didnt_monitor_image_path)
-            plt.imshow(image)
-            plt.axis('off')  # Turn off axes
-
-            # Add the table name as text above the existing text
-            plt.text(
-                x=image.shape[1] // 2,  # Centered horizontally
-                y=120,  # A bit above the top of the current text
-                s=table_name[:-2],  # Table name text
-                fontsize=18,  # Font size
-                color='black',  # Text color
-                weight='bold',  # Bold text
-                ha='center',  # Horizontal alignment
-                va='center',  # Vertical alignment
-                bbox=dict(facecolor=(222/255, 234/255, 246/255), alpha=1.0, edgecolor='none')  # Background color matches the image's background
-            )
-
-            # Save the image with the text
-            plt.savefig(plot_filename, bbox_inches='tight', pad_inches=0)  # Remove white margins
-            plt.close()  # Close the plot to clear the figure
-            continue
+        # # Check if the length of y_series is 1
+        # if len(y_values) == 1:
+        #     # Save the "didnt_monitor_angle" image
+        #     start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+        #     create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}')
+        #     plot_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}/{table_name}.jpeg'
+        #     didnt_monitor_image_path = 'Pictures/didnt_monitor_angle.jpeg'  # Use the uploaded image path
+        #
+        #     # Load and display the image
+        #     image = plt.imread(didnt_monitor_image_path)
+        #     plt.imshow(image)
+        #     plt.axis('off')  # Turn off axes
+        #
+        #     # Add the table name as text above the existing text
+        #     plt.text(
+        #         x=image.shape[1] // 2,  # Centered horizontally
+        #         y=120,  # Adjust as needed
+        #         s=display_title,  # Truncate title if longer than max length
+        #         fontsize=16,  # Font size
+        #         color='black',  # Text color
+        #         weight='bold',  # Bold text
+        #         ha='center',  # Horizontal alignment
+        #         va='center',  # Vertical alignment
+        #         bbox=dict(facecolor=(222/255, 234/255, 246/255), alpha=1.0, edgecolor='none')  # Background color matches the image's background
+        #     )
+        #
+        #     # Save the image with the text
+        #
+        #     plt.savefig(plot_filename, bbox_inches='tight', pad_inches=0)  # Remove white margins
+        #     plt.close()  # Close the plot to clear the figure
+        #     continue
 
 
         if len(y_values)>0:
@@ -610,10 +617,10 @@ def create_and_save_table_with_calculations(data, exercise):
             stdev = f"{np.std(y_values):.2f}"
 
         else:
-            min_val = "0.00"
-            max_val = "0.00"
-            average = "0.00"
-            stdev = "0.00"
+            min_val = "אין נתונים"[::-1]
+            max_val = "אין נתונים"[::-1]
+            average = "אין נתונים"[::-1]
+            stdev = "אין נתונים"[::-1]
 
         # Prepare data for the table
         calculation_data = {
@@ -633,7 +640,7 @@ def create_and_save_table_with_calculations(data, exercise):
         ax.axis('off')
 
         # Add the table name as a header to the top of the figure
-        ax.text(0.5, 0.9, table_name[:-2], ha='center', fontsize=13, weight='bold', transform=ax.transAxes)
+        ax.text(0.5, 0.9, display_title, ha='center', fontsize=13, weight='bold', transform=ax.transAxes)
 
         # Add the table to the figure with bold headers
         table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
@@ -641,10 +648,10 @@ def create_and_save_table_with_calculations(data, exercise):
         # Style the table
         table.auto_set_font_size(False)
         table.set_fontsize(12)
-        table.scale(0.8, 1.2)  # Make the columns narrower by reducing the width scaling
+        table.scale(1.5, 1.3)  # Make the columns narrower by reducing the width scaling
 
         # Optionally, set the column width manually (you can remove this if not needed)
-        table.auto_set_column_width([0, 1])  # Adjust columns 0 and 1 to be narrower
+        # table.auto_set_column_width([0, 1])  # Adjust columns 0 and 1 to be narrower
 
         # Set the background color for the cells and the text properties
         for (i, j), cell in table.get_celld().items():
@@ -659,7 +666,7 @@ def create_and_save_table_with_calculations(data, exercise):
 
         # Save the table as an image with the background color and no transparency
         table_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}/{table_name}.png'
-        plt.savefig(table_filename, bbox_inches='tight', pad_inches=0, dpi=300)  # Removed transparent=True
+        plt.savefig(table_filename, bbox_inches='tight', pad_inches=0, dpi=150)  # Removed transparent=True
         plt.close()  # Close the figure to clear memory
 
 def close_workbook():

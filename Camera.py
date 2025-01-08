@@ -189,6 +189,7 @@ class Camera(threading.Thread):
 
                 self.dist_list.append(abs(l_shoulder_x - r_shoulder_x))
 
+
     def get_skeleton_data(self):
         bodies = sl.Bodies()
         body_runtime_param = sl.BodyTrackingRuntimeParameters()
@@ -200,14 +201,14 @@ class Camera(threading.Thread):
             body_array = bodies.body_list
             if body_array:
                 body = bodies.body_list[0]
-                # arr_organs = ["pelvis", "spine_1", "spine_2", "spine_3", "neck", "nose", "L_eye", "R_eye", "L_ear", "R_ear",
-                #               "L_clavicle", "R_clavicle", "L_shoulder", "R_shoulder", "L_elbow", "R_elbow", "L_wrist",
-                #               "R_wrist", "L_hip", "R_hip", "L_knee", "R_knee", "L_ankle", "R_ankle", "L_big_toe",
-                #               "R_big_toe", "L_small_toe", "R_small_toe", "L_heel", "R_heel", "L_hand_thumb", "R_hand_thumb",
-                #               "L_hand_index", "R_hand_index", "L_hand_middle", "R_hand_middle", "L_hand_pinky", "R_hand_pinky"] #38 points
 
-                arr_organs = ["nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
-                              "R_hip", "R_knee", "R_ankle","L_hip" , "L_knee", "L_ankle","R_eye","L_eye","R_ear", "L_ear"]
+                arr_organs = [
+                    "nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
+                    "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle", "R_eye", "L_eye", "R_ear", "L_ear"
+                ]
+
+                # Temporary dictionary to hold changes
+                updated_joints = {}
 
                 for i, kp_3d in enumerate(body.keypoint):
                     organ = arr_organs[i]
@@ -219,10 +220,12 @@ class Camera(threading.Thread):
                         joint = Joint(organ, kp_3d)
                         joint.filter = MovingAverageFilter()  # Use KalmanFilter here
                         joint.position = joint.filter.update(kp_3d)
-                        self.joints[organ] = joint
+                        updated_joints[organ] = joint  # Add to temporary dictionary
+
+                # Apply all new updates to self.joints at once
+                self.joints.update(updated_joints)
 
                 return self.joints
-
 
             else:
                 time.sleep(0.01)
@@ -231,63 +234,9 @@ class Camera(threading.Thread):
         else:
             return None
 
+            return None
 
 
-
-    # def change_count_screen(self, count):
-    #     if count == 1:
-    #         s.screen.switch_frame(OnePage)
-    #
-    #     if count == 2:
-    #         s.screen.switch_frame(TwoPage)
-    #
-    #     if count == 3:
-    #         s.screen.switch_frame(ThreePage)
-    #
-    #     if count == 4:
-    #         s.screen.switch_frame(FourPage)
-    #
-    #     if count == 5:
-    #         s.screen.switch_frame(FivePage)
-    #
-    #     if count == 6:
-    #         s.screen.switch_frame(SixPage)
-    #
-    #     if count == 7:
-    #         s.screen.switch_frame(SevenPage)
-    #
-    #     if count == 8:
-    #         s.screen.switch_frame(EightPage)
-    #
-    #     if count == 9:
-    #         s.screen.switch_frame(NinePage)
-    #
-    #     if count == 10:
-    #         s.screen.switch_frame(TenPage)
-
-    # def random_encouragement(self):
-    #     enco = ["Well_done", "Very_good", "Excellent"]
-    #     random_class_name = random.choice(enco)
-    #     random_class = globals()[random_class_name]
-    #     random_instance = random_class
-    #     s.screen.switch_frame(random_instance)
-    #
-    #
-    # def end_exercise(self, counter):
-    #     print(" ")
-    #     if s.rep - 2 > counter:
-    #         time.sleep(1)
-    #         s.screen.switch_frame(FailPage)
-    #
-    #
-    #     if (s.rep - 2) <= counter <= (s.rep - 1):
-    #         time.sleep(1)
-    #         s.screen.switch_frame(AlmostExcellent)
-    #
-    #
-    #     if counter == s.rep:
-    #         time.sleep(1)
-    #         self.random_encouragement()
 
     def sayings_generator(self, counter):
         if s.robot_counter < s.rep - 1 and s.robot_counter >= 2:
@@ -475,17 +424,18 @@ class Camera(threading.Thread):
                              joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
                              joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("L_" + joint6)],
                              joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
-                             0, 0, 0, 0]
+                             None, None, None, None]
                 else:
                     new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
                                  joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
                                  joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
                                  joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
-                                 0, 0, 0, 0]
+                                 None, None, None, None]
                 list_joints.append(copy.deepcopy(new_entry))
 
             s.ex_list.update({exercise_name: counter})
             Excel.wf_joints(exercise_name, list_joints)
+
 
 
 
@@ -606,17 +556,18 @@ class Camera(threading.Thread):
                                  joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
                                  joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("L_" + joint6)],
                                  joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
-                                 0, 0, 0, 0]
+                                 None, None, None, None]
                 else:
                     new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
                                  joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
                                  joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
                                  joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
-                                 0, 0, 0, 0]
+                                 None, None, None, None]
                 list_joints.append(copy.deepcopy(new_entry))
 
             s.ex_list.update({exercise_name: counter})
             Excel.wf_joints(exercise_name, list_joints)
+
 
 
 
@@ -763,13 +714,13 @@ class Camera(threading.Thread):
                              joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
                              joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("L_" + joint6)],
                              joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
-                             0, 0, 0, 0]
+                             None, None, None, None]
             else:
                 new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
                              joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
                              joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
                              joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
-                             0, 0, 0, 0]
+                             None, None, None, None]
             list_joints.append(copy.deepcopy(new_entry))
 
         s.ex_list.update({exercise_name: counter})
@@ -876,7 +827,7 @@ class Camera(threading.Thread):
                              joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
                              joints[str("R_" + joint7)], joints[str("R_" + joint8)], joints[str("L_" + joint9)],
                              joints[str("L_" + joint7)], joints[str("L_" + joint8)], joints[str("R_" + joint9)],
-                             0, 0, 0, 0, 0, 0]
+                             None, None, None, None,  None, None]
             else:
                 new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
                              joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
@@ -884,7 +835,7 @@ class Camera(threading.Thread):
                              joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
                              joints[str("R_" + joint7)], joints[str("R_" + joint8)], joints[str("R_" + joint9)],
                              joints[str("L_" + joint7)], joints[str("L_" + joint8)], joints[str("L_" + joint9)],
-                             0, 0, 0, 0, 0, 0]
+                             None, None, None, None,  None, None]
 
             list_joints.append(copy.deepcopy(new_entry))
 
@@ -963,7 +914,7 @@ class Camera(threading.Thread):
             joints = self.fill_null_joint_list()
             new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
                          joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
-                         0, 0]
+                         None, None]
             list_joints.append(copy.deepcopy(new_entry))
 
 
@@ -1149,7 +1100,7 @@ if __name__ == '__main__':
     ############################# להוריד את הסולמיות
     s.ex_list = {}
     s.chosen_patient_ID="314808981"
-    s.req_exercise = "notool_raising_hands_diagonally"
+    s.req_exercise = "ball_bend_elbows"
     time.sleep(2)
     s.asked_for_measurement = False
     # Create all components
@@ -1163,7 +1114,7 @@ if __name__ == '__main__':
     # Start all threads
     s.camera.start()
     Excel.create_workbook_for_training()  # create workbook in excel for this session
-    time.sleep(5)
+    time.sleep(30)
     s.req_exercise=""
     Excel.success_worksheet()
     # Excel.find_and_add_training_to_patient()

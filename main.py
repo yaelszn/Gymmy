@@ -34,6 +34,7 @@ if __name__ == '__main__':
     s.camera_done = False
     s.robot_count = False
     s.demo_finish= False
+    s.needs_first_position = False
     s.num_exercises_started = 0
     s.ex_in_training=[]
     s.finish_program= False #will turn to true only when the user will press on the exit button
@@ -43,7 +44,7 @@ if __name__ == '__main__':
     # Excel variable
     ############################# להוריד את הסולמיות
     s.ex_list = {}
-    s.effort=0
+    s.effort=None
     s.starts_and_ends_of_stops =[]
     s.stop_requested = False
     s.is_second_repetition_or_more=False
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     s.robot_counter = 0
     s.general_sayings = ["","",""]
     s.dist_between_shoulders = 0
-
+    s.number_of_pauses = 0
     # Create all components
     s.camera = Camera()
     s.training = Training()
