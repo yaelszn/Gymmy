@@ -137,8 +137,8 @@ class Training(threading.Thread):
                 if exercises_in_category!=[]:
                     time.sleep(1)
                     self.show_screen_category(i)
-                    # while not s.waved_has_tool:
-                    #     time.sleep(0.0001)
+                    while not s.waved_has_tool:
+                         time.sleep(0.0001)
 
                     self.first_coordination_ex = True
 
@@ -174,6 +174,9 @@ class Training(threading.Thread):
 
                         if s.stop_requested or s.finish_program:
                             break
+
+                        while not s.gymmy_done:
+                            time.sleep(0.001)
 
                 if s.stop_requested or s.finish_program:
                     break
@@ -248,11 +251,10 @@ class Training(threading.Thread):
 
 
         if s.another_training_requested:
-            Excel.success_worksheet()
             Excel.find_and_add_training_to_patient()
             Excel.close_workbook()
-            self.check_points_and_send_email()
-
+            Email.email_to_patient()
+            Email.email_to_physical_therapist()
 
             s.req_exercise = ""
             s.waved = False
@@ -285,7 +287,6 @@ class Training(threading.Thread):
 
 
         else:
-            Excel.success_worksheet()
             Excel.find_and_add_training_to_patient()
             Excel.close_workbook()
             Email.email_to_patient()
@@ -340,7 +341,7 @@ class Training(threading.Thread):
 
 
     def run_exercise(self, name):
-        time.sleep(0.1)  # wait between exercises
+        time.sleep(1.5)  # wait between exercises
         s.success_exercise = False
         s.patient_repetitions_counting_in_exercise = 0
 
@@ -473,8 +474,9 @@ if __name__ == "__main__":
     s.asked_for_measurement= False
     s.rep = 5
 
-    s.ex_in_training=["ball_open_arms_and_forward"]
-        #"ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
+
+    #s.ex_in_training =  ["ball_raise_arms_above_head"]
+    s.ex_in_training=["ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
                     #"band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"
                     # "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head", "stick_switch", "stick_up_and_lean"
                     # weights_right_hand_up_and_bend, weights_left_hand_up_and_bend, weights_open_arms_and_forward, weights_abduction
@@ -504,11 +506,12 @@ if __name__ == "__main__":
     s.gymmy_finished_demo = False
     s.robot_counter = 0
     s.last_saying_time = datetime.now()
-    s.rate= "fast"
+    s.rate= "moderate"
     s.num_exercises_started = 0
     pygame.mixer.init()
     s.full_name = "יעל שניידמן"
     s.stop_song = False
+    s.explanation_over = False
     s.another_training_requested= False
     s.explanation_over = False
     s.choose_continue_or_not = False

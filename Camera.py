@@ -1,4 +1,5 @@
 import copy
+import json
 import math
 import random
 from datetime import datetime, timedelta
@@ -9,6 +10,7 @@ import threading
 import socket
 from Audio import say, get_wav_duration
 from Joint_zed import Joint
+from MP import MP
 from PyZedWrapper import PyZedWrapper
 import Settings as s
 import time
@@ -48,6 +50,8 @@ import numpy as np
 #         self.P = (np.eye(len(self.P)) - K @ self.H) @ self.P  # Update covariance
 #         return self.x
 
+import numpy as np
+
 class MovingAverageFilter:
     def __init__(self, window_size=3, max_null_extrapolation=500, max_jump=200.0):
         self.window_size = window_size
@@ -59,17 +63,29 @@ class MovingAverageFilter:
         self.last_velocity = None
 
     def update(self, measurement):
-        if measurement is None or np.any(np.isnan(measurement)) or np.all(np.array(measurement) == 0):
+        # Convert measurement to NumPy array
+        measurement = np.array(measurement, dtype=np.float32)
+
+        # Check for invalid measurements
+        if measurement is None or np.any(np.isnan(measurement)) or np.all(measurement == 0):
             self.consecutive_invalid_measurements += 1
             if self.last_velocity is not None and self.consecutive_invalid_measurements < self.max_null_extrapolation:
                 measurement = self.extrapolate_position()
             else:
                 measurement = self.last_valid_position if self.last_valid_position is not None else np.zeros(3)
         else:
-            self.consecutive_invalid_measurements = 0
-            self.last_valid_position = measurement
-            self.last_velocity = self.calculate_velocity(measurement)
+            # Handle sudden jumps
+            if self.last_valid_position is not None:
+                # Ensure both are NumPy arrays for subtraction
+                last_position = np.array(self.last_valid_position, dtype=np.float32)
+                if np.linalg.norm(measurement - last_position) > self.max_jump:
+                    measurement = last_position
+                else:
+                    self.consecutive_invalid_measurements = 0
+                    self.last_velocity = self.calculate_velocity(measurement)
+                    self.last_valid_position = measurement
 
+        # Add to window and trim
         self.previous_positions.append(measurement)
         if len(self.previous_positions) > self.window_size:
             self.previous_positions.pop(0)
@@ -79,7 +95,9 @@ class MovingAverageFilter:
     def calculate_velocity(self, measurement):
         if self.last_valid_position is None:
             return np.zeros(3)
-        return measurement - self.last_valid_position
+        # Ensure both are NumPy arrays for subtraction
+        last_position = np.array(self.last_valid_position, dtype=np.float32)
+        return measurement - last_position
 
     def extrapolate_position(self):
         if self.last_velocity is None or self.last_valid_position is None:
@@ -89,7 +107,8 @@ class MovingAverageFilter:
     def calculate_moving_average(self):
         if len(self.previous_positions) == 0:
             return np.zeros(3)
-        return np.mean(self.previous_positions, axis=0)
+        return np.mean(np.array(self.previous_positions), axis=0)
+
 
 class Camera(threading.Thread):
     def __init__(self):
@@ -104,6 +123,8 @@ class Camera(threading.Thread):
         self.max_angle_jump = 20
         self.previous_angles = {}
         s.general_sayings = ["", "", ""]
+
+
 
     def calc_angle_3d(self, joint1, joint2, joint3, joint_name="default"):
         a = np.array([joint1.x, joint1.y, joint1.z], dtype=np.float32)
@@ -139,6 +160,7 @@ class Camera(threading.Thread):
         print("CAMERA START")
         medaip = PyZedWrapper()
         medaip.start()
+
         self.zed = PyZedWrapper.get_zed(medaip)
 
         while not s.finish_program:
@@ -191,49 +213,107 @@ class Camera(threading.Thread):
 
 
     def get_skeleton_data(self):
+        # Retrieve skeleton tracking data
         bodies = sl.Bodies()
         body_runtime_param = sl.BodyTrackingRuntimeParameters()
-        body_runtime_param.detection_confidence_threshold = 40
-        time.sleep(0.001)
+        body_runtime_param.detection_confidence_threshold = 10
+        time.sleep(0.01)
 
-        if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
-            self.zed.retrieve_bodies(bodies, body_runtime_param)
-            body_array = bodies.body_list
-            if body_array:
-                body = bodies.body_list[0]
+        self.sock.settimeout(1)
+        try:
+            data, address = self.sock.recvfrom(4096)
 
-                arr_organs = [
-                    "nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
-                    "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle", "R_eye", "L_eye", "R_ear", "L_ear"
-                ]
+            # Ensure data is not empty
+            if not data:
+                raise ValueError("No data received from socket.")
 
-                # Temporary dictionary to hold changes
-                updated_joints = {}
+            data = json.loads(data.decode())
+            data = data.split('/')
+            joints_str = []
+            for i in data:
+                joint_data = i.split(',')
+                joints_str.append(joint_data)
+            joints_str = joints_str[:-1]  # remove the empty list at the end
 
-                for i, kp_3d in enumerate(body.keypoint):
-                    organ = arr_organs[i]
+            # Change from string to float values
+            joints_mp = {}  # joints dict data
+            for j in joints_str:
+                joints_mp[j[0]] = Joint(j[0], float(j[1]), float(j[2]), float(j[3]))  # z is smaller than x and y!!
 
-                    if organ in self.joints:
-                        kp_3d_new = self.joints[organ].filter.update(kp_3d)
-                        self.joints[organ].x, self.joints[organ].y, self.joints[organ].z = kp_3d_new
-                    else:
-                        joint = Joint(organ, kp_3d)
-                        joint.filter = MovingAverageFilter()  # Use KalmanFilter here
-                        joint.position = joint.filter.update(kp_3d)
-                        updated_joints[organ] = joint  # Add to temporary dictionary
 
-                # Apply all new updates to self.joints at once
-                self.joints.update(updated_joints)
+            if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
+                self.zed.retrieve_bodies(bodies, body_runtime_param)
+                body_array = bodies.body_list
+                if body_array:
+                    body = bodies.body_list[0]
 
-                return self.joints
+                    arr_organs = [
+                        "nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
+                        "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle", "R_eye", "L_eye", "R_ear", "L_ear"
+                    ]
+
+                    # Temporary dictionary to hold changes
+                    updated_joints = {}
+
+                    for i, kp_3d in enumerate(body.keypoint):
+                        organ = arr_organs[i]
+
+                        # Calculate the average of x, y, z axes
+                        if organ in self.joints:
+                            # Update using previous and new data for averaging
+                            if organ in joints_mp and kp_3d is not None:
+                                mp_joints = joints_mp[organ]
+                                avg_x = (mp_joints.x + kp_3d[0]) / 2
+                                avg_y = (mp_joints.y + kp_3d[1]) / 2
+                                avg_z = (mp_joints.z + kp_3d[2]) / 2
+
+                            elif organ in joints_mp and kp_3d is None:
+                                avg_x = mp_joints.x
+                                avg_y = mp_joints.y
+                                avg_z = mp_joints.z
+
+                            else: # It is none
+                                avg_x = kp_3d[0]
+                                avg_y = kp_3d[1]
+                                avg_z = kp_3d[2]
+
+                            averaged_kp_3d = [avg_x, avg_y, avg_z]
+                            # Apply the filter on the averaged values
+                            kp_3d_new = self.joints[organ].filter.update(averaged_kp_3d)
+                            self.joints[organ].x, self.joints[organ].y, self.joints[organ].z = kp_3d_new
+                        else:
+                            # If it's a new joint, initialize with the current keypoint
+                            joint = Joint(organ, kp_3d[0], kp_3d[1], kp_3d[2])
+                            joint.filter = MovingAverageFilter()  # Use KalmanFilter here
+
+                            # Apply the filter on the averaged values
+                            joint.position = joint.filter.update([joint.x, joint.y, joint.z])
+                            updated_joints[organ] = joint  # Add to temporary dictionary
+
+                    # Apply all new updates to self.joints at once
+                    self.joints.update(updated_joints)
+
+                    return self.joints
+
+
+                else:
+                    time.sleep(0.01)
+                    return None
 
             else:
-                time.sleep(0.01)
                 return None
 
-        else:
+
+        except ValueError as ve:
+            print(f"ValueError: {ve}")
             return None
 
+        except json.JSONDecodeError as jde:
+            print(f"JSONDecodeError: {jde}")
+            return None
+
+        except socket.timeout:
+            print("Didn't receive data! [Timeout]")
             return None
 
 
@@ -936,16 +1016,16 @@ class Camera(threading.Thread):
 
     def ball_bend_elbows(self):  # EX1
         self.exercise_two_angles_3d("ball_bend_elbows", "shoulder", "elbow", "wrist",130, 180, 10, 50,
-                                    "elbow", "shoulder", "hip", 0, 70, 0, 70)
+                                    "elbow", "shoulder", "hip", 0, 110, 0, 70)
 
     def ball_raise_arms_above_head(self):  # EX2
-        self.exercise_two_angles_3d("ball_raise_arms_above_head", "hip", "shoulder", "elbow", 140, 180, 0, 50,
+        self.exercise_two_angles_3d("ball_raise_arms_above_head", "hip", "shoulder", "elbow", 130, 180, 0, 50,
                                     "shoulder", "elbow", "wrist", 120, 180, 135, 180)
 
 
     def ball_switch(self):  # EX3
         self.exercise_two_angles_3d_with_axis_check("ball_switch", "shoulder", "elbow","wrist", 0, 180, 120, 180,
-                                    "wrist", "hip", "hip",65,120,30,70, True, True)
+                                    "wrist", "hip", "hip",65,120,30,70, True, True, 35)
                                     #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
 
 
@@ -966,7 +1046,7 @@ class Camera(threading.Thread):
 
     def band_open_arms(self):  # EX6
         self.exercise_two_angles_3d("band_open_arms","hip", "shoulder", "wrist", 70, 110, 40, 110,
-                                    "wrist", "shoulder", "shoulder", 130,170,0,120,True)
+                                    "wrist", "shoulder", "shoulder", 150,170,0,125,True)
 
         #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
 
@@ -1100,7 +1180,7 @@ if __name__ == '__main__':
     ############################# להוריד את הסולמיות
     s.ex_list = {}
     s.chosen_patient_ID="314808981"
-    s.req_exercise = "ball_bend_elbows"
+    s.req_exercise = "ball_open_arms_above_head"
     time.sleep(2)
     s.asked_for_measurement = False
     # Create all components
@@ -1116,7 +1196,6 @@ if __name__ == '__main__':
     Excel.create_workbook_for_training()  # create workbook in excel for this session
     time.sleep(30)
     s.req_exercise=""
-    Excel.success_worksheet()
     # Excel.find_and_add_training_to_patient()
     Excel.close_workbook()
 

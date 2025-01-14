@@ -23,7 +23,7 @@ class MP(threading.Thread):
         mp_drawing_styles = mp.solutions.drawing_styles
         mp_pose = mp.solutions.pose
 
-        cap = cv2.VideoCapture(2) # 0 - webcam, 2 - second USB in maya's computer
+        cap = cv2.VideoCapture(0) # 0 - webcam, 2 - second USB in maya's computer
         image_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float `width`
         # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1680)
         image_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
@@ -82,8 +82,8 @@ class MP(threading.Thread):
                 image.flags.writeable = True
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-                ## plot pose graph
-                # mp_drawing.plot_landmarks(results.pose_world_landmarks, mp_pose.POSE_CONNECTIONS)
+                # plot pose graph
+                mp_drawing.plot_landmarks(results.pose_world_landmarks, mp_pose.POSE_CONNECTIONS)
 
                 mp_drawing.draw_landmarks(
                     image,
@@ -114,6 +114,7 @@ class MP(threading.Thread):
 
 if __name__ == '__main__':
     s.stop = False
+    s.finish_program = False
     mediap = MP()
     mediap.start()
     s.finish_workout = False

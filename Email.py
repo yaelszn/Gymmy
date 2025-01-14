@@ -1,5 +1,4 @@
 from datetime import datetime
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
@@ -89,18 +88,6 @@ def create_table_for_patients_email():
 
 
 def email_to_patient():
-    import os
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    from email.mime.image import MIMEImage
-
-    # start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
-
-    # # Create and open the folder to save the tables
-    # folder_path = f'Patients/{s.chosen_patient_ID}/Tables/{start_dt}'
-    # if not os.path.exists(folder_path):
-    #     os.makedirs(folder_path)
 
     # Generate the table file
     table_file_path = create_table_for_patients_email()
@@ -129,13 +116,13 @@ def email_to_patient():
             # Create HTML content with embedded image
             html_content = f'''
             <html>
-              <body style="direction: rtl;">
+              <body style="direction: rtl; font-family: Arial, sans-serif; font-size: 14px; color: black;">
                 <p>{name}, כל הכבוד על האימון היום! </p>
                 <p>האימון שביצעת היום כלל {str(len(s.ex_list))} תרגילים</p>
                 <p>דירגת את האימון בדרגת קושי:  {str(s.effort)} </p>
                 <p>סיכום האימון:</p>
                 <img src="cid:image" alt="Image" style="display: block; margin: 0 auto;">
-                <div style="height: 20px;"></div>
+                <br><br>
                 <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
               </body>
             </html>
@@ -161,10 +148,12 @@ def email_to_patient():
         except smtplib.SMTPAuthenticationError:
             print("Error: Unable to log in. Please check your email credentials.")
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            print(f"An unexpected error occurred while sending the email: {e}")
     else:
         print("Error: No email address provided for the patient.")
 
+    # Continue execution even if email sending fails
+    print("Proceeding with the next steps of the program.")
 
 
 
@@ -464,70 +453,77 @@ def email_to_physical_therapist():
     receiver_emails = receiver_emails_str.split(',')  # Add all recipient emails here
     password = 'diyf cxzc tifj sotp'
 
-    # Create message container
-    message = MIMEMultipart("related")
-    message['From'] = sender_email
-    message['To'] = ", ".join(receiver_emails)  # Display recipients as comma-separated
-    message['Subject'] = f'{s.full_name} סיכום אימון '
+    try:
+        # Create message container
+        message = MIMEMultipart("related")
+        message['From'] = sender_email
+        message['To'] = ", ".join(receiver_emails)  # Display recipients as comma-separated
+        message['Subject'] = f'{s.full_name} סיכום אימון - {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}'
 
-    # Set up initial variables for email content
-    did_paused = "לא"
-    did_stopped = "הושלם"
+        # Set up initial variables for email content
+        did_paused = "לא"
+        did_stopped = "הושלם"
 
-    # Determine if the training was paused or stopped
-    if s.stop_requested:
-        did_stopped = "הופסק באמצע"
+        # Determine if the training was paused or stopped
+        if s.stop_requested:
+            did_stopped = "הופסק באמצע"
 
-    if s.number_of_pauses > 0:
-        did_paused = "כן"
+        if s.number_of_pauses > 0:
+            did_paused = "כן"
 
+        html_content = f'''
+        <html>
+          <body style="direction: rtl; font-family: Arial, sans-serif; font-size: 14px; color: black;">
+            <p> סיכום אימון של <b style="color: black;">{s.full_name}</b>, </p>
+            <p> האם בוצעה הפסקה באימון?  <b style="color: black;">{did_paused}</b> </p>
+        '''
+        if s.number_of_pauses != 0:
+            html_content += f'<p> בוצעו  <b style="color: black;">{s.number_of_pauses}</b> הפסקות באימון </p>'
 
-    # Create HTML content with the inline image
-    html_content = f'''
-    <html>
-      <body style="direction: rtl;">
-        <p> סיכום אימון של <b>{s.full_name}</b>, </p>
-        <p> האם בוצעה הפסקה באימון?  <b>{did_paused}</b> </p>
-    '''
+        html_content += f'''
+            <p> האם האימון הושלם או הופסק באמצע? <b style="color: black;">{did_stopped}</b> </p>
+            <br><br>
+            <p style="font-family: Arial, sans-serif; font-weight: bold; color: black;">סיכום האימון מופיע בקובץ המצורף</p>
+            <p style="color: black;">תצוגה מקדימה של סיכום האימון:</p>
+            <img src="cid:preview_image" alt="PDF Preview">
+            <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
+          </body>
+        </html>
+        '''
 
-    if s.number_of_pauses != 0:
-        html_content += f'<p> בוצעו  <b>{s.number_of_pauses}</b> הפסקות באימון </p>'
+        # Attach HTML content
+        message.attach(MIMEText(html_content, 'html'))
 
-    html_content += f'''
-        <p> האם האימון הושלם או הופסק באמצע? <b>{did_stopped}</b> </p>
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-        <p style="font-family: Arial, sans-serif; font-weight: bold;">סיכום האימון מופיע בקובץ המצורף</p>
-        <p>תצוגה מקדימה של סיכום האימון:</p>
-        <img src="cid:preview_image" alt="PDF Preview">
-        <div style="height: 20px;"></div> <!-- Empty row with height 20px -->
-      </body>
-    </html>
-    '''
+        # Attach the PDF preview image as an inline image if it exists
+        if preview_image_io:
+            preview_image_io.seek(0)  # Reset the file pointer to the beginning
+            preview_image = MIMEImage(preview_image_io.read(), _subtype="jpeg")
+            preview_image.add_header('Content-ID', '<preview_image>')
+            message.attach(preview_image)
 
-    #        <p style="font-family: Arial, sans-serif; font-size: 20px; font-weight: bold;">יישר כוח!</p>
+        # Attach the PDF file
+        with open(pdf_file_path, 'rb') as pdf_file:
+            pdf_data = pdf_file.read()
+            pdf_attachment = MIMEApplication(pdf_data, _subtype="pdf")
+            pdf_attachment.add_header('Content-Disposition', 'attachment', filename='summary.pdf')
+            message.attach(pdf_attachment)
 
-    # Attach HTML content
-    message.attach(MIMEText(html_content, 'html'))
+        # Connect to SMTP server and send the email
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()  # Secure the connection
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_emails, message.as_string())
+            print('Email sent successfully!')
 
-    # Attach the PDF preview image as an inline image if it exists
-    if preview_image_io:
-        preview_image = MIMEImage(preview_image_io.read(), _subtype="jpeg")
-        preview_image.add_header('Content-ID', '<preview_image>')
-        message.attach(preview_image)
+    except FileNotFoundError:
+        print("Error: PDF file not found. Please check the file path.")
+    except smtplib.SMTPAuthenticationError:
+        print("Error: Unable to log in. Please check your email credentials.")
+    except Exception as e:
+        print(f"An unexpected error occurred while sending the email: {e}")
 
-    # Attach the PDF file
-    with open(pdf_file_path, 'rb') as pdf_file:
-        pdf_data = pdf_file.read()
-        pdf_attachment = MIMEApplication(pdf_data, _subtype="pdf")
-        pdf_attachment.add_header('Content-Disposition', 'attachment', filename='summary.pdf')
-        message.attach(pdf_attachment)
-
-    # Connect to SMTP server and send the email
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
-        server.starttls()  # Secure the connection
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_emails, message.as_string())
-        print('Email sent successfully!')
+    # Continue execution even if email sending fails
+    print("Proceeding with the next steps of the program.")
 
 
 if __name__ == '__main__':

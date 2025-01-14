@@ -20,7 +20,6 @@ class DistShouldersMeasurment(threading.Thread):
         print("CAMERA START")
         zed = PyZedWrapper()
         zed.start()
-        self.zed = PyZedWrapper.get_zed(zed)
 
         for i in range (0,20): #from 0 to 19
             self.get_skeleton_data()

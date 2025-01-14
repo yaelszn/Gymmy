@@ -728,7 +728,7 @@ class PatientRegistration(tk.Frame):
             #insert a row to the excel of exercises
             df2 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
             sheet3 = workbook["patients_exercises"]
-            new_row_data_exercises = {column: False for column in df2.columns}
+            new_row_data_exercises = {column: True for column in df2.columns}
             new_row_data_exercises.update({'ID': ID_entered})
 
             columns = list(new_row_data_exercises.keys())
@@ -2156,8 +2156,8 @@ class ExercisePage(tk.Frame):
         # Predetermined positions (you can adjust these to your liking)
         self.positions = [
             (180, 10), (350, 10), (520, 10), (690, 10), (860, 10),
-            (10, 190), (180, 190), (350, 190), (520, 190), (690, 190), (860, 190),
-            (10, 370), (180, 370), (350, 370), (520, 370), (690, 370), (860, 370)
+            (130, 190), (300, 190), (470, 190), (640, 190), (820, 190),
+            (130, 370), (300, 370), (470, 370), (640, 370), (820, 370)
         ]
 
 

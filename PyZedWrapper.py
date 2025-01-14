@@ -3,14 +3,19 @@ import pyzed.sl as sl
 import threading
 import cv2
 import Settings as s
+import mediapipe as mp
+import socket
+import json
+import numpy as np
+
 
 class PyZedWrapper(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         print("MP INITIALIZATION")
         self.zed = sl.Camera()
-        self.frame_count = 0  # To count the number of frames captured
-        self.start_time = time.time()  # To track the start time for FPS calculation
+        self.frame_count = 0
+        self.start_time = time.time()
 
     def run(self):
         print("MP START")
@@ -19,7 +24,7 @@ class PyZedWrapper(threading.Thread):
         init = sl.InitParameters()
         init.camera_resolution = sl.RESOLUTION.HD720
         init.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE
-        init.depth_mode = sl.DEPTH_MODE.ULTRA
+        init.depth_mode = sl.DEPTH_MODE.PERFORMANCE
         init.coordinate_units = sl.UNIT.MILLIMETER
         init.camera_fps = 60
 
@@ -41,14 +46,12 @@ class PyZedWrapper(threading.Thread):
         runtime = sl.RuntimeParameters()
         runtime.measure3D_reference_frame = sl.REFERENCE_FRAME.WORLD
 
-
         # Enable positional tracking
         positional_tracking_parameters = sl.PositionalTrackingParameters()
         positional_tracking_parameters.set_as_static = True
         self.zed.enable_positional_tracking(positional_tracking_parameters)
-        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, 100)  # Range: 0 to 100
-        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAIN, 60)  # Range: 0 to 100
-
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, -1)  # Range: 0 to 100
+        self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAIN, -1)  # Range: 0 to 100
 
         # Enable body tracking
         zed_error = self.zed.enable_body_tracking(body_params)
@@ -57,61 +60,85 @@ class PyZedWrapper(threading.Thread):
             self.zed.close()
             exit(-1)
 
-        # Declare an sl.Mat object to hold image data
-        image = sl.Mat()
-        bodies = sl.Bodies()  # Structure to hold body tracking data
 
-        while self.zed.is_opened() and not s.finish_program:
-            if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
-                # Retrieve the left view image for display
-                self.zed.retrieve_image(image, sl.VIEW.LEFT)
-                frame = image.get_data()
 
-                # Retrieve bodies (skeleton data)
-                self.zed.retrieve_bodies(bodies, sl.BodyTrackingRuntimeParameters())
-                body_list = bodies.body_list
+        # MediaPipe Initialization
+        mp_pose = mp.solutions.pose
 
-                # Draw markers for each joint if a body is detected
-                for body in body_list:
-                    for joint in body.keypoint_2d:  # 2D keypoints
-                        # Draw a small circle at each joint position
-                        cv2.circle(frame, (int(joint[0]), int(joint[1])), 5, (0, 255, 0), -1)  # Green circle
+        # Joint Dictionary for MediaPipe
+        lm_dict = {'nose': 0, 'L_shoulder': 11, 'R_shoulder': 12, 'L_elbow': 13, 'R_elbow': 14,
+                   'L_wrist': 15, 'R_wrist': 16, 'L_hip': 23, 'R_hip': 24}  # Updated to integers
 
-                # Increment frame count for FPS calculation
-                self.frame_count += 1
-                current_time = time.time()
-                elapsed_time = current_time - self.start_time
+        with mp_pose.Pose(
+                min_detection_confidence=0.3,
+                min_tracking_confidence=0.3) as pose:
 
-                # Calculate FPS every second
-                if elapsed_time >= 1:
-                    fps = self.frame_count / elapsed_time
-                    print(f"FPS: {fps:.2f}")
-                    self.frame_count = 0
-                    self.start_time = current_time
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.server_address = ('localhost', 7000)
 
-                # Display the ZED camera's view with skeleton tracking every 10th frame
-               #if self.frame_count % 10 == 0:
-                cv2.imshow("ZED Camera with Skeleton", frame)
+            zed_frame = sl.Mat()
 
-                # Stop camera if 'q' is pressed or finish_program is triggered
-                key = cv2.waitKey(10)
-                if s.finish_program or key == ord('q'):
-                    s.finish_program = True
-                    break
+            while not s.finish_program and self.zed.is_opened():
+                # Capture ZED Frame
+                if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
+                    self.zed.retrieve_image(zed_frame, sl.VIEW.LEFT)
+                    zed_image = zed_frame.get_data()
 
-        # Close the camera when done
+                    # Convert ZED frame to RGB for MediaPipe
+                    mp_frame = cv2.cvtColor(zed_image, cv2.COLOR_BGRA2BGR)
+
+                    # MediaPipe Pose Processing
+                    mp_frame_rgb = cv2.cvtColor(mp_frame, cv2.COLOR_BGR2RGB)
+                    results = pose.process(mp_frame_rgb)
+                    message = ""
+
+                    # Prepare UDP Message
+                    if results.pose_landmarks:
+                        for joint, idx in lm_dict.items():
+                            landmark = results.pose_landmarks.landmark[idx]
+                            if landmark.visibility >= 0.7:
+                                message += f"{joint},{landmark.x},{landmark.y},{landmark.z}/"
+                            else:
+                                message += f"{joint},0,0,0/"
+                    else:
+                        message = "/".join([f"{joint},0,0,0" for joint in lm_dict.keys()]) + "/"
+
+                    jsonmessage = json.dumps(message).encode()
+
+                    self.sock.sendto(jsonmessage, self.server_address)
+
+
+                    # # Visualize ZED keypoints
+                    # for body in body_list:
+                    #     for joint in body.keypoint_2d:
+                    #         cv2.circle(mp_frame, (int(joint[0]), int(joint[1])), 5, (0, 255, 0), -1)
+
+                    # FPS Calculation
+                    self.frame_count += 1
+                    elapsed_time = time.time() - self.start_time
+                    if elapsed_time >= 1:
+                        fps = self.frame_count / elapsed_time
+                        print(f"FPS: {fps:.2f}")
+                        self.frame_count = 0
+                        self.start_time = time.time()
+
+                    # # Display both feeds
+                    # cv2.imshow("MediaPipe Pose", mp_frame)
+                    if cv2.waitKey(1) == ord('q'):
+                        s.finish_program = True
+                        break
+
+        # Cleanup resources
         self.zed.close()
-        print("Camera closed")
+        cv2.destroyAllWindows()
+        print("Program ended")
 
     def get_zed(self):
         return self.zed
 
+
 if __name__ == '__main__':
-    # Initialize settings variables
     s.stop = False
     s.finish_program = False
-    s.finish_workout = False
-
-    # Start the ZED camera thread
     mediap = PyZedWrapper()
     mediap.start()

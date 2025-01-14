@@ -6,7 +6,9 @@ from Camera import Camera
 from Gymmy import Gymmy
 from TrainingNew import Training
 from ScreenNew import Screen, FullScreenApp, EntrancePage
+import os
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 if __name__ == '__main__':
@@ -14,7 +16,7 @@ if __name__ == '__main__':
 
 
     s.additional_audio_playing = False
-    s.volume = 0
+    s.volume = 0.3
     # Training variables initialization
     s.ball_exercises_number = 5
     s.band_exercises_number = 5

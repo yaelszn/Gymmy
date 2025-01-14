@@ -83,12 +83,12 @@ def get_success_number(file_path, exercise):
         workbook = openpyxl.load_workbook(file_path)
 
         # Check if the worksheet exists
-        if "success" not in workbook.sheetnames:
+        if "success_worksheet" not in workbook.sheetnames:
             print(f"Worksheet success not found in the workbook.")
             return None
 
         # Select the worksheet
-        worksheet = workbook["success"]
+        worksheet = workbook["success_worksheet"]
 
         # Iterate through the rows in the first column and search for the value
         for row in worksheet.iter_rows(values_only=True):
@@ -131,6 +131,12 @@ def get_success_number(file_path, exercise):
 #
 
 def wf_joints(ex_name, list_joints):
+    # Check if "Sheet" exists and delete it
+    if "Sheet" in s.training_workbook.sheetnames:
+        sheet_to_delete = s.training_workbook["Sheet"]
+        s.training_workbook.remove(sheet_to_delete)
+
+    # Create a new sheet with the provided name
     worksheet1 = s.training_workbook.create_sheet(ex_name[:31])
     col = 0
 
@@ -143,20 +149,19 @@ def wf_joints(ex_name, list_joints):
                 j_ar = j.joint_to_array()
                 for i in range(len(j_ar)):
                     worksheet1.cell(row=row, column=col + 1, value=str(j_ar[i]))
-
                     row += 1
-
             else:
                 # Handle other types appropriately, e.g., just write the value to the worksheet
                 worksheet1.cell(row=row, column=col + 1, value=str(j))
-
                 row += 1
 
         col += 1
 
-
-    s.training_workbook.save(s.training_workbook_path) #save the workbook
+    # Save the workbook
+    success_worksheet()
+    s.training_workbook.save(s.training_workbook_path)
     create_graphs_and_tables(ex_name, list_joints)
+
 
 
 def create_graphs_and_tables(exercise, list_joints):
@@ -340,8 +345,8 @@ def create_and_save_graph(data, exercise):
                 0.5, 0.5, "No Data Available", fontsize=18, color="gray", ha="center", va="center", alpha=0.7
             )
             plt.axis("off")  # Hide axes
-            plt.title(plot_name[:-2], fontsize=16, weight="bold")
-            plt.savefig(plot_filename, bbox_inches="tight", pad_inches=0)
+            plt.title(plot_name[:-2], fontsize=16, weight="bold", y=0.9)
+            plt.savefig(plot_filename, bbox_inches="tight", pad_inches=0, dpi=100)
             plt.close()
             continue
 
@@ -364,35 +369,39 @@ def create_and_save_graph(data, exercise):
 
         plt.xlabel('מספר מדידה'[::-1], fontsize=fontsize, weight='bold')
         plt.ylabel('זווית'[::-1], fontsize=fontsize, weight='bold')
-        plt.title(plot_name[:-2], fontsize=16, weight="bold", y=0.9)
+        plt.title(plot_name[:-2], fontsize=16, weight="bold", y=1)
 
         # Save the plot as an image file
         start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
         create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}')
         plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}/{plot_name}.jpeg'
-        plt.savefig(plot_filename)
+        plt.savefig(plot_filename, dpi=100)
         plt.close()  # Close the plot to clear the figure
 
 
 def success_worksheet():
-    # Create a new sheet named "success_worksheet"
-    s.success_worksheet = s.training_workbook.create_sheet("success_worksheet")
+    exercise, success_count = list(s.ex_list.items())[-1]
 
-    # Write headers in the first row (row=1)
-    s.success_worksheet.cell(row=1, column=1, value="exercise")
-    s.success_worksheet.cell(row=1, column=2, value="number of successful repetitions")
+    # Check if the sheet exists
+    if "success_worksheet" in s.training_workbook.sheetnames:
+        # Get the existing worksheet
+        success_sheet = s.training_workbook["success_worksheet"]
+    else:
+        # Create a new sheet if it doesn't exist
+        success_sheet = s.training_workbook.create_sheet("success_worksheet")
+        # Write headers in the first row (row=1)
+        success_sheet.cell(row=1, column=1, value="exercise")
+        success_sheet.cell(row=1, column=2, value="number of successful repetitions")
 
-    # Start from the second row for data
-    row = 2
-    for exercise, success in s.ex_list.items():
-        # Write exercise name and success count into the worksheet
-        s.success_worksheet.cell(row=row, column=1, value=exercise)
-        s.success_worksheet.cell(row=row, column=2, value=success)
-        row += 1
+    # Find the first empty row in the worksheet
+    row = success_sheet.max_row + 1
+
+    # Write the exercise name and success count into the worksheet
+    success_sheet.cell(row=row, column=1, value=exercise)
+    success_sheet.cell(row=row, column=2, value=success_count)
 
     # Save the workbook after writing to the sheet
     s.training_workbook.save(s.training_workbook_path)
-
 
 
 def find_and_change_values_exercises(new_values_dict, headers_row=1):
@@ -424,22 +433,16 @@ def find_and_change_values_exercises(new_values_dict, headers_row=1):
 
 
 def calculate_training_length():
-    # If the number of elements is odd, remove the last one
-    if s.stop_requested:  # Even number of elements
-        new_times_array = s.starts_and_ends_of_stops[:-1]
 
-        if len(new_times_array) % 2 != 0: # if after the removal of the last one there is an odd number of cells in the array
-            new_times_array.pop(-2)
-
-    else:  # Odd number of elements
-        new_times_array = s.starts_and_ends_of_stops  # Return all elements except the last one
+    if len(s.starts_and_ends_of_stops) % 2 != 0: # if after the removal of the last one there is an odd number of cells in the array
+        s.starts_and_ends_of_stops.pop(-2)
 
     training_length = timedelta(0)  # Initialize training length as zero timedelta
 
     # Iterate through the array in steps of 2 (each pair)
-    for i in range(0, len(new_times_array), 2):
-        start_time = new_times_array[i]  # The start time in the pair
-        end_time = new_times_array[i + 1]  # The end time in the pair
+    for i in range(0, len(s.starts_and_ends_of_stops), 2):
+        start_time = s.starts_and_ends_of_stops[i]  # The start time in the pair
+        end_time = s.starts_and_ends_of_stops[i + 1]  # The end time in the pair
         print(str(start_time))
         print(str(end_time))
         training_length += (end_time - start_time)  # Add the difference to the total training length
@@ -577,37 +580,6 @@ def create_and_save_table_with_calculations(data, exercise):
         title_text = table_name[:-2]
         display_title = title_text.center(max_title_length)  # Pad evenly on both sides
 
-        # # Check if the length of y_series is 1
-        # if len(y_values) == 1:
-        #     # Save the "didnt_monitor_angle" image
-        #     start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
-        #     create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}')
-        #     plot_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}/{table_name}.jpeg'
-        #     didnt_monitor_image_path = 'Pictures/didnt_monitor_angle.jpeg'  # Use the uploaded image path
-        #
-        #     # Load and display the image
-        #     image = plt.imread(didnt_monitor_image_path)
-        #     plt.imshow(image)
-        #     plt.axis('off')  # Turn off axes
-        #
-        #     # Add the table name as text above the existing text
-        #     plt.text(
-        #         x=image.shape[1] // 2,  # Centered horizontally
-        #         y=120,  # Adjust as needed
-        #         s=display_title,  # Truncate title if longer than max length
-        #         fontsize=16,  # Font size
-        #         color='black',  # Text color
-        #         weight='bold',  # Bold text
-        #         ha='center',  # Horizontal alignment
-        #         va='center',  # Vertical alignment
-        #         bbox=dict(facecolor=(222/255, 234/255, 246/255), alpha=1.0, edgecolor='none')  # Background color matches the image's background
-        #     )
-        #
-        #     # Save the image with the text
-        #
-        #     plt.savefig(plot_filename, bbox_inches='tight', pad_inches=0)  # Remove white margins
-        #     plt.close()  # Close the plot to clear the figure
-        #     continue
 
 
         if len(y_values)>0:
@@ -657,17 +629,19 @@ def create_and_save_table_with_calculations(data, exercise):
         for (i, j), cell in table.get_celld().items():
             if i == 0:  # Header row
                 cell.set_text_props(weight='bold', fontsize=12)  # Set bold and increase font size
-                cell.set_facecolor('#ffffff')  # White background for header cells
             else:
                 cell.set_fontsize(12)  # Set a slightly smaller font for data rows
-                cell.set_facecolor('#ffffff')  # White background for data cells
+
+            cell.set_facecolor('#ffffff')  # White background for header cells
 
         start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
 
         # Save the table as an image with the background color and no transparency
         table_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}/{table_name}.png'
-        plt.savefig(table_filename, bbox_inches='tight', pad_inches=0, dpi=150)  # Removed transparent=True
+        plt.savefig(table_filename, bbox_inches='tight', pad_inches=0, dpi=100)  # Removed transparent=True
         plt.close()  # Close the figure to clear memory
+
+
 
 def close_workbook():
     s.training_workbook.close()
