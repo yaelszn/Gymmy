@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import queue
+import subprocess
+import sys
 import threading
 import tkinter as tk
+import webbrowser
 from datetime import datetime
 from statistics import mean, stdev
 from tkinter import ttk
@@ -2155,7 +2158,7 @@ class ExercisePage(tk.Frame):
 
         # Predetermined positions (you can adjust these to your liking)
         self.positions = [
-            (180, 10), (350, 10), (520, 10), (690, 10), (860, 10),
+            (180, 10), (350, 10), (520, 10), (690, 10),
             (130, 190), (300, 190), (470, 190), (640, 190), (820, 190),
             (130, 370), (300, 370), (470, 370), (640, 370), (820, 370)
         ]
@@ -2183,6 +2186,38 @@ class ExercisePage(tk.Frame):
 
         # Time of the last update
         self.last_update_time = 0
+
+        # Label for repetition count
+        self.repetition_label = tk.Label(self,
+                                         text=f":רובוט\n{s.robot_counter}/{s.rep}",
+                                         font=("Arial", 30, "bold"),
+                                         bg="white", fg="black",
+                                         justify="center", anchor="center")
+
+        self.repetition_label.place(x=890, y=10)  # Adjust x, y for correct positioning
+
+        # Start updating the label dynamically
+        self.update_repetition_label()
+
+        skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
+        skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
+        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo,
+                                            command=lambda: self.on_click_skip_exercise(),
+                                            width=skip_explanation_button_img.width,
+                                            height=skip_explanation_button_img.height, bd=0,
+                                            highlightthickness=0)
+        skip_explanation_button.image = skip_explanation_button_photo
+        skip_explanation_button.place(x=30, y=500)
+
+    def on_click_skip_exercise(self):
+        s.skip = True
+        s.exercises_skipped[self.exercise] = {str(s.robot_counter)}
+
+    def update_repetition_label(self):
+        """Updates the repetition label dynamically based on robot's count."""
+        self.repetition_label.config(text=f":רובוט\n{s.robot_counter}/{s.rep}")
+        self.after(100, self.update_repetition_label)  # Check every 100ms
+
 
     def on_scale_moved(self, value):
         current_time = time.time()  # Get the current time
@@ -2649,6 +2684,18 @@ class TablesPage(tk.Frame):
         previous_page_category.image = previous_page_button_photo
         previous_page_category.place(x=30, y=30)
 
+        # Load the previous page button image and set background
+        PDF_button_img = Image.open("Pictures//see_PDF_button.jpg")
+        PDF_button_photo = ImageTk.PhotoImage(PDF_button_img)
+        self.PDF_button = tk.Button(self, image=PDF_button_photo,
+                                           command=lambda: self.open_pdf(),
+                                           width=PDF_button_img.width,
+                                           height=PDF_button_img.height, bd=0,
+                                           highlightthickness=0, bg=self.background_color)
+        self.PDF_button.image =PDF_button_photo
+        self.PDF_button.place(x=392, y=525)
+        self.PDF_button.lift()  # Raises the button above all other widgets
+
         try:
             # Attempt to fetch sorted folders for the exercise
             sorted_folders = get_sorted_folders(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}')
@@ -2672,8 +2719,42 @@ class TablesPage(tk.Frame):
             self.didnt_do_before_label.place(x=270, y=75)
             print(f"Error: The path 'Patients/{s.chosen_patient_ID}/Tables/{exercise}' does not exist.")
 
+    def open_pdf(self):
+        """Opens the PDF related to the selected exercise and date."""
+        try:
+            # Get absolute path to the 'Patients' directory
+            base_dir = os.path.abspath("Patients")
+
+            # Construct the full PDF path
+            pdf_path = os.path.join(base_dir, str(s.chosen_patient_ID), "PDF_to_Therapist_Email",
+                                    f"{self.sorted_folder[self.place]}.pdf")
+
+            # Debugging: Print the absolute path
+            print(f"Checking file path: {pdf_path}")
+
+            # Check if the file exists
+            if not os.path.exists(pdf_path):
+                print(f"Error: PDF file not found at {pdf_path}")
+                return
+
+            # Open PDF with the default viewer based on OS
+            if sys.platform.startswith('win'):
+                os.startfile(pdf_path)  # Windows
+            elif sys.platform.startswith('darwin'):  # macOS
+                subprocess.run(['open', pdf_path], check=True)
+            elif sys.platform.startswith('linux'):
+                subprocess.run(['xdg-open', pdf_path], check=True)
+            else:
+                webbrowser.open(pdf_path)  # Fallback (if other methods fail)
+
+        except Exception as e:
+            print(f"Error opening PDF: {e}")
+
 
     def show_tables(self, sorted_folder, place, num_of_angles, exercise):
+        self.sorted_folder = sorted_folder
+        self.place = place
+
         if place > 0:
             self.backward_arrow_button_img = Image.open("Pictures//previous_arrow.jpg")
             self.backward_arrow_button_photo = ImageTk.PhotoImage(self.backward_arrow_button_img)
@@ -2738,6 +2819,8 @@ class TablesPage(tk.Frame):
                                font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
         self.label2.place(x=160, y=30)
         self.label2.image = background_img
+
+        self.PDF_button.lift()
 
     def help_function(self, sorted_folder, place_to_put, num_of_angles, exercise):
         # Clean up previous labels and buttons
@@ -3234,6 +3317,8 @@ class InformationAboutTrainingPage(tk.Frame):
 class ExplanationPage(tk.Frame):
     def __init__(self, master, exercise, **kwargs):
         tk.Frame.__init__(self, master, **kwargs)
+
+        self.exercise= exercise
         image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
         tk.Label(self, image=self.photo_image).pack()
@@ -3246,12 +3331,21 @@ class ExplanationPage(tk.Frame):
 
         skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
         skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
-        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo, command=lambda: self.on_click_skip(),
+        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo, command=lambda: self.on_click_skip_explanation(),
                                 width=skip_explanation_button_img.width, height=skip_explanation_button_img.height, bd=0,
                                 highlightthickness=0)
         skip_explanation_button.image = skip_explanation_button_photo
         skip_explanation_button.place(x=30, y=30)
 
+        skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
+        skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
+        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo,
+                                            command=lambda: self.on_click_skip_exercise(),
+                                            width=skip_explanation_button_img.width,
+                                            height=skip_explanation_button_img.height, bd=0,
+                                            highlightthickness=0)
+        skip_explanation_button.image = skip_explanation_button_photo
+        skip_explanation_button.place(x=30, y=500)
 
         if not (self.cap.isOpened()):
             print("Error opening video streams or files")
@@ -3273,8 +3367,12 @@ class ExplanationPage(tk.Frame):
         if not s.explanation_over:
             s.explanation_over = True
 
-    def on_click_skip(self):
+    def on_click_skip_explanation(self):
         s.explanation_over = True
+
+    def on_click_skip_exercise(self):
+        s.skip = True
+        s.exercises_skipped[self.exercise] = {"0"}
 
 
 class Number_of_good_repetitions_page(tk.Frame):
@@ -3286,7 +3384,7 @@ class Number_of_good_repetitions_page(tk.Frame):
         self.canvas.pack(fill="both", expand=True)
 
         # Load and display the background image
-        image = Image.open("C:/Users/Administrator/Downloads/july-4-fireworks-gettyimages-530944604 (2).jpg")
+        image = Image.open("Pictures//fireworks.jpg")
         self.photo_image = ImageTk.PhotoImage(image)
         self.canvas.create_image(0, 0, image=self.photo_image, anchor="nw")
 
@@ -3301,13 +3399,16 @@ class Number_of_good_repetitions_page(tk.Frame):
             alignment3 = "w"
 
         # Overlay text directly on the canvas instead of using Labels
-        self.canvas.create_text(960, 450, text= f'{s.patient_repetitions_counting_in_exercise}',
+        self.canvas.create_text(960, 420, text= f'{s.patient_repetitions_counting_in_exercise}',
                                 font=("Arial", 65, "bold"), fill="white", anchor=alignment1)
-        self.canvas.create_text(520, 450, text= "חזרות מוצלחות מתוך",
+        self.canvas.create_text(520, 420, text= "חזרות מוצלחות מתוך",
                                 font=("Arial", 65, "bold"), fill="white", anchor="center")
-        self.canvas.create_text(70, 450, text= f'{s.rep}',
+        self.canvas.create_text(70, 420, text= f'{s.rep}',
                                 font=("Arial", 65, "bold"), fill="white", anchor=alignment3)
 
+        exercises_left = len(s.ex_in_training)- s.num_exercises_started
+        self.canvas.create_text(520, 510, text=f' נותרו עוד {exercises_left} תרגילים לסיום האימון ',
+                                font=("Arial", 40, "bold"), fill="white", anchor="center")
 
         say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
 

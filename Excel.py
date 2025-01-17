@@ -333,7 +333,7 @@ def create_and_save_graph(data, exercise):
         y_values = y_series.values  # Keep NaN values
 
         # Check if all values in y_series are NaN or empty
-        if y_series.isnull().all():
+        if y_series.isnull().all() or y_series.count() < 10:
             # Save a "null graph"
             start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
             create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}')

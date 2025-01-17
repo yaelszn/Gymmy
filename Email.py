@@ -201,7 +201,7 @@ def create_pdf():
     ordered for specific layouts depending on the number of images in each section.
     """
 
-    pdf_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4= data_creation_to_create_pdf()
+    pdf_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4, global_header_line5, global_header_line6, global_header_line7= data_creation_to_create_pdf()
 
     # Register the Hebrew-compatible font
     pdfmetrics.registerFont(TTFont('Hebrew', "arial.ttf-master/arial.ttf"))
@@ -212,6 +212,7 @@ def create_pdf():
     # Set the PDF page dimensions (letter size)
     width, height = letter
 
+    number_of_headers = 6
     # Calculate the total height needed for the global header (3 lines of text with intervals)
     line_height = 0.5 * inch  # Height of each line plus some interval
     total_header_height = 3 * line_height
@@ -242,8 +243,30 @@ def create_pdf():
     x_position_line4 = (width - text_width_line4) / 2  # Center the third line horizontally
     pdf_canvas.drawString(x_position_line4, start_y_position - 4.5 * line_height, global_header_line4)
 
+    pdf_canvas.setFont("Hebrew", 18)
+
+    text_width_line5 = pdf_canvas.stringWidth(global_header_line5, "Hebrew", 18)
+    x_position_line5 = (width - text_width_line5) / 2  # Center the third line horizontally
+    pdf_canvas.drawString(x_position_line5, start_y_position - 6 * line_height, global_header_line5)
+
+    if global_header_line6:
+        number_of_headers+=1
+
+        text_width_line6 = pdf_canvas.stringWidth(global_header_line6, "Hebrew", 18)
+        x_position_line6 = (width - text_width_line6) / 2  # Center the third line horizontally
+        pdf_canvas.drawString(x_position_line6, start_y_position - 7.5 * line_height, global_header_line6)
+
+        text_width_line7 = pdf_canvas.stringWidth(global_header_line7, "Hebrew", 18)
+        x_position_line7 = (width - text_width_line7) / 2  # Center the third line horizontally
+        pdf_canvas.drawString(x_position_line7, start_y_position - 9 * line_height, global_header_line7)
+
+    else:
+        text_width_line7 = pdf_canvas.stringWidth(global_header_line7, "Hebrew", 18)
+        x_position_line7 = (width - text_width_line7) / 2  # Center the third line horizontally
+        pdf_canvas.drawString(x_position_line7, start_y_position - 7.5 * line_height, global_header_line7)
+
     # Start placing content after the header
-    current_y_position = start_y_position - 4 * line_height - inch  # Adjust Y position after the header
+    current_y_position = start_y_position - number_of_headers * line_height - inch  # Adjust Y position after the header
 
     # Set a consistent padding/margin between images and sections
     image_padding = 0.1 * inch  # Reduced padding between images
@@ -276,6 +299,7 @@ def create_pdf():
                 second_half[3], second_half[4], second_half[5]  # Fourth row
             ]
             images_per_row = 3
+
         elif total_images == 8:
             # Split the image list into two halves
             first_half = image_paths[:4]
@@ -289,6 +313,7 @@ def create_pdf():
                 second_half[2], second_half[3]  # Fourth row
             ]
             images_per_row = 2  # For layout, but image size remains based on 3 per row
+
         elif total_images == 4:
             # Reorder the images to match the requested layout for 4 images
             reordered_images = [
@@ -381,6 +406,26 @@ def data_creation_to_create_pdf():
     global_header_line3 = f'זמן האימון: {formatted_dt[::-1]}'[::-1]
     global_header_line4= f'דירוג קושי של האימון: {str(s.effort)[::-1]}'[::-1]
 
+    # Set up initial variables for email content
+    did_paused = "לא"
+    did_stopped = "הושלם"
+
+    # Determine if the training was paused or stopped
+    if s.stop_requested:
+        did_stopped = "הופסק באמצע"
+
+    if s.number_of_pauses > 0:
+        did_paused = "כן"
+
+    global_header_line5 = f"האם בוצעה הפסקה באימון? {did_paused}"[::-1]
+
+    global_header_line6 = None
+    if s.number_of_pauses != 0:
+        global_header_line6 = f" בוצעו {str(s.number_of_pauses)[::-1]} הפסקות באימון "[::-1]
+
+    global_header_line7 = f" האם האימון הופסק באמצע או הושלם? {did_stopped}"[::-1]
+
+
     for exercise_name in exercises:
         # Collect the images for each exercise
         table_images, graph_images = collect_images_from_folders(s.chosen_patient_ID, exercise_name,
@@ -391,7 +436,10 @@ def data_creation_to_create_pdf():
         # formatted_ex_name= reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
         exercise_name_reversed = reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
         exercise_label_reversed = reverse_hebrew_sequence_in_text(":שם התרגיל")
-        section_headers.append(f"{exercise_name_reversed} {exercise_label_reversed}")  # Section header for the exercise
+        successful_reps_label = reverse_hebrew_sequence_in_text(f":מספר חזרות מוצלחות")
+
+        section_headers.append(
+            f"{str(s.ex_list[exercise_name])} {successful_reps_label}       {exercise_name_reversed} {exercise_label_reversed}")  # Section header for the exercise
 
     # Define the directory path where you want to save the PDF
     output_directory = f'Patients/{s.chosen_patient_ID}/PDF_to_Therapist_Email'
@@ -404,7 +452,7 @@ def data_creation_to_create_pdf():
     output_path = os.path.join(output_directory, f'{ start_time.strftime("%d-%m-%Y %H-%M-%S")}.pdf')
 
     # Create the PDF with images, headers, and a global title
-    return output_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4
+    return output_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4, global_header_line5, global_header_line6, global_header_line7
 
 
 def create_pdf_preview(pdf_path):

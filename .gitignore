@@ -1,2 +1,3 @@
-audio files/Songs/
-__pycache__/*
+audio files/Songs
+/__pycache__
+/logs

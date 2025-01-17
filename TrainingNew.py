@@ -6,9 +6,6 @@ from random import randint
 
 import cv2
 import pygame
-from fontTools.varLib.avarPlanner import WEIGHTS
-from openpyxl.descriptors import DateTime
-from reportlab.platypus.figures import FlexFigure
 
 from Camera import Camera
 from Gymmy import Gymmy
@@ -141,6 +138,7 @@ class Training(threading.Thread):
                     self.first_coordination_ex = True
 
                     for e in exercises_in_category:
+                        s.skip = False
                         s.general_sayings = self.get_motivation_file_names()
                         s.exercises_by_order.append(e)
                         s.gymmy_done= False
@@ -173,7 +171,7 @@ class Training(threading.Thread):
                         if s.stop_requested or s.finish_program:
                             break
 
-                        while not s.gymmy_done:
+                        while not s.gymmy_done or not s.camera_done:
                             time.sleep(0.001)
 
                 if s.stop_requested or s.finish_program:
@@ -281,8 +279,8 @@ class Training(threading.Thread):
             s.num_exercises_started = 0
             s.number_of_pauses = 0
             s.needs_first_position = False
-
-
+            s.exercises_skipped= {}
+            s.skip = False
 
         else:
             Excel.find_and_add_training_to_patient()
@@ -299,32 +297,6 @@ class Training(threading.Thread):
         s.screen.switch_frame(Number_of_good_repetitions_page)
         time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep"))
         time.sleep(2)
-
-
-        # if len(s.exercises_by_order) - s.num_exercises_started > 0: #if this is not the last exercise
-        #
-        #     rnd_num = randint(1,10)
-        #     if rnd_num>=1 and rnd_num<=5:
-        #         say(f'continue_{rnd_num}')
-
-
-        # if s.rep - 2 > s.patient_repetitions_counting_in_exercise:
-        #     time.sleep(1)
-        #     # s.screen.switch_frame(FailPage)
-        #     # time.sleep(get_wav_duration("fail")+1)
-        #
-        #
-        # if (s.rep - 2) <= s.patient_repetitions_counting_in_exercise <= (s.rep - 1):
-        #     time.sleep(1)
-        #     # s.screen.switch_frame(AlmostExcellent)
-        #     # time.sleep(get_wav_duration("almostexcellent")+1)
-        #
-        #
-        # if s.patient_repetitions_counting_in_exercise == s.rep:
-        #     time.sleep(1)
-        #     self.random_encouragement()
-
-
 
 
 
@@ -421,8 +393,9 @@ class Training(threading.Thread):
         s.dist_between_shoulders = 0
         s.number_of_pauses = 0
         s.needs_first_position = False
-
+        s.exercises_skipped = {}
         s.screen.switch_frame(EntrancePage)
+        s.skip = False
 
 
     #A function that checks how many points did the patient get in the current level, and if he is progressing to the next level
@@ -469,11 +442,11 @@ if __name__ == "__main__":
     #s.exercise_amount = 6
     s.finish_program= False
     s.asked_for_measurement= False
-    s.rep = 10
+    s.rep = 5
 
 
     #s.ex_in_training =  ["ball_raise_arms_above_head"]
-    s.ex_in_training = ["weights_right_hand_up_and_bend", "weights_left_hand_up_and_bend", "weights_open_arms_and_forward", "weights_abduction"]
+    s.ex_in_training = ["ball_bend_elbows"]
     # s.ex_in_training= ["band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]
                     #"band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"
     #["ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
@@ -509,6 +482,7 @@ if __name__ == "__main__":
     s.explanation_over = False
     s.choose_continue_or_not = False
     s.email_of_patient = "yaelszn@gmail.com"
+    s.number_of_pauses=0
     # Start continuous audio in a separate thread
     s.screen = Screen()
     s.camera = Camera()

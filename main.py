@@ -14,7 +14,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 if __name__ == '__main__':
     s.camera_num = 1  # 0 - webcam, 2 - second USB in maya's computer
 
-
+    s.exercises_skipped = {}
+    s.skip = False
     s.additional_audio_playing = False
     s.volume = 0.3
     # Training variables initialization
