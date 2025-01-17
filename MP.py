@@ -1,8 +1,6 @@
-
 import threading
 import socket
 import json
-import threading
 import cv2
 import mediapipe as mp
 import Settings as s
@@ -10,106 +8,116 @@ import time
 
 
 class MP(threading.Thread):
-
     def __init__(self):
         threading.Thread.__init__(self)
         print("MP INITIALIZATION")
+
 
     def run(self):
         print("MP START")
         recorded_data = []
         show = True
+
+        # Initialize MediaPipe Pose
         mp_drawing = mp.solutions.drawing_utils
         mp_drawing_styles = mp.solutions.drawing_styles
         mp_pose = mp.solutions.pose
 
-        cap = cv2.VideoCapture(0) # 0 - webcam, 2 - second USB in maya's computer
-        image_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float `width`
-        # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1680)
-        image_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
+        # Initialize camera
+        cap = cv2.VideoCapture(0)  # 0 - webcam, change index if multiple cameras
+        image_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        image_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        # Initialize UDP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server_address = ('localhost', 7000)
+
+        # Define landmarks mapping
+        lm_dict = {
+            'nose': "0",
+            'L_eye_inner': "1", 'L_eye': "2", "L_eye_outer": "3",
+            'R_eye_inner': "4", 'R_eye': "5", "R_eye_outer": "6",
+            'L_ear': "7", 'R_ear': "8", "L_mouth": "9", "R_mouth": "10",
+            'L_shoulder': "11", 'R_shoulder': "12", 'L_elbow': "13", 'R_elbow': "14",
+            'L_wrist': "15", 'R_wrist': "16",
+            'L_hand_pinky': "17", 'R_hand_pinky': "18", 'L_hand_index': "19", 'R_hand_index': "20",
+            'L_hand_thumb': "21", 'R_hand_thumb': "22", 'L_hip': "23", 'R_hip': "24",
+        }
+
+        # MediaPipe Pose instance
         with mp_pose.Pose(
-                min_detection_confidence=0.8,
+                min_detection_confidence=0.5,
                 min_tracking_confidence=0.5) as pose:
-
-            #Create a UDP socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            server_address = ('localhost', 7000)
-
             while cap.isOpened() and not s.finish_program:
                 success, image = cap.read()
                 if not success:
                     print("Ignoring empty camera frame.")
-                    # If loading a video, use 'break' instead of 'continue'.
                     continue
 
-                # To improve performance, optionally mark the image as not writeable to
-                # pass by reference.
+                # Prepare image for MediaPipe
                 image.flags.writeable = False
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 results = pose.process(image)
 
-                lm_dict = {'nose': "0",
-                         'L_eye_inner': "1", 'L_eye': "2", "L_eye_outer": "3",
-                         'R_eye_inner': "4", 'R_eye': "5", "R_eye_outer": "6",
-                         'L_ear': "7", 'R_ear': "8", "L_mouth": "9","R_mouth": "10",
-                         'L_shoulder': "11", 'R_shoulder': "12", 'L_elbow': "13", 'R_elbow': "14",
-                         'L_wrist': "15", 'R_wrist': "16",
-                         'L_hand_pinky': "17", 'R_hand_pinky': "18", 'L_hand_index': "19", 'R_hand_index': "20",
-                         'L_hand_thumb': "21", 'R_hand_thumb': "22", 'L_hip': "23", 'R_hip': "24"}
-
-                # 'L_knee': "25", 'R_knee': "26", 'L_ankle': "27", 'R_ankle': "28",
-                # 'L_heel': "29", 'R_heel': "30", 'L_foot_index': "31", 'R_foot_index': "32"}
-
-                message = ''
-                if results.pose_landmarks is not None:
-                    for k, v in lm_dict.items():
-                        j = results.pose_landmarks.landmark[int(v)]
-                        if j.visibility >= 0.7:
-                            new_j = k + "," + str(j.x*image_width) + "," + str(-j.y*image_height) + "," + str(-j.z)
+                # Prepare JSON message
+                message = {}
+                if results.pose_landmarks:
+                    for key, idx in lm_dict.items():
+                        landmark = results.pose_landmarks.landmark[int(idx)]
+                        if landmark.visibility >= 0.7:
+                            # Normalized coordinates with depth
+                            message[key] = {
+                                "x": landmark.x * image_width,
+                                "y": -landmark.y * image_height,
+                                "z": -landmark.z
+                            }
                         else:
-                            new_j = k + ",0,0,0"
-                        message += new_j + "/"
+                            # Default values for invisible landmarks
+                            message[key] = {"x": 0, "y": 0, "z": 0}
                 else:
-                    for k, v in lm_dict.items():
-                        new_j = k + ",0,0,0"
-                        message += new_j + "/"
+                    # No pose landmarks detected
+                    for key in lm_dict.keys():
+                        message[key] = {"x": 0, "y": 0, "z": 0}
 
-                jsonmessage = json.dumps(message).encode()
-                # print("Sending a message...")
-                sent = sock.sendto(jsonmessage, server_address)
+                # Send JSON message over UDP
+                json_message = json.dumps(message).encode()
+                sock.sendto(json_message, server_address)
 
-                # Draw the pose annotation on the image.
+                # Draw landmarks on the image
                 image.flags.writeable = True
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-                # plot pose graph
-                mp_drawing.plot_landmarks(results.pose_world_landmarks, mp_pose.POSE_CONNECTIONS)
-
                 mp_drawing.draw_landmarks(
                     image,
                     results.pose_landmarks,
                     mp_pose.POSE_CONNECTIONS,
-                    landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
-                # Present camera's video: Flip the image horizontally for a selfie-view display.
+                    landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+                )
+
+                # Display image if enabled
                 if show:
                     cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
 
-                # Stop MediaPipe:
-                key = cv2.waitKey(1) #TODO change
+                # Handle key events
+                key = cv2.waitKey(1)
                 if s.finish_program or key == ord('q'):
                     s.finish_program = True
                     break
 
+                # Record data with timestamp
                 recorded_data.append({
                     'timestamp': time.time(),
-                    'json_message': message
+                    'pose_data': message
                 })
 
+            # Release resources
             cap.release()
+            cv2.destroyAllWindows()
 
             # Save recorded data to a JSON file
             with open('recorded_data2.json', 'w') as f:
                 json.dump(recorded_data, f)
+
+        print("MP FINISHED")
 
 
 if __name__ == '__main__':
@@ -117,6 +125,3 @@ if __name__ == '__main__':
     s.finish_program = False
     mediap = MP()
     mediap.start()
-    s.finish_workout = False
-
-

@@ -18,8 +18,7 @@ import Excel
 from ScreenNew import Screen, FullScreenApp
 import numpy as np
 from openpyxl import Workbook
-from scipy.signal import savgol_filter
-
+from scipy.signal import savgol_filter, butter
 
 import numpy as np
 
@@ -50,10 +49,64 @@ import numpy as np
 #         self.P = (np.eye(len(self.P)) - K @ self.H) @ self.P  # Update covariance
 #         return self.x
 
-import numpy as np
+
+
+from scipy.signal import butter, filtfilt
+
+
+class ButterworthFilter:
+    def __init__(self, order=2, cutoff=5, fs=25, min_samples=5):
+        self.b, self.a = butter(order, cutoff / (0.5 * fs), btype='low', analog=False)
+        self.history = []  # Stores previous positions for filtering
+        self.min_samples = min_samples  # Avoid filtfilt errors
+
+    def update(self, measurement):
+        """Apply Butterworth filter with interpolation for missing values."""
+        measurement = np.array(measurement, dtype=np.float32)
+
+        # If measurement is invalid, try interpolation
+        if measurement is None or np.any(np.isnan(measurement)) or np.all(measurement == 0):
+            if len(self.history) > 1:
+                # Interpolate missing value
+                measurement = self.interpolate_missing_value()
+            else:
+                return np.zeros(3)
+
+        # Store last `min_samples` values
+        self.history.append(measurement)
+        if len(self.history) > self.min_samples:
+            self.history.pop(0)
+
+        # If not enough data, return raw measurement
+        if len(self.history) < self.min_samples:
+            return measurement
+
+        # Apply Butterworth filter
+        data = np.array(self.history)
+        try:
+            filtered_x = filtfilt(self.b, self.a, data[:, 0], padlen=3)
+            filtered_y = filtfilt(self.b, self.a, data[:, 1], padlen=3)
+            filtered_z = filtfilt(self.b, self.a, data[:, 2], padlen=3)
+            return np.array([filtered_x[-1], filtered_y[-1], filtered_z[-1]])
+        except ValueError:
+            return measurement  # Return unfiltered value if error occurs
+
+    def interpolate_missing_value(self):
+        """Interpolates missing values using linear interpolation."""
+        if len(self.history) < 2:
+            return np.zeros(3)
+
+        last_valid = np.array(self.history[-1])
+        second_last_valid = np.array(self.history[-2])
+
+        # Linear interpolation
+        interpolated = last_valid + (last_valid - second_last_valid) * 0.5
+        return interpolated
+
+
 
 class MovingAverageFilter:
-    def __init__(self, window_size=3, max_null_extrapolation=500, max_jump=200.0):
+    def __init__(self, window_size=3, max_null_extrapolation=500, max_jump=50.0):
         self.window_size = window_size
         self.max_null_extrapolation = max_null_extrapolation
         self.max_jump = max_jump
@@ -120,7 +173,7 @@ class Camera(threading.Thread):
         self.frame_count = 0
         self.start_time = None
         self.joints = {}
-        self.max_angle_jump = 20
+        self.max_angle_jump = 10
         self.previous_angles = {}
         s.general_sayings = ["", "", ""]
 
@@ -155,6 +208,8 @@ class Camera(threading.Thread):
             direction = 1 if angle > previous_angle else -1
             angle = previous_angle + direction * self.max_angle_jump
         return angle
+
+
 
     def run(self):
         print("CAMERA START")
@@ -211,111 +266,60 @@ class Camera(threading.Thread):
 
                 self.dist_list.append(abs(l_shoulder_x - r_shoulder_x))
 
-
     def get_skeleton_data(self):
-        # Retrieve skeleton tracking data
+        """
+        Capture 3D joint positions from ZED camera and apply both Butterworth and Moving Average filters.
+        If one filter fails, use the other. If both work, take the average.
+        """
         bodies = sl.Bodies()
         body_runtime_param = sl.BodyTrackingRuntimeParameters()
-        body_runtime_param.detection_confidence_threshold = 10
-        time.sleep(0.01)
+        body_runtime_param.detection_confidence_threshold = 20
+        time.sleep(0.001)
 
-        self.sock.settimeout(1)
-        try:
-            data, address = self.sock.recvfrom(4096)
+        if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
+            self.zed.retrieve_bodies(bodies, body_runtime_param)
+            body_array = bodies.body_list
+            if body_array:
+                body = bodies.body_list[0]
 
-            # Ensure data is not empty
-            if not data:
-                raise ValueError("No data received from socket.")
+                arr_organs = ["nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
+                              "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle", "R_eye", "L_eye", "R_ear",
+                              "L_ear"]
 
-            data = json.loads(data.decode())
-            data = data.split('/')
-            joints_str = []
-            for i in data:
-                joint_data = i.split(',')
-                joints_str.append(joint_data)
-            joints_str = joints_str[:-1]  # remove the empty list at the end
+                for i, kp_3d in enumerate(body.keypoint):
+                    organ = arr_organs[i]
 
-            # Change from string to float values
-            joints_mp = {}  # joints dict data
-            for j in joints_str:
-                joints_mp[j[0]] = Joint(j[0], float(j[1]), float(j[2]), float(j[3]))  # z is smaller than x and y!!
+                    if organ in self.joints:
+                        butter_filtered = self.joints[organ].butter_filter.update(kp_3d)
+                        # moving_avg_filtered = self.joints[organ].moving_avg_filter.update(kp_3d)
+                        #
+                        # # Handling NaNs: If one filter returns NaN, use the other
+                        # valid_butter = not np.any(np.isnan(butter_filtered))
+                        # valid_moving_avg = not np.any(np.isnan(moving_avg_filtered))
+                        #
+                        # if valid_butter and valid_moving_avg:
+                        #     kp_3d_new = (butter_filtered + moving_avg_filtered) / 2  # Average if both valid
+                        # elif valid_butter:
+                        #     kp_3d_new = butter_filtered  # Use Butterworth if Moving Average failed
+                        # elif valid_moving_avg:
+                        #     kp_3d_new = moving_avg_filtered  # Use Moving Average if Butterworth failed
+                        # else:
+                        #     kp_3d_new = kp_3d  # If both fail, return raw data
 
+                        self.joints[organ].x, self.joints[organ].y, self.joints[organ].z = butter_filtered
+                    else:
+                        joint = Joint(organ, kp_3d)
+                        joint.butter_filter = ButterworthFilter()  # Initialize Butterworth filter
+                        joint.moving_avg_filter = MovingAverageFilter()  # Initialize Moving Average filter
+                        joint.position = kp_3d  # Store raw position initially
+                        self.joints[organ] = joint
 
-            if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
-                self.zed.retrieve_bodies(bodies, body_runtime_param)
-                body_array = bodies.body_list
-                if body_array:
-                    body = bodies.body_list[0]
-
-                    arr_organs = [
-                        "nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
-                        "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle", "R_eye", "L_eye", "R_ear", "L_ear"
-                    ]
-
-                    # Temporary dictionary to hold changes
-                    updated_joints = {}
-
-                    for i, kp_3d in enumerate(body.keypoint):
-                        organ = arr_organs[i]
-
-                        # Calculate the average of x, y, z axes
-                        if organ in self.joints:
-                            # Update using previous and new data for averaging
-                            if organ in joints_mp and kp_3d is not None:
-                                mp_joints = joints_mp[organ]
-                                avg_x = (mp_joints.x + kp_3d[0]) / 2
-                                avg_y = (mp_joints.y + kp_3d[1]) / 2
-                                avg_z = (mp_joints.z + kp_3d[2]) / 2
-
-                            elif organ in joints_mp and kp_3d is None:
-                                avg_x = mp_joints.x
-                                avg_y = mp_joints.y
-                                avg_z = mp_joints.z
-
-                            else: # It is none
-                                avg_x = kp_3d[0]
-                                avg_y = kp_3d[1]
-                                avg_z = kp_3d[2]
-
-                            averaged_kp_3d = [avg_x, avg_y, avg_z]
-                            # Apply the filter on the averaged values
-                            kp_3d_new = self.joints[organ].filter.update(averaged_kp_3d)
-                            self.joints[organ].x, self.joints[organ].y, self.joints[organ].z = kp_3d_new
-                        else:
-                            # If it's a new joint, initialize with the current keypoint
-                            joint = Joint(organ, kp_3d[0], kp_3d[1], kp_3d[2])
-                            joint.filter = MovingAverageFilter()  # Use KalmanFilter here
-
-                            # Apply the filter on the averaged values
-                            joint.position = joint.filter.update([joint.x, joint.y, joint.z])
-                            updated_joints[organ] = joint  # Add to temporary dictionary
-
-                    # Apply all new updates to self.joints at once
-                    self.joints.update(updated_joints)
-
-                    return self.joints
-
-
-                else:
-                    time.sleep(0.01)
-                    return None
-
+                return self.joints
             else:
+                time.sleep(0.01)
                 return None
-
-
-        except ValueError as ve:
-            print(f"ValueError: {ve}")
+        else:
             return None
-
-        except json.JSONDecodeError as jde:
-            print(f"JSONDecodeError: {jde}")
-            return None
-
-        except socket.timeout:
-            print("Didn't receive data! [Timeout]")
-            return None
-
 
 
     def sayings_generator(self, counter):
@@ -923,7 +927,7 @@ class Camera(threading.Thread):
         Excel.wf_joints(exercise_name, list_joints)
 
 
-    def hand_up_and_band_angles(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side, differ=120):
+    def hand_up_and_band_angles(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side, differ=100):
         flag = True
         counter = 0
         list_joints = []
@@ -957,7 +961,7 @@ class Camera(threading.Thread):
 
                 if side == 'right':
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < right_angle < one_ub)  & (joints["nose"].y-50>joints["R_wrist"].y) & \
+                        if (one_lb < right_angle < one_ub)  & (joints["nose"].y-150>joints["R_wrist"].y) & (joints[str("L_shoulder")].x+50<joints[str("R_wrist")].x) &\
                                 (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (not flag):
                             flag = True
                             counter += 1
@@ -972,7 +976,7 @@ class Camera(threading.Thread):
 
                 else:
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-50>joints[str("L_wrist")].x)& (joints[str("nose")].y - 50 > joints[str("L_wrist")].y) & \
+                        if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-50>joints[str("L_wrist")].x)& (joints[str("nose")].y - 150 > joints[str("L_wrist")].y) & \
                                 (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (not flag):
                             flag = True
                             counter += 1
@@ -1019,13 +1023,13 @@ class Camera(threading.Thread):
                                     "elbow", "shoulder", "hip", 0, 110, 0, 70)
 
     def ball_raise_arms_above_head(self):  # EX2
-        self.exercise_two_angles_3d("ball_raise_arms_above_head", "hip", "shoulder", "elbow", 130, 180, 0, 50,
+        self.exercise_two_angles_3d("ball_raise_arms_above_head", "hip", "shoulder", "elbow", 120, 180, 0, 50,
                                     "shoulder", "elbow", "wrist", 120, 180, 135, 180)
 
 
     def ball_switch(self):  # EX3
         self.exercise_two_angles_3d_with_axis_check("ball_switch", "shoulder", "elbow","wrist", 0, 180, 120, 180,
-                                    "wrist", "hip", "hip",65,120,30,70, True, True, 35)
+                                    "wrist", "hip", "hip",65,120,30,70, True, True, 40)
                                     #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
 
 
@@ -1051,18 +1055,18 @@ class Camera(threading.Thread):
         #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
 
     def band_open_arms_and_up(self):  # EX7
-        self.exercise_three_angles_3d("band_open_arms_and_up", "hip", "shoulder", "elbow", 130, 170, 20, 100,
+        self.exercise_three_angles_3d("band_open_arms_and_up", "hip", "shoulder", "elbow", 115, 170, 20, 100,
                                     "shoulder", "elbow", "wrist", 130,180,0,180,
-                                    "elbow", "shoulder", "shoulder", 110, 160, 70, 120, True)
+                                    "elbow", "shoulder", "shoulder", 110, 160, 70, 125, True)
 
 
     def band_up_and_lean(self):  # EX8
-        self.exercise_two_angles_3d_with_axis_check("band_up_and_lean", "shoulder", "elbow", "wrist", 125, 180, 125,180,
-                                   "elbow", "hip", "hip", 110, 170, 50, 100, True, True,40)
+        self.exercise_two_angles_3d_with_axis_check("band_up_and_lean", "shoulder", "elbow", "wrist", 115, 180, 115,180,
+                                   "elbow", "hip", "hip", 110, 170, 50, 100, True, True,30)
 
     def band_straighten_left_arm_elbows_bend_to_sides(self):  # EX9
         self.exercise_two_angles_3d_one_side("band_straighten_left_arm_elbows_bend_to_sides", "shoulder", "elbow", "wrist", 0, 65, 0,65, 140,180, 0, 80,
-                                   "elbow", "shoulder", "hip", 70, 120, 70, 120, 70, 120,70,120)
+                                   "elbow", "shoulder", "hip", 60, 120, 60, 120, 60, 120,60,120)
 
 
     def band_straighten_right_arm_elbows_bend_to_sides(self):  # EX10
@@ -1080,7 +1084,7 @@ class Camera(threading.Thread):
 
     def stick_raise_arms_above_head(self):  # EX13
         self.exercise_two_angles_3d("stick_raise_arms_above_head", "hip", "shoulder", "elbow", 120, 180, 10, 55,
-                                    "wrist", "elbow", "shoulder", 135,180,135,180)
+                                    "wrist", "elbow", "shoulder", 125,180,125,180)
 
     def stick_switch(self):  # EX14
         # self.exercise_two_angles_3d("stick_switch", "shoulder", "elbow", "wrist", 0, 180, 140, 180,
@@ -1094,7 +1098,7 @@ class Camera(threading.Thread):
     #                                  "shoulder", "hip", "knee",40,90,105,150)
 
     def stick_up_and_lean(self):  # EX15
-        self.exercise_two_angles_3d_with_axis_check("stick_up_and_lean", "shoulder", "elbow", "wrist", 125, 180, 125, 180,
+        self.exercise_two_angles_3d_with_axis_check("stick_up_and_lean", "shoulder", "elbow", "wrist", 120, 180, 120, 180,
                                                     "elbow", "hip", "hip", 110, 170, 50, 100, True, True, 40)
 
 
@@ -1120,7 +1124,7 @@ class Camera(threading.Thread):
     ################################################# Set of exercises without equipment
     def notool_hands_behind_and_lean(self): # EX20
         self.exercise_two_angles_3d_with_axis_check("notool_hands_behind_and_lean", "shoulder", "elbow", "wrist", 10,70,10,70,
-                                    "elbow", "shoulder", "hip", 80, 110, 125, 170,False, True, 40)
+                                    "elbow", "shoulder", "hip", 80, 110, 125, 170,False, True, 30)
                                     # "elbow", "hip", "hip", 30, 100, 125, 170,True, True)
 
     def notool_right_hand_up_and_bend(self):  # EX21
@@ -1180,7 +1184,7 @@ if __name__ == '__main__':
     ############################# להוריד את הסולמיות
     s.ex_list = {}
     s.chosen_patient_ID="314808981"
-    s.req_exercise = "ball_open_arms_above_head"
+    s.req_exercise = "notool_hands_behind_and_lean"
     time.sleep(2)
     s.asked_for_measurement = False
     # Create all components

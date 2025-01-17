@@ -38,8 +38,6 @@ class Training(threading.Thread):
 
 
     def training_session(self):
-
-
         while s.ex_in_training==[]:
             time.sleep(0.1)
 
@@ -165,7 +163,7 @@ class Training(threading.Thread):
 
                         self.end_exercise()
 
-                            # while (not s.gymmy_done) or (not s.camera_done):
+                        # while (not s.gymmy_done) or (not s.camera_done):
                             #     # print("not done")
                             #     time.sleep(0.0001)
                             #     if s.stop_requested:
@@ -341,7 +339,6 @@ class Training(threading.Thread):
 
 
     def run_exercise(self, name):
-        time.sleep(1.5)  # wait between exercises
         s.success_exercise = False
         s.patient_repetitions_counting_in_exercise = 0
 
@@ -349,13 +346,13 @@ class Training(threading.Thread):
         s.explanation_over = False
         s.req_exercise = name
 
-        if self.first_coordination_ex == True:
+        if self.first_coordination_ex:
             s.screen.switch_frame(ExplanationPage, exercise= name)
             if name == "notool_right_bend_left_up_from_side" or name == "notool_left_bend_right_up_from_side":
                 name = "notool_arm_bend_arm_up_from_side"
             # time.sleep(get_wav_duration(name)) #wait the time of the audio
 
-            while s.gymmy_finished_demo == False:
+            while not s.explanation_over or not s.gymmy_finished_demo:
                 time.sleep(0.001)
 
             say(str(f'{s.rep}_times'))
@@ -472,12 +469,14 @@ if __name__ == "__main__":
     #s.exercise_amount = 6
     s.finish_program= False
     s.asked_for_measurement= False
-    s.rep = 5
+    s.rep = 10
 
 
     #s.ex_in_training =  ["ball_raise_arms_above_head"]
-    s.ex_in_training=["ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
+    s.ex_in_training = ["weights_right_hand_up_and_bend", "weights_left_hand_up_and_bend", "weights_open_arms_and_forward", "weights_abduction"]
+    # s.ex_in_training= ["band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]
                     #"band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"
+    #["ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
                     # "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head", "stick_switch", "stick_up_and_lean"
                     # weights_right_hand_up_and_bend, weights_left_hand_up_and_bend, weights_open_arms_and_forward, weights_abduction
     # notool_hands_behind_and_lean
@@ -493,13 +492,7 @@ if __name__ == "__main__":
     s.dist_between_shoulders = 280
     s.is_second_repetition_or_more =False
     #s.demo_finish = False
-    s.screen = Screen()
-    s.camera = Camera()
-    s.training = Training()
-    s.robot= Gymmy()
-    s.camera.start()
-    s.training.start()
-    s.robot.start()
+
     s.did_training_paused = False
     s.volume = 0
     s.additional_audio_playing = False
@@ -517,6 +510,13 @@ if __name__ == "__main__":
     s.choose_continue_or_not = False
     s.email_of_patient = "yaelszn@gmail.com"
     # Start continuous audio in a separate thread
+    s.screen = Screen()
+    s.camera = Camera()
+    s.training = Training()
+    s.robot = Gymmy()
+    s.camera.start()
+    s.training.start()
+    s.robot.start()
     s.continuous_audio = ContinuousAudio()
     s.continuous_audio.start()
     s.screen.switch_frame(StartOfTraining)
