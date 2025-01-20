@@ -32,10 +32,9 @@ if __name__ == '__main__':
     s.finish_workout = False
     s.waved = False
     s.success_exercise = False
-    s.calibration = False
     s.gymmy_done = False
     s.camera_done = False
-    s.robot_count = False
+    # s.robot_count = False
     s.demo_finish= False
     s.needs_first_position = False
     s.num_exercises_started = 0
@@ -43,9 +42,7 @@ if __name__ == '__main__':
     s.finish_program= False #will turn to true only when the user will press on the exit button
     #s.exercises_start=False
     s.waved_has_tool= True # True just in order to go through the loop in Gymmy
-    s.finished_training_adding_to_excel= False
-    # Excel variable
-    ############################# להוריד את הסולמיות
+    # s.finished_training_adding_to_excel= False
     s.ex_list = {}
     s.effort=None
     s.starts_and_ends_of_stops =[]
@@ -69,7 +66,7 @@ if __name__ == '__main__':
 
 
     pygame.mixer.init()
-    s.stop_song = False
+    s.play_song = False
     # Start continuous audio in a separate thread
     s.continuous_audio = ContinuousAudio()
     s.continuous_audio.start()

@@ -152,6 +152,7 @@ class EntrancePage(tk.Frame):
         s.robot.join()
         print("All threads have stopped.")
         self.quit()
+
     def on_click_therapist_chosen(self):
         s.screen.switch_frame(ID_therapist_fill_page)
 
@@ -241,8 +242,8 @@ class ID_patient_fill_page(tk.Frame):
                     patient_workbook_path= "Patients.xlsx"
                     s.chosen_patient_ID=user_id
                     s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "email")
-                    s.current_level_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "level")
-                    s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
+                    # s.current_level_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "level")
+                    # s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
                     s.rep= int(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "number of repetitions in each exercise"))
                     s.gender = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "gender")
                     s.rate = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "rate")
@@ -564,6 +565,7 @@ class PatientRegistration(tk.Frame):
         self.calibration_button.place(x=75, y=250)
 
 
+
         # Create a custom style for the OptionMenu
         style = ttk.Style()
         style.theme_use('clam')  # Choose a theme (e.g., 'clam', 'default', 'alt', 'classic')
@@ -603,16 +605,22 @@ class PatientRegistration(tk.Frame):
 
     def on_click_calibration(self):
         s.asked_for_measurement = True
+
+        # Remove existing calibration label if it exists
+        if hasattr(self, 'cal_lable') and self.cal_lable.winfo_exists():
+            self.cal_lable.destroy()
+
         self.cal_lable = tk.Label(
             self,
             text="עמוד מול המצלמה\nוהצמד ידיים לצידי הגוף",
             compound=tk.CENTER,
             highlightthickness=0,
-            justify=tk.RIGHT,  # Align text to the right
+            justify=tk.CENTER,  # Align text to the right
             fg="red",  # Set text color to red
             font=("Arial", 16, "bold")  # Set font to Arial, size 16, bold
         )
-        self.cal_lable.place(x=70, y=370)
+        self.cal_lable.place(x=30, y=370)
+        self.labels.append(self.cal_lable)
 
         # Load alternate image
         self.calibration_button_img_pressed = Image.open("Pictures//doing_calibration.jpg")
@@ -627,18 +635,31 @@ class PatientRegistration(tk.Frame):
         while s.average_dist is None:
             time.sleep(0.1)
 
+        # Determine the message based on whether calibration was successful
+        if s.average_dist == -1:  # Means it didn't recognize enough keypoints
+            new_text = 'הכיול לא צלח\nהקפד לעמוד מול המצלמה\nולחץ שנית על "כייל"'
+        else:
+            new_text = f"{str(round(s.average_dist, 2))} :מרחק בין הכתפיים"
 
-        self.cal_lable = tk.Label(
-            self,
-            text=f'{str(round(s.average_dist, 2))} :מרחק בין הכתפיים ',
-            compound=tk.CENTER,
-            highlightthickness=0,
-            justify=tk.RIGHT,  # Align text to the right
-            fg="red",  # Set text color to red
-            font=("Arial", 16, "bold")  # Set font to Arial, size 16, bold
-        )
-        self.cal_lable.place(x=20, y=450)
+        # Check if the label already exists
+        if hasattr(self, 'cal_lable') and self.cal_lable.winfo_exists():
+            # Update existing label text instead of creating a new one
+            self.cal_lable.config(text=new_text)
+        else:
+            # Create the label only if it doesn't exist
+            self.cal_lable = tk.Label(
+                self,
+                text=new_text,
+                compound=tk.CENTER,
+                highlightthickness=0,
+                justify=tk.CENTER,  # Align text to the right
+                fg="red",  # Set text color to red
+                font=("Arial", 16, "bold")  # Set font to Arial, size 16, bold
+            )
+            self.cal_lable.place(x=30, y=450)
+            self.labels.append(self.cal_lable)
 
+        # Restore the button image after calibration
         self.calibration_button.config(image=self.calibration_button_photo)
         self.calibration_button.image = self.calibration_button_photo
 
@@ -694,7 +715,7 @@ class PatientRegistration(tk.Frame):
             error = Image.open('Pictures//didnt_do_calibration.jpg')
             id_already_in_system = ImageTk.PhotoImage(error)
             self.label = tk.Label(self, image=id_already_in_system, compound=tk.CENTER, highlightthickness=0)
-            self.label.place(x=230, y=490)
+            self.label.place(x=20, y=490)
             self.label.image = id_already_in_system
             self.labels.append(self.label)
 
@@ -707,11 +728,11 @@ class PatientRegistration(tk.Frame):
                 'first name': str(self.first_name_entry.get()),
                 'last name': str(self.last_name_entry.get()),
                 'gender': self.gender,
-                'number of exercises': 0,
+                'number of exercises': 25,
                 'email': str(self.email_entry.get()),
                 'number of repetitions in each exercise' : 10,
                 'rate': "moderate",
-                "email of therapist": " ",
+                "email of therapist": "yaelszn@gmail.com",
                 'dist between shoulders': s.average_dist
             }
 
@@ -772,6 +793,7 @@ class PatientRegistration(tk.Frame):
         for header in selected_headers:
             #create a file for each execise
             Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Graphs/{header}")  # open graphs folder
+            Excel.create_and_open_folder(f"Patients/{s.chosen_patient_ID}/Tables/{header}")
 
     def delete_all_labels(self):
         for label in self.labels:
@@ -2199,15 +2221,15 @@ class ExercisePage(tk.Frame):
         # Start updating the label dynamically
         self.update_repetition_label()
 
-        skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
-        skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
-        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo,
-                                            command=lambda: self.on_click_skip_exercise(),
-                                            width=skip_explanation_button_img.width,
-                                            height=skip_explanation_button_img.height, bd=0,
-                                            highlightthickness=0)
-        skip_explanation_button.image = skip_explanation_button_photo
-        skip_explanation_button.place(x=30, y=500)
+        # skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
+        # skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
+        # skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo,
+        #                                     command=lambda: self.on_click_skip_exercise(),
+        #                                     width=skip_explanation_button_img.width,
+        #                                     height=skip_explanation_button_img.height, bd=0,
+        #                                     highlightthickness=0)
+        # skip_explanation_button.image = skip_explanation_button_photo
+        # skip_explanation_button.place(x=30, y=500)
 
     def on_click_skip_exercise(self):
         s.skip = True
@@ -2267,7 +2289,7 @@ class ExercisePage(tk.Frame):
     def stop_training_button_click(self):
         s.req_exercise = ""
         s.stop_requested=True
-        s.finish_workout= True
+        # s.finish_workout= True
         self.after_cancel(self.after_id)  # Cancel any pending after() calls
 
         print("Stop training button clicked")
@@ -3057,6 +3079,7 @@ def name_label(self, width= None, place_x= None):
                                                                   s.chosen_patient_ID, "last name")
     self.background_color = "#deeaf7"  # Set the background color to light blue
 
+
     if width is None:
         self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
                                compound=tk.CENTER,
@@ -3337,15 +3360,15 @@ class ExplanationPage(tk.Frame):
         skip_explanation_button.image = skip_explanation_button_photo
         skip_explanation_button.place(x=30, y=30)
 
-        skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
-        skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
-        skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo,
-                                            command=lambda: self.on_click_skip_exercise(),
-                                            width=skip_explanation_button_img.width,
-                                            height=skip_explanation_button_img.height, bd=0,
-                                            highlightthickness=0)
-        skip_explanation_button.image = skip_explanation_button_photo
-        skip_explanation_button.place(x=30, y=500)
+        # skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
+        # skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
+        # skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo,
+        #                                     command=lambda: self.on_click_skip_exercise(),
+        #                                     width=skip_explanation_button_img.width,
+        #                                     height=skip_explanation_button_img.height, bd=0,
+        #                                     highlightthickness=0)
+        # skip_explanation_button.image = skip_explanation_button_photo
+        # skip_explanation_button.place(x=30, y=500)
 
         if not (self.cap.isOpened()):
             print("Error opening video streams or files")
@@ -3476,6 +3499,7 @@ from PIL import Image, ImageTk
 class StartOfTraining(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
+        s.play_song = True
         image = Image.open('Pictures//hello.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
@@ -3684,6 +3708,7 @@ class ClappingPage(tk.Frame):
 ######################################################## Effort scale Page #################################################
 class EffortScale(tk.Frame):
     def __init__(self, master, **kwargs):
+        s.play_song = False
         tk.Frame.__init__(self, master, **kwargs)
         image = Image.open('Pictures//scale.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
@@ -3843,6 +3868,7 @@ class Repeat_training_or_not(tk.Frame):
     def on_click_repeat(self):
         s.another_training_requested= True
         s.choose_continue_or_not= True
+
         s.screen.switch_frame(Not_first_round_entrance_page)
 
     def on_click_not_repeat(self):
@@ -3853,7 +3879,6 @@ class Repeat_training_or_not(tk.Frame):
 class Not_first_round_entrance_page(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-
         image = Image.open('Pictures//not_first_round_entrance.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()

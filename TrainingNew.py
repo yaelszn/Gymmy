@@ -33,6 +33,8 @@ class Training(threading.Thread):
 
             self.finish_training()
 
+        print("Training Done")
+
 
     def training_session(self):
         while s.ex_in_training==[]:
@@ -57,6 +59,7 @@ class Training(threading.Thread):
                 ("notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side"),
             ]
 
+
             if not s.is_second_repetition_or_more and not s.finish_program:
                 if len(s.ex_in_training) <= 10:
                     # אם מספר התרגילים קטן או שווה ל-10, כל התרגילים נכנסים
@@ -70,24 +73,33 @@ class Training(threading.Thread):
                     count = 10  # מספר מקסימלי של תרגילים
 
                     while len(selected_exercises) < count:
+                        remaining_exercises = [ex for ex in s.ex_in_training if ex not in selected_exercises]
+
+                        # בדיקה אם נשארו רק זוגות
+                        remaining_pairs = [pair for pair in exercise_pairs if
+                                           pair[0] in remaining_exercises and pair[1] in remaining_exercises]
+                        only_pairs_left = len(remaining_pairs) > 0 and all(
+                            ex in sum(remaining_pairs, ()) for ex in remaining_exercises)
+
                         # בחירת תרגיל רנדומלי
-                        exercise = random.choice(s.ex_in_training)
+                        exercise = random.choice(remaining_exercises) if remaining_exercises else None
+                        if not exercise:
+                            break  # אין יותר תרגילים לבחור מהם
 
                         # מציאת הקטגוריה של התרגיל (המילה הראשונה)
                         category = next((key for key in exercise_counts.keys() if exercise.startswith(key)), None)
 
-                        # בדיקה אם התרגיל כבר נבחר או אם עבר את המגבלה של 4 תרגילים באותה קטגוריה
-                        if exercise not in selected_exercises and category and exercise_counts[category] < 4:
+                        if exercise not in selected_exercises and category:
                             pair_found = False
                             for pair in exercise_pairs:
                                 if exercise in pair:
                                     pair_found = True
-                                    # מציאת בן הזוג
                                     partner = pair[0] if exercise == pair[1] else pair[1]
 
-                                    # בדיקה אם בן הזוג כבר ברשימה או אם הזוג כבר נבחר
-                                    if partner not in selected_exercises and pair not in used_pairs and pairs_selected < 1:
-                                        # הוספת הזוג ונעילת הבחירה
+                                    # אם נשארו רק זוגות, נגמיש את ההגבלה של הזוגות
+                                    if partner not in selected_exercises and pair not in used_pairs and (
+                                            pairs_selected < 1 or only_pairs_left) and len(
+                                            selected_exercises) + 2 <= count:
                                         selected_exercises.append(exercise)
                                         selected_exercises.append(partner)
                                         exercise_counts[category] += 2  # עדכון הספירה לקטגוריה
@@ -96,11 +108,43 @@ class Training(threading.Thread):
                                     break
 
                             # אם התרגיל אינו חלק מזוג או שהזוג כבר נבחר, הוספה של תרגיל יחיד
-                            if not pair_found:
+                            if not pair_found and len(selected_exercises) < count:
                                 selected_exercises.append(exercise)
                                 exercise_counts[category] += 1  # עדכון הספירה לקטגוריה
 
-                    random.shuffle(selected_exercises)
+                        # אם נשאר מקום אחד והתרגילים שנותרו הם רק זוגות, נוסיף אחד מהם
+                        if len(selected_exercises) == count - 1 and only_pairs_left:
+                            for pair in remaining_pairs:
+                                if pair[0] not in selected_exercises:
+                                    selected_exercises.append(pair[0])
+                                    break
+
+                        # אם אין אופציות בגלל מגבלות קטגוריות, נכניס תרגילים בלי התחשבות במגבלות
+                        if len(selected_exercises) < count:
+                            remaining_exercises_no_limits = [ex for ex in s.ex_in_training if
+                                                             ex not in selected_exercises]
+                            if remaining_exercises_no_limits:
+                                selected_exercises.append(random.choice(remaining_exercises_no_limits))
+
+                    # Define the special pair
+                    special_pair = ("notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side")
+
+                    # Check if both exercises in the pair exist in selected_exercises
+                    if all(ex in selected_exercises for ex in special_pair):
+                        # Remove them from the list
+                        selected_exercises = [ex for ex in selected_exercises if ex not in special_pair]
+
+                        # Shuffle the remaining exercises
+                        random.shuffle(selected_exercises)
+
+                        # Choose a random index to insert the pair while keeping them together
+                        insert_index = random.randint(0,
+                                                      len(selected_exercises))  # Position where the pair will be inserted
+                        selected_exercises[insert_index:insert_index] = list(special_pair)  # Insert the pair
+                    else:
+                        # If the special pair is not both present, just shuffle normally
+                        random.shuffle(selected_exercises)
+
 
                     # שמירת התרגילים שנבחרו
                     s.ex_in_training = selected_exercises
@@ -111,6 +155,8 @@ class Training(threading.Thread):
 
                 while not s.explanation_over:
                     time.sleep(0.5)
+
+
 
             s.starts_and_ends_of_stops.append(datetime.now())
 
@@ -227,7 +273,6 @@ class Training(threading.Thread):
 
         s.finish_workout= True
         s.finished_effort= False
-        s.list_effort_each_exercise= {}
 
         s.screen.switch_frame(EffortScale)
 
@@ -281,6 +326,14 @@ class Training(threading.Thread):
             s.needs_first_position = False
             s.exercises_skipped= {}
             s.skip = False
+            s.additional_audio_playing= False
+            s.volume = 0.3
+            s.play_song = False
+            s.asked_for_measurement = False
+            s.explanation_over = False
+            s.gymmy_finished_demo = False
+            s.last_saying_time = datetime.now()
+            s.robot_counter= 0
 
         else:
             Excel.find_and_add_training_to_patient()
@@ -370,7 +423,6 @@ class Training(threading.Thread):
         s.camera_done = False
         s.robot_count = False
         #s.demo_finish = False
-        s.list_effort_each_exercise = {}
         s.ex_in_training = []
         # s.exercises_start=False
         s.waved_has_tool = True  # True just in order to go through the loop in Gymmy
@@ -396,7 +448,18 @@ class Training(threading.Thread):
         s.exercises_skipped = {}
         s.screen.switch_frame(EntrancePage)
         s.skip = False
-
+        s.additional_audio_playing = False
+        s.volume = 0.3
+        s.play_song = False
+        s.asked_for_measurement = False
+        s.average_dist = None
+        s.rep = 0
+        s.audio_path = None
+        s.rate = "moderate"
+        s.explanation_over = False
+        s.gymmy_finished_demo = False
+        s.last_saying_time = datetime.now()
+        s.robot_counter = 0
 
     #A function that checks how many points did the patient get in the current level, and if he is progressing to the next level
     def check_points_and_send_email(self):
@@ -476,10 +539,9 @@ if __name__ == "__main__":
     s.num_exercises_started = 0
     pygame.mixer.init()
     s.full_name = "יעל שניידמן"
-    s.stop_song = False
+    s.play_song = False
     s.explanation_over = False
     s.another_training_requested= False
-    s.explanation_over = False
     s.choose_continue_or_not = False
     s.email_of_patient = "yaelszn@gmail.com"
     s.number_of_pauses=0

@@ -196,7 +196,16 @@ def get_number_of_angles_in_exercise(exercise_value):
     return result.iloc[0] if not result.empty else None
 
 
+def get_equipment(exercise_value):
+    data = pd.read_excel("exercises_table.xlsx")
+    result = data.loc[data['exercise'] == exercise_value, 'equipment']
+    return result.iloc[0] if not result.empty else None
 
+
+def get_repetitions_per_count(exercise_value):
+    data = pd.read_excel("exercises_table.xlsx")
+    result = data.loc[data['exercise'] == exercise_value, 'counts after one or two repetitions']
+    return result.iloc[0] if not result.empty else None
 
 def one_angle_graph_and_table(exercise_name, list_joints):
     if (list_joints!=[]):

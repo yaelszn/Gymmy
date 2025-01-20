@@ -435,11 +435,13 @@ def data_creation_to_create_pdf():
         image_groups.append(table_images + graph_images)  # Add all images for the exercise
         # formatted_ex_name= reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
         exercise_name_reversed = reverse_hebrew_sequence_in_text(Excel.get_name_by_exercise(exercise_name))
-        exercise_label_reversed = reverse_hebrew_sequence_in_text(":שם התרגיל")
+        exercise_label_reversed = "שם התרגיל:"[::-1]
+        exercise_equipment = f"{Excel.get_equipment(exercise_name)}"[::-1]
+        equipment_label_reversed = "אביזר:"[::-1]
         successful_reps_label = reverse_hebrew_sequence_in_text(f":מספר חזרות מוצלחות")
 
         section_headers.append(
-            f"{str(s.ex_list[exercise_name])} {successful_reps_label}       {exercise_name_reversed} {exercise_label_reversed}")  # Section header for the exercise
+            f"{str(s.ex_list[exercise_name])} {successful_reps_label}        {exercise_equipment} {equipment_label_reversed}     {exercise_name_reversed} {exercise_label_reversed}")  # Section header for the exercise
 
     # Define the directory path where you want to save the PDF
     output_directory = f'Patients/{s.chosen_patient_ID}/PDF_to_Therapist_Email'
@@ -484,6 +486,8 @@ def create_pdf_preview(pdf_path):
 
     return image_io
 
+
+
 def email_to_physical_therapist():
     # Define the PDF file path
     pdf_file_path = create_pdf()
@@ -493,12 +497,22 @@ def email_to_physical_therapist():
 
     # Email configuration
     sender_email = 'yaelszn@gmail.com'
-    # Assuming receiver_emails is a string of comma-separated emails
     receiver_emails_str = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details",
                                                                  s.chosen_patient_ID, "email of therapist")
 
+    # Handle the case where receiver_emails_str is empty
+    if not receiver_emails_str or receiver_emails_str.strip() == "":
+        print("No recipient email found. Skipping email sending.")
+        return  # Exit function without sending email
+
     # Convert the comma-separated string into a list
-    receiver_emails = receiver_emails_str.split(',')  # Add all recipient emails here
+    receiver_emails = [email.strip() for email in receiver_emails_str.split(',') if email.strip()]
+
+    # Email should not be sent if there are no valid recipients
+    if not receiver_emails:
+        print("No valid recipient emails found. Skipping email sending.")
+        return
+
     password = 'diyf cxzc tifj sotp'
 
     try:
@@ -572,6 +586,7 @@ def email_to_physical_therapist():
 
     # Continue execution even if email sending fails
     print("Proceeding with the next steps of the program.")
+
 
 
 if __name__ == '__main__':
