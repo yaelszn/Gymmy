@@ -441,7 +441,7 @@ def data_creation_to_create_pdf():
         successful_reps_label = reverse_hebrew_sequence_in_text(f":מספר חזרות מוצלחות")
 
         section_headers.append(
-            f"{str(s.ex_list[exercise_name])} {successful_reps_label}        {exercise_equipment} {equipment_label_reversed}     {exercise_name_reversed} {exercise_label_reversed}")  # Section header for the exercise
+            f"{str(s.ex_list[exercise_name])} {successful_reps_label}   {exercise_equipment} {equipment_label_reversed}   {exercise_name_reversed} {exercise_label_reversed}")  # Section header for the exercise
 
     # Define the directory path where you want to save the PDF
     output_directory = f'Patients/{s.chosen_patient_ID}/PDF_to_Therapist_Email'

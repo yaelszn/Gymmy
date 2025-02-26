@@ -54,7 +54,6 @@ class Gymmy(threading.Thread):
                     print("ROBOT: Exercise ", ex, " start")
                     self.exercise_demo(ex)
                     print("ROBOT: Exercise ", ex, " done")
-                    time.sleep(2)
 
                     s.req_exercise = ""
                     s.gymmy_done = True
@@ -74,18 +73,22 @@ class Gymmy(threading.Thread):
             #s.demo_finish=True
             self.hello_waving()
         else:
+            i = 0
             # self.faster_sayings = ['pick_up_pace', 'faster']
             if self.first_coordination_ex == True:
                 getattr(self, ex)("demo", "slow")
 
-            s.gymmy_finished_demo = True
-            while not s.explanation_over:
-                time.sleep(0.00001)
+                while not s.explanation_over:
+                    time.sleep(0.00001)
 
-            time.sleep(get_wav_duration(f'{str(s.rep)}_times'))
+                s.gymmy_finished_demo = True
+
+                time.sleep(get_wav_duration(f'{str(s.rep)}_times')+1)
+
             s.needs_first_position = False
+            s.gymmy_finished_demo = True
 
-            i = 0
+            # time.sleep(2)
             while i < s.rep:
                 if s.finish_program:
                     break
@@ -265,8 +268,7 @@ class Gymmy(threading.Thread):
             self.gymmy.l_arm_z.goto_position(0, 2, wait=False)
             self.gymmy.r_arm_z.goto_position(0, 2, wait=False)
             self.gymmy.l_shoulder_x.goto_position(10, 2, wait=False)
-            self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=False)
-            time.sleep(1)
+            self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=True)
             self.gymmy.l_shoulder_y.goto_position(0, 2, wait=False)
             self.gymmy.r_shoulder_y.goto_position(0, 2, wait=False)
 
@@ -337,8 +339,7 @@ class Gymmy(threading.Thread):
             self.gymmy.l_arm_z.goto_position(0, 2, wait=False)
             self.gymmy.r_arm_z.goto_position(0, 2, wait=False)
             self.gymmy.l_shoulder_x.goto_position(10, 2, wait=False)
-            self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=False)
-            time.sleep(1)
+            self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=True)
             self.gymmy.l_shoulder_y.goto_position(0, 2, wait=False)
             self.gymmy.r_shoulder_y.goto_position(0, 2, wait=False)
 
@@ -2149,23 +2150,38 @@ class Gymmy(threading.Thread):
     # EX21
     def notool_right_hand_up_and_bend(self, i, rate):
         if i == "demo":
-            self.gymmy.l_arm_z.goto_position(85, 1, wait=True)
-            time.sleep(3)
-            self.gymmy.l_shoulder_x.goto_position(150, 2, wait=False)
-            time.sleep(5)
+            if not s.explanation_over:
+                self.gymmy.l_arm_z.goto_position(85, 1, wait=True)
+                time.sleep(1)
+            if not s.explanation_over:
+                time.sleep(2)
 
-            self.gymmy.r_shoulder_x.goto_position(-60, 1, wait=False)
-            self.gymmy.r_elbow_y.goto_position(-60, 1, wait=False)
-            self.gymmy.l_elbow_y.goto_position(-20, 1.75, wait=False)
-            self.gymmy.bust_x.goto_position(30, 1.75, wait=True)
-            time.sleep(3)
-            self.gymmy.l_shoulder_x.goto_position(20, 2, wait=False)
-            self.gymmy.bust_x.goto_position(0, 1.75, wait=False)
-            self.gymmy.r_shoulder_x.goto_position(-10, 1.75, wait=False)
-            self.gymmy.l_elbow_y.goto_position(0, 1.75, wait=False)
-            time.sleep(0.5)
-            self.gymmy.r_elbow_y.goto_position(0, 1.75, wait=True)
-            time.sleep(1.5)
+            if not s.explanation_over:
+                self.gymmy.l_shoulder_x.goto_position(150, 2, wait=False)
+                time.sleep(1)
+            if not s.explanation_over:
+                time.sleep(2)
+            if not s.explanation_over:
+                time.sleep(2)
+
+            if not s.explanation_over:
+                self.gymmy.r_shoulder_x.goto_position(-40, 1, wait=False)
+                self.gymmy.r_elbow_y.goto_position(-40, 1, wait=False)
+                self.gymmy.l_elbow_y.goto_position(-20, 1.75, wait=False)
+                self.gymmy.bust_x.goto_position(30, 1.75, wait=True)
+                time.sleep(1)
+            if not s.explanation_over:
+                    time.sleep(2)
+
+            if not s.explanation_over:
+                self.gymmy.l_shoulder_x.goto_position(20, 2, wait=False)
+                self.gymmy.bust_x.goto_position(0, 1.75, wait=False)
+                self.gymmy.r_shoulder_x.goto_position(-10, 1.75, wait=False)
+                self.gymmy.l_elbow_y.goto_position(0, 1.75, wait=False)
+                time.sleep(0.5)
+            if not s.explanation_over:
+                self.gymmy.r_elbow_y.goto_position(0, 1.75, wait=True)
+                time.sleep(1.5)
 
             # init
             self.gymmy.bust_x.goto_position(0, 2, wait=True)
@@ -2181,14 +2197,14 @@ class Gymmy(threading.Thread):
 
             if (rate=="fast"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-60, 0.5, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(-60, 0.5, wait=False)
+                    self.gymmy.r_shoulder_x.goto_position(-40, 0.5, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(-40, 0.5, wait=False)
                     self.gymmy.l_elbow_y.goto_position(-20, 1, wait=False)
-                    self.gymmy.l_shoulder_x.goto_position(150, 1.5, wait=False)
+                    self.gymmy.l_shoulder_x.goto_position(150, 2, wait=False)
                     self.gymmy.bust_x.goto_position(30, 1, wait=True)
                     time.sleep(0.5)
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(20, 1.5, wait=False)
+                    self.gymmy.l_shoulder_x.goto_position(20, 2, wait=False)
                     self.gymmy.bust_x.goto_position(0, 1, wait=False)
                     self.gymmy.r_shoulder_x.goto_position(-10, 1, wait=False)
                     self.gymmy.l_elbow_y.goto_position(0, 1, wait=False)
@@ -2199,8 +2215,8 @@ class Gymmy(threading.Thread):
 
             elif (rate == "moderate"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-60, 1, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(-60, 1, wait=False)
+                    self.gymmy.r_shoulder_x.goto_position(-40, 1, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(-40, 1, wait=False)
                     self.gymmy.l_elbow_y.goto_position(-20, 1.5, wait=False)
                     self.gymmy.l_shoulder_x.goto_position(150, 2, wait=False)
                     self.gymmy.bust_x.goto_position(30, 1.5, wait=True)
@@ -2217,8 +2233,8 @@ class Gymmy(threading.Thread):
 
             else:
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-60, 1, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(-60, 1, wait=False)
+                    self.gymmy.r_shoulder_x.goto_position(-40, 1, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(-40, 1, wait=False)
                     self.gymmy.l_elbow_y.goto_position(-20, 1.75, wait=False)
                     self.gymmy.l_shoulder_x.goto_position(150, 2, wait=False)
                     self.gymmy.bust_x.goto_position(30, 1.75, wait=True)
@@ -2248,7 +2264,46 @@ class Gymmy(threading.Thread):
     # EX22
     def notool_left_hand_up_and_bend(self, i, rate):
         if i == "demo":
-            print("")
+            if not s.explanation_over:
+                self.gymmy.r_arm_z.goto_position(-85, 1, wait=True)
+                time.sleep(1)
+            if not s.explanation_over:
+                time.sleep(2)
+
+            if not s.explanation_over:
+                self.gymmy.r_shoulder_x.goto_position(-150, 2, wait=False)
+                time.sleep(1)
+            if not s.explanation_over:
+                time.sleep(2)
+            if not s.explanation_over:
+                time.sleep(2)
+
+            if not s.explanation_over:
+                self.gymmy.l_shoulder_x.goto_position(40, 1, wait=False)
+                self.gymmy.l_elbow_y.goto_position(-40, 1, wait=False)
+                self.gymmy.r_elbow_y.goto_position(-20, 1.75, wait=False)
+                self.gymmy.bust_x.goto_position(-30, 1.75, wait=True)
+                time.sleep(1)
+            if not s.explanation_over:
+                time.sleep(2)
+
+            if not s.explanation_over:
+                self.gymmy.r_shoulder_x.goto_position(-20, 2, wait=False)
+                self.gymmy.bust_x.goto_position(0, 1.75, wait=False)
+                self.gymmy.l_shoulder_x.goto_position(10, 1.75, wait=False)
+                self.gymmy.r_elbow_y.goto_position(0, 1.75, wait=False)
+                time.sleep(0.5)
+            if not s.explanation_over:
+                self.gymmy.l_elbow_y.goto_position(0, 1.75, wait=True)
+                time.sleep(1.5)
+
+            # init
+            self.gymmy.bust_x.goto_position(0, 2, wait=True)
+            self.gymmy.l_elbow_y.goto_position(0, 2, wait=False)
+            self.gymmy.r_elbow_y.goto_position(0, 2, wait=False)
+            self.gymmy.r_shoulder_x.goto_position(-10, 2, wait=False)
+            self.gymmy.l_shoulder_x.goto_position(10, 2, wait=False)
+            self.gymmy.r_arm_z.goto_position(0, 2, wait=True)
 
 
         else:
@@ -2257,8 +2312,8 @@ class Gymmy(threading.Thread):
 
             if (rate=="fast"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(60, 0.5, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(-60, 0.5, wait=False)
+                    self.gymmy.l_shoulder_x.goto_position(40, 0.5, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(-40, 0.5, wait=False)
                     self.gymmy.r_elbow_y.goto_position(-20, 1, wait=False)
                     self.gymmy.r_shoulder_x.goto_position(-150, 1.5, wait=False)
                     self.gymmy.bust_x.goto_position(-30, 1, wait=True)
@@ -2275,8 +2330,8 @@ class Gymmy(threading.Thread):
 
             elif (rate == "moderate"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(60, 1, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(-60, 1, wait=False)
+                    self.gymmy.l_shoulder_x.goto_position(40, 1, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(-40, 1, wait=False)
                     self.gymmy.r_elbow_y.goto_position(-20, 1.5, wait=False)
                     self.gymmy.r_shoulder_x.goto_position(-150, 2, wait=False)
                     self.gymmy.bust_x.goto_position(-30, 1.5, wait=True)
@@ -2293,8 +2348,8 @@ class Gymmy(threading.Thread):
 
             else:
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(60, 1, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(-60, 1, wait=False)
+                    self.gymmy.l_shoulder_x.goto_position(40, 1, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(-40, 1, wait=False)
                     self.gymmy.r_elbow_y.goto_position(-20, 1.75, wait=False)
                     self.gymmy.r_shoulder_x.goto_position(-150, 2, wait=False)
                     self.gymmy.bust_x.goto_position(-30, 1.75, wait=True)
@@ -2537,34 +2592,34 @@ class Gymmy(threading.Thread):
 
             if (rate == "fast"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-10, 1, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(-135, 1, wait=True)
-                    time.sleep(1)
+                    self.gymmy.r_shoulder_x.goto_position(-10, 0.75, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(-135, 0.75, wait=True)
+                    time.sleep(0.25)
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-100, 1, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(0, 1, wait=True)
-                    time.sleep(1)
+                    self.gymmy.r_shoulder_x.goto_position(-100, 0.75, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(0, 0.75, wait=True)
+                    time.sleep(0.25)
 
             elif (rate == "moderate"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-10, 1.25, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(-135, 1.25, wait=True)
-                    time.sleep(1)
+                    self.gymmy.r_shoulder_x.goto_position(-10, 1, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(-135, 1, wait=True)
+                    time.sleep(0.25)
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-100, 1.25, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(0, 1.25, wait=True)
-                    time.sleep(1)
+                    self.gymmy.r_shoulder_x.goto_position(-100, 1, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(0, 1, wait=True)
+                    time.sleep(0.25)
 
 
             else:
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-10, 1.75, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(-135, 1.75, wait=True)
-                    time.sleep(1)
+                    self.gymmy.r_shoulder_x.goto_position(-10, 1.5, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(-135, 1.5, wait=True)
+                    time.sleep(0.5)
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.r_shoulder_x.goto_position(-100, 1.75, wait=False)
-                    self.gymmy.l_elbow_y.goto_position(0, 1.75, wait=True)
-                    time.sleep(1)
+                    self.gymmy.r_shoulder_x.goto_position(-100, 1.5, wait=False)
+                    self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=True)
+                    time.sleep(0.5)
 
 
             if i == (s.rep - 1) or s.did_training_paused or s.stop_requested:
@@ -2615,34 +2670,34 @@ class Gymmy(threading.Thread):
 
             if (rate == "fast"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(10, 1, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(-135, 1, wait=True)
-                    time.sleep(1)
+                    self.gymmy.l_shoulder_x.goto_position(10, 0.75, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(-135, 0.75, wait=True)
+                    time.sleep(0.25)
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(100, 1, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(0, 1, wait=True)
-                    time.sleep(1)
+                    self.gymmy.l_shoulder_x.goto_position(100, 0.75, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(0, 0.75, wait=True)
+                    time.sleep(0.25)
 
             elif (rate == "moderate"):
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(10, 1.25, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(-135, 1.25, wait=True)
-                    time.sleep(1)
+                    self.gymmy.l_shoulder_x.goto_position(10, 1, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(-135, 1, wait=True)
+                    time.sleep(0.25)
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(100, 1.25, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(0, 1.25, wait=True)
-                    time.sleep(1)
+                    self.gymmy.l_shoulder_x.goto_position(100, 1, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(0, 1, wait=True)
+                    time.sleep(0.25)
 
 
             else:
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(10, 1.75, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(-135, 1.75, wait=True)
-                    time.sleep(1)
+                    self.gymmy.l_shoulder_x.goto_position(10, 1.5, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(-135, 1.5, wait=True)
+                    time.sleep(0.5)
                 if not s.did_training_paused and not s.stop_requested:
-                    self.gymmy.l_shoulder_x.goto_position(100, 1.75, wait=False)
-                    self.gymmy.r_elbow_y.goto_position(0, 1.75, wait=True)
-                    time.sleep(1)
+                    self.gymmy.l_shoulder_x.goto_position(100, 1.5, wait=False)
+                    self.gymmy.r_elbow_y.goto_position(0, 1.5, wait=True)
+                    time.sleep(0.5)
 
 
             if i == (s.rep - 1) or s.did_training_paused or s.stop_requested:
@@ -2690,7 +2745,7 @@ if __name__ == "__main__":
     #s.req_exercise = "weights_right_hand_to_side_left_up"
     #s.req_exercise = "band_open_arms"
     #s.req_exercise = "weights_abduction"
-    s.req_exercise = "notool_right_hand_up_and_bend"
+    s.req_exercise = "notool_left_hand_up_and_bend"
     s.rate="moderate"
     s.additional_audio_playing = False
     s.volume = 0

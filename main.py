@@ -17,7 +17,7 @@ if __name__ == '__main__':
     s.exercises_skipped = {}
     s.skip = False
     s.additional_audio_playing = False
-    s.volume = 0.3
+    s.volume = 0
     # Training variables initialization
     s.ball_exercises_number = 5
     s.band_exercises_number = 5

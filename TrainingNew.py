@@ -36,6 +36,88 @@ class Training(threading.Thread):
         print("Training Done")
 
 
+    def select_exercises(self, ex_in_training, exercise_pairs, max_exercises=10, max_per_category=4):
+        """
+        Selects up to `max_exercises` exercises while ensuring:
+        - If there are 10 or fewer exercises, all are included.
+        - Exercises are categorized (ball, band, stick, weights, notool).
+        - If an exercise is in a pair and there's room, it has a 50% chance to include its pair.
+        - Maximum of 4 exercises per category unless only full categories remain.
+        - If only exercise pairs remain and exactly one more is needed, one is chosen randomly.
+        - The selected list is shuffled, but a specific pair remains together.
+        """
+
+        if len(ex_in_training) <= max_exercises:
+            return ex_in_training  # If 10 or fewer exercises exist, use all
+
+        selected_exercises = []
+        exercise_counts = {category: 0 for category in ["ball", "band", "stick", "weights", "notool"]}
+        used_pairs = set()
+
+        while len(selected_exercises) < max_exercises:
+            remaining_exercises = [ex for ex in ex_in_training if ex not in selected_exercises]
+            if not remaining_exercises:
+                break  # Stop if no exercises remain
+
+            # Identify remaining pairs
+            remaining_pairs = [pair for pair in exercise_pairs if pair[0] in remaining_exercises and pair[1] in remaining_exercises]
+            only_pairs_left = len(remaining_pairs) > 0 and all(ex in sum(remaining_pairs, ()) for ex in remaining_exercises)
+
+            # Select a random exercise
+            exercise = random.choice(remaining_exercises)
+
+            # Determine its category
+            category = next((key for key in exercise_counts.keys() if exercise.startswith(key)), None)
+
+            if category:
+                pair_found = False
+                for pair in exercise_pairs:
+                    if exercise in pair:
+                        partner = pair[0] if exercise == pair[1] else pair[1]
+
+                        if partner in remaining_exercises and pair not in used_pairs:
+                            # Randomly decide whether to include both or none if there's room
+                            if len(selected_exercises) + 2 <= max_exercises and random.choice([True, False]):
+                                selected_exercises.extend(pair)
+                                exercise_counts[category] += 2
+                                used_pairs.add(pair)
+                            pair_found = True
+                        break
+
+                # If no pair was added and the category is not full, add a single exercise
+                if not pair_found and exercise_counts[category] < max_per_category:
+                    selected_exercises.append(exercise)
+                    exercise_counts[category] += 1
+
+            # If all available exercises belong to full categories, allow adding extra ones
+            if len(selected_exercises) < max_exercises:
+                remaining_exercises_no_limits = [ex for ex in ex_in_training if ex not in selected_exercises]
+                if remaining_exercises_no_limits:
+                    selected_exercises.append(random.choice(remaining_exercises_no_limits))
+
+        # If only pairs remain and exactly one more exercise is needed, add one from a pair
+        if len(selected_exercises) == max_exercises - 1 and only_pairs_left:
+            random_pair = random.choice(remaining_pairs)
+            selected_exercises.append(random.choice(random_pair))
+
+        # **Shuffle but keep special pair together**
+        special_pair = ("notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side")
+
+        if all(ex in selected_exercises for ex in special_pair):
+            # Remove special pair from list before shuffling
+            selected_exercises = [ex for ex in selected_exercises if ex not in special_pair]
+            random.shuffle(selected_exercises)  # Shuffle the remaining exercises
+
+            # Insert the special pair at a random position while keeping them together
+            insert_index = random.randint(0, len(selected_exercises))
+            selected_exercises[insert_index:insert_index] = list(special_pair)  # Insert the pair back together
+        else:
+            # If the special pair is not both present, just shuffle normally
+            random.shuffle(selected_exercises)
+
+        return selected_exercises
+
+
     def training_session(self):
         while s.ex_in_training==[]:
             time.sleep(0.1)
@@ -61,97 +143,15 @@ class Training(threading.Thread):
 
 
             if not s.is_second_repetition_or_more and not s.finish_program:
-                if len(s.ex_in_training) <= 10:
-                    # אם מספר התרגילים קטן או שווה ל-10, כל התרגילים נכנסים
-                    s.ex_in_training = s.ex_in_training
-                else:
-                    selected_exercises = []
-                    exercise_counts = {"ball": 0, "weights": 0, "stick": 0, "band": 0,
-                                       "notool": 0}  # ספירה של תרגילים לפי קטגוריות
-                    pairs_selected = 0  # ספירת מספר הזוגות שנבחרו
-                    used_pairs = set()  # סט למעקב אחר זוגות שכבר נבחרו
-                    count = 10  # מספר מקסימלי של תרגילים
 
-                    while len(selected_exercises) < count:
-                        remaining_exercises = [ex for ex in s.ex_in_training if ex not in selected_exercises]
-
-                        # בדיקה אם נשארו רק זוגות
-                        remaining_pairs = [pair for pair in exercise_pairs if
-                                           pair[0] in remaining_exercises and pair[1] in remaining_exercises]
-                        only_pairs_left = len(remaining_pairs) > 0 and all(
-                            ex in sum(remaining_pairs, ()) for ex in remaining_exercises)
-
-                        # בחירת תרגיל רנדומלי
-                        exercise = random.choice(remaining_exercises) if remaining_exercises else None
-                        if not exercise:
-                            break  # אין יותר תרגילים לבחור מהם
-
-                        # מציאת הקטגוריה של התרגיל (המילה הראשונה)
-                        category = next((key for key in exercise_counts.keys() if exercise.startswith(key)), None)
-
-                        if exercise not in selected_exercises and category:
-                            pair_found = False
-                            for pair in exercise_pairs:
-                                if exercise in pair:
-                                    pair_found = True
-                                    partner = pair[0] if exercise == pair[1] else pair[1]
-
-                                    # אם נשארו רק זוגות, נגמיש את ההגבלה של הזוגות
-                                    if partner not in selected_exercises and pair not in used_pairs and (
-                                            pairs_selected < 1 or only_pairs_left) and len(
-                                            selected_exercises) + 2 <= count:
-                                        selected_exercises.append(exercise)
-                                        selected_exercises.append(partner)
-                                        exercise_counts[category] += 2  # עדכון הספירה לקטגוריה
-                                        used_pairs.add(pair)
-                                        pairs_selected += 1  # עדכון ספירת הזוגות
-                                    break
-
-                            # אם התרגיל אינו חלק מזוג או שהזוג כבר נבחר, הוספה של תרגיל יחיד
-                            if not pair_found and len(selected_exercises) < count:
-                                selected_exercises.append(exercise)
-                                exercise_counts[category] += 1  # עדכון הספירה לקטגוריה
-
-                        # אם נשאר מקום אחד והתרגילים שנותרו הם רק זוגות, נוסיף אחד מהם
-                        if len(selected_exercises) == count - 1 and only_pairs_left:
-                            for pair in remaining_pairs:
-                                if pair[0] not in selected_exercises:
-                                    selected_exercises.append(pair[0])
-                                    break
-
-                        # אם אין אופציות בגלל מגבלות קטגוריות, נכניס תרגילים בלי התחשבות במגבלות
-                        if len(selected_exercises) < count:
-                            remaining_exercises_no_limits = [ex for ex in s.ex_in_training if
-                                                             ex not in selected_exercises]
-                            if remaining_exercises_no_limits:
-                                selected_exercises.append(random.choice(remaining_exercises_no_limits))
-
-                    # Define the special pair
-                    special_pair = ("notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side")
-
-                    # Check if both exercises in the pair exist in selected_exercises
-                    if all(ex in selected_exercises for ex in special_pair):
-                        # Remove them from the list
-                        selected_exercises = [ex for ex in selected_exercises if ex not in special_pair]
-
-                        # Shuffle the remaining exercises
-                        random.shuffle(selected_exercises)
-
-                        # Choose a random index to insert the pair while keeping them together
-                        insert_index = random.randint(0,
-                                                      len(selected_exercises))  # Position where the pair will be inserted
-                        selected_exercises[insert_index:insert_index] = list(special_pair)  # Insert the pair
-                    else:
-                        # If the special pair is not both present, just shuffle normally
-                        random.shuffle(selected_exercises)
-
+                selected_exercises= self.select_exercises(s.ex_in_training, exercise_pairs)
 
                     # שמירת התרגילים שנבחרו
-                    s.ex_in_training = selected_exercises
+                s.ex_in_training = selected_exercises
 
-                    # הדפסת התרגילים שנבחרו
-                    for item in selected_exercises:
-                        print(item)
+                # הדפסת התרגילים שנבחרו
+                for item in selected_exercises:
+                    print(item)
 
                 while not s.explanation_over:
                     time.sleep(0.5)
@@ -176,7 +176,6 @@ class Training(threading.Thread):
                 random.shuffle(exercises_in_category)
                 s.waved_has_tool= False
                 if exercises_in_category!=[]:
-                    time.sleep(1)
                     self.show_screen_category(i)
                     while not s.waved_has_tool:
                          time.sleep(0.0001)
@@ -193,7 +192,6 @@ class Training(threading.Thread):
                         exercise = e
                         s.number_of_repetitions_in_training =0
                         s.max_repetitions_in_training =0
-                        time.sleep(1)
                         s.num_exercises_started +=1
                         self.run_exercise(e)
 
@@ -348,8 +346,7 @@ class Training(threading.Thread):
 
     def end_exercise(self):
         s.screen.switch_frame(Number_of_good_repetitions_page)
-        time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep"))
-        time.sleep(2)
+        time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep")+1)
 
 
 
@@ -364,6 +361,7 @@ class Training(threading.Thread):
 
 
     def run_exercise(self, name):
+        s.robot_counter = 0
         s.success_exercise = False
         s.patient_repetitions_counting_in_exercise = 0
 
@@ -373,31 +371,34 @@ class Training(threading.Thread):
 
         if self.first_coordination_ex:
             s.screen.switch_frame(ExplanationPage, exercise= name)
-            if name == "notool_right_bend_left_up_from_side" or name == "notool_left_bend_right_up_from_side":
-                name = "notool_arm_bend_arm_up_from_side"
+            # if name == "notool_right_bend_left_up_from_side" or name == "notool_left_bend_right_up_from_side":
+            #     name = "notool_arm_bend_arm_up_from_side"
             # time.sleep(get_wav_duration(name)) #wait the time of the audio
 
             while not s.explanation_over or not s.gymmy_finished_demo:
                 time.sleep(0.001)
 
             say(str(f'{s.rep}_times'))
-            time.sleep(get_wav_duration(f'{str(s.rep)}_times')+1)
+            time.sleep(get_wav_duration(f'{str(s.rep)}_times')+0.5)
+            # name = s.req_exercise
+            s.screen.switch_frame(ExercisePage)
 
         else:
+            s.screen.switch_frame(ExercisePage)
             say("notool_arm_bend_arm_up_from_side_continue")
-            say(str(f'{s.rep}_times'))
-            time.sleep(get_wav_duration(f'{str(s.rep)}_times')+1)
+            time.sleep(get_wav_duration("notool_arm_bend_arm_up_from_side_continue") + 0.5)
+            # say(str(f'{s.rep}_times'))
+            # time.sleep(get_wav_duration(f'{str(s.rep)}_times')+0.5)
             s.explanation_over = True
 
-        name = s.req_exercise
-        s.screen.switch_frame(ExercisePage)
+
+
         while s.req_exercise == name:
             time.sleep(0.00000001)
 
 
         print("TRAINING: Exercise ", name, " done")
         s.gymmy_finished_demo = False
-        time.sleep(3)
         # time.sleep(1)
 
 
@@ -493,7 +494,7 @@ class Training(threading.Thread):
             Email.email_sending_not_level_up()
 
 if __name__ == "__main__":
-    s.gender= "Male"
+    s.gender= "Female"
     s.audio_path = f'audio files/Hebrew/{s.gender}/'
     general_sayings = Training.get_motivation_file_names(Training)
 
@@ -507,12 +508,13 @@ if __name__ == "__main__":
     s.asked_for_measurement= False
     s.rep = 5
 
-
+    s.ex_in_training = ["ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
+        # ["band_open_arms",  "band_up_and_lean", "band_open_arms_and_up"]
     #s.ex_in_training =  ["ball_raise_arms_above_head"]
-    s.ex_in_training = ["ball_bend_elbows"]
-    # s.ex_in_training= ["band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]
+    # s.ex_in_training = ["notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side"]
+    # s.ex_in_training= [, "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]
                     #"band_open_arms", "band_open_arms_and_up", "band_up_and_lean", "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"
-    #["ball_bend_elbows" , "ball_raise_arms_above_head","ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"]
+    #
                     # "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head", "stick_switch", "stick_up_and_lean"
                     # weights_right_hand_up_and_bend, weights_left_hand_up_and_bend, weights_open_arms_and_forward, weights_abduction
     # notool_hands_behind_and_lean
@@ -522,7 +524,7 @@ if __name__ == "__main__":
     # notool_right_bend_left_up_from_side
     # notool_left_bend_right_up_from_side
 
-    s.chosen_patient_ID="314808981"
+    s.chosen_patient_ID="3333"
     s.req_exercise=""
     s.ex_list = {}
     s.dist_between_shoulders = 280

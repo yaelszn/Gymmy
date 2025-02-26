@@ -36,7 +36,7 @@ class PyZedWrapper(threading.Thread):
         body_params.enable_tracking = True
         body_params.enable_body_fitting = True
         body_params.body_format = sl.BODY_FORMAT.BODY_18
-        # body_params.prediction_timeout_s = 0.5
+        body_params.prediction_timeout_s = 0.2
         # body_params.allow_reduced_precision_inference = True
 
         # Set runtime parameters
@@ -64,7 +64,7 @@ class PyZedWrapper(threading.Thread):
 
         while self.zed.is_opened() and not s.finish_program:
             if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
-                time.sleep(0.0001)
+                time.sleep(0.001)
                 # Retrieve the left view image for display
                 # self.zed.retrieve_image(image, sl.VIEW.LEFT)
                 # frame = image.get_data()
