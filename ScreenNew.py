@@ -2266,6 +2266,11 @@ class ExercisePage(tk.Frame):
         # else:
         #     s.was_in_opposite_limit = True
 
+        self.image_direction = None
+
+        self.direction_image = None  # Store image reference to prevent garbage collection
+
+
         # Start GUI update loop
         self.after(1, self.update_exercise())
 
@@ -2277,6 +2282,7 @@ class ExercisePage(tk.Frame):
 
         # Set new position to center the label
         self.comment_label.place(x=(canvas_width - label_width) // 2, y=250)
+
 
     def update_bar(self, keypoints):
         """Updates the bar based on the selected exercise type."""
@@ -2340,6 +2346,47 @@ class ExercisePage(tk.Frame):
             # elif not s.all_rules_ok:
             #     self.start_of_sec = None
 
+            # Update direction arrow on the Canvas
+            if s.direction is None:
+                if hasattr(self, "direction_canvas_image"):
+                    self.canvas.delete(self.direction_canvas_image)  # Remove previous image
+                self.image_direction = None
+
+            elif s.direction == self.image_direction:
+                pass  # Skip update if the direction hasn't changed
+
+            else:
+                image_path = f"Pictures/{self.chosen_subject}/{s.direction}_arrow.png"
+                try:
+                    # Convert white/near-white to transparent if needed
+                    transparent_image = convert_white_to_transparent(image_path, tolerance=2)
+
+                    # Convert image for Tkinter
+                    self.direction_image = ImageTk.PhotoImage(transparent_image)
+
+                    # Remove previous arrow if it exists
+                    if hasattr(self, "direction_canvas_image"):
+                        self.canvas.delete(self.direction_canvas_image)
+
+                    # Ensure Canvas size updates before centering
+                    self.update_idletasks()
+
+
+                    # Calculate correct x position to center at x=400
+                    new_x = 350
+
+                    # Add new arrow image to the Canvas (centered at x=400)
+                    self.direction_canvas_image = self.canvas.create_image(
+                        new_x,  # Center X
+                        75,  # Y position (adjust as needed)
+                        image=self.direction_image,
+                        anchor="center"
+                    )
+
+                    self.image_direction = s.direction  # Store current direction to avoid redundant updates
+
+                except Exception as e:
+                    print(f"Error loading image {image_path}: {e}")
 
 
             if self.count == s.patient_repetitions_counting_in_exercise:
@@ -2355,9 +2402,6 @@ class ExercisePage(tk.Frame):
 
                 # Load the image with transparent background into Tkinter
                 exercise_photo = ImageTk.PhotoImage(transparent_image)
-
-                # Get image dimensions (corrected)
-                img_width, img_height = transparent_image.width, transparent_image.height
 
                 # Place the image at the exact center
                 self.canvas.create_image(
@@ -2675,10 +2719,10 @@ class ExercisePage(tk.Frame):
                 if not information_angle[3] <= angle <= information_angle[4]:
                     if angle <= information_angle[3]:
                         self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
-                                                       "smaller", s.side)
+                                                       "smaller", s.direction)
                     else:
                         self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
-                                                       "bigger", s.side)
+                                                       "bigger", s.direction)
 
             if self.comment is not None:
                 print(self.comment)
@@ -2694,19 +2738,33 @@ class ExercisePage(tk.Frame):
         comments = []
 
 
-        if not s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
+        if not s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]:
             if cleaned_joint_2 == "elbow":
                 if biggerORsmaller == "smaller":
-                    comments.append("יישר יותר את המרפקים")
+                    comments.append("ישר יותר את המרפקים")
                 else:
                     comments.append("כופף יותר את המרפקים")
+
+        elif s.req_exercise == "notool_right_hand_up_and_bend":
+            if cleaned_joint_2 == "elbow":
+                if biggerORsmaller == "smaller":
+                    comments.append("ישר יותר את יד ימין")
+                else:
+                    comments.append("כופף מעט את יד ימין")
+
+        elif s.req_exercise == "notool_left_hand_up_and_bend":
+            if cleaned_joint_2 == "elbow":
+                if biggerORsmaller == "smaller":
+                    comments.append("ישר יותר את יד שמאל")
+                else:
+                    comments.append("כופף מעט את יד שמאל")
 
 
         else:
             if s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
                 if joint2 == "L_elbow":
                     if biggerORsmaller == "smaller":
-                        comments.append("יישר יותר את יד שמאל")
+                        comments.append("ישר יותר את יד שמאל")
                     else:
                        comments.append("כופף מעט את יד שמאל")
 
@@ -2726,13 +2784,9 @@ class ExercisePage(tk.Frame):
 
                 elif joint2 == "R_elbow":
                     if biggerORsmaller == "smaller":
-                        comments.append("יישר יותר את יד ימין")
+                        comments.append("ישר יותר את יד ימין")
                     else:
                         comments.append("כופף מעט את יד ימין")
-
-
-
-
 
 
         if ((cleaned_joint_1 == "hip" and cleaned_joint_3 == "elbow") or (
@@ -2757,6 +2811,34 @@ class ExercisePage(tk.Frame):
                         comments.append("סחוט מעט פחות את הגב")
                     else:
                         comments.append("סחוט קצת יותר את הגב")
+
+
+        if joint1 == "L_hip" and joint2 == "L_shoulder" and joint3 == "L_wrist":
+            if s.req_exercise == "band_open_arms":
+                if biggerORsmaller == "smaller":
+                    comments.append("הרם יותר גבוה את הידיים")
+                else:
+                    comments.append("הורד מעט את הידיים")
+
+            elif s.req_exercise == "notool_left_hand_up_and_bend":
+                if biggerORsmaller == "smaller":
+                    comments.append("הישען מעט פחות לצד ימין")
+                else:
+                    comments.append("הישען יותר ושלח את יד שמאל יותר לכיוון הרצפה")
+
+        if joint1 == "R_hip" and joint2 == "R_shoulder" and joint3 == "R_wrist":
+            if s.req_exercise == "band_open_arms":
+                if biggerORsmaller == "smaller":
+                    comments.append("הרם יותר גבוה את הידיים")
+                else:
+                    comments.append("הורד מעט את הידיים")
+
+            elif s.req_exercise == "notool_right_hand_up_and_bend":
+                if biggerORsmaller == "smaller":
+                    comments.append("הישען מעט פחות לצד שמאל")
+                else:
+                    comments.append("הישען יותר ושלח את יד ימין יותר לכיוון הרצפה")
+
 
 
         if joint1 == "R_wrist" and joint2 == "R_hip" and joint3 == "L_hip":

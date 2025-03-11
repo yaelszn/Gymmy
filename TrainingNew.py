@@ -183,7 +183,7 @@ class Training(threading.Thread):
                     self.first_coordination_ex = True
 
                     for e in exercises_in_category:
-                        s.side = None
+                        s.direction = None
                         s.skip = False
                         s.general_sayings = self.get_motivation_file_names()
                         s.exercises_by_order.append(e)
@@ -466,25 +466,29 @@ class Training(threading.Thread):
 
     def which_exercise_page(self):
         s.avg_arm_len = 300
-        s.dist_between_wrists = 1300
+        s.dist_between_wrists = 1100
         if s.req_exercise in ["ball_bend_elbows", "stick_bend_elbows"]:
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_height_y", reverse_color=True, reverse_bar=False, min_distance=0, max_distance= s.avg_arm_len-70)
-        elif s.req_exercise == "ball_raise_arms_above_head":
+        elif s.req_exercise in ["ball_raise_arms_above_head", "stick_raise_arms_above_head"]:
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_height_y", reverse_color=True, reverse_bar=False, min_distance=-(s.avg_arm_len-40), max_distance= s.avg_arm_len-40)
-        elif s.req_exercise == "ball_switch":
+        elif s.req_exercise in ["ball_switch", "stick_switch"]:
             s.screen.switch_frame(ExercisePage, exercise_type="shoulders_distance_x", reverse_color=True, reverse_bar=False, min_distance=(s.dist_between_shoulders-s.dist_between_shoulders/2-20), max_distance= s.dist_between_shoulders)
-        elif s.req_exercise == "ball_open_arms_and_forward":
+        elif s.req_exercise in ["ball_open_arms_and_forward", "weights_open_arms_and_forward"]:
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_distance_x", reverse_color=False, reverse_bar=False, min_distance=s.dist_between_shoulders, max_distance= s.dist_between_wrists-40)
-        elif s.req_exercise == "ball_open_arms_above_head":
+        elif s.req_exercise in ["ball_open_arms_above_head", "stick_bend_elbows_and_up"]:
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_height_y", reverse_color=True, reverse_bar=False, min_distance=-(s.avg_arm_len-40), max_distance= 0)
         elif s.req_exercise == "band_open_arms":
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_distance_x", reverse_color=False, reverse_bar=False, min_distance=s.dist_between_shoulders, max_distance= s.dist_between_shoulders + 500)
         elif s.req_exercise == "band_open_arms_and_up":
             print("")
-        elif s.req_exercise == "band_up_and_lean":
-            s.screen.switch_frame(ExercisePage, exercise_type="shoulders_distance_x", reverse_color=True, reverse_bar=False, min_distance= s.dist_between_shoulders-30, max_distance= s.dist_between_shoulders)
+        elif s.req_exercise in ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean"]:
+            s.screen.switch_frame(ExercisePage, exercise_type="shoulders_distance_x", reverse_color=True, reverse_bar=False, min_distance= s.dist_between_shoulders-50, max_distance= s.dist_between_shoulders)
         elif s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_distance_x", reverse_color=False, reverse_bar=False, min_distance= s.dist_between_shoulders+50, max_distance= s.dist_between_shoulders + s.avg_arm_len)
+        elif s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]:
+            s.screen.switch_frame(ExercisePage, exercise_type="shoulders_distance_x", reverse_color=True, reverse_bar=False, min_distance= s.dist_between_shoulders-70, max_distance= s.dist_between_shoulders)
+        elif s.req_exercise in ["weights_abduction"]:
+            s.screen.switch_frame(ExercisePage, exercise_type="wrist_height_y", reverse_color=True, reverse_bar=False, min_distance=0, max_distance= (s.avg_arm_len-40))
 
 
 
@@ -534,7 +538,7 @@ if __name__ == "__main__":
     s.asked_for_measurement= False
     s.rep = 8
 
-    s.ex_in_training = ["stick_bend_elbows"]
+    s.ex_in_training = ["notool_hands_behind_and_lean"]
         #,"ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"] "ball_bend_elbows" ,
         # ["band_open_arms",  "band_up_and_lean", "band_open_arms_and_up"]
     #s.ex_in_training =  ["ball_raise_arms_above_head"]
@@ -551,7 +555,7 @@ if __name__ == "__main__":
     # notool_right_bend_left_up_from_side
     # notool_left_bend_right_up_from_side
     s.was_in_opposite_limit = False
-    s.side = None
+    s.direction = None
     s.chosen_patient_ID="3333"
     s.req_exercise=""
     s.ex_list = {}

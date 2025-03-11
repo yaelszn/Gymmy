@@ -481,12 +481,28 @@ class Camera(threading.Thread):
                                              [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
                                              [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), up_lb2,up_ub2],
                                              [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb2, up_ub2]]
+
+                            if s.req_exercise in ["ball_bend_elbows", "ball_raise_arms_above_head", "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head"]:
+                                s.direction = "up"
+
+                            elif s.req_exercise in ["ball_open_arms_above_head", "band_open_arms"]:
+                                s.direction = "out"
+
+
+
                         else:
                             s.information = [
                                     [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
                                     [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
                                     [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
                                     [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb2, down_ub2]]
+
+                            if s.req_exercise in ["ball_bend_elbows", "ball_raise_arms_above_head", "stick_bend_elbows", "stick_bend_elbows_and_up", "stick_raise_arms_above_head"]:
+                                s.direction = "down"
+
+                            elif s.req_exercise in ["ball_open_arms_above_head", "band_open_arms"]:
+                                s.direction = "in"
+
 
                         # else:
 
@@ -660,12 +676,23 @@ class Camera(threading.Thread):
                                 [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb_left, up_ub_left],
                                 [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), up_lb_right2, up_ub_right2],
                                 [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb_left2, up_ub_left2]]
+
+                            if s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
+                                s.direction = "left"
+                            else:
+                                s.direction = "right"
+
                         else:
                             s.information = [
                                 [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb_right, down_ub_right],
                                 [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb_left, down_ub_left],
                                 [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb_right2, down_ub_right2],
                                 [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb_left2, down_ub_left2]]
+
+                            if s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
+                                s.direction = "right"
+                            else:
+                                s.direction = "left"
 
 
 
@@ -805,7 +832,7 @@ class Camera(threading.Thread):
                                              [str("R_" + joint4), str("R_" + joint5), str("L_" + joint6), up_lb2, up_ub2],
                                              [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), down_lb2, down_ub2]]
 
-                            s.side = "right"
+                            s.direction = "right"
 
                         else:
 
@@ -816,7 +843,7 @@ class Camera(threading.Thread):
                                              [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), up_lb2,
                                               up_ub2]]
 
-                            s.side = "left"
+                            s.direction = "left"
 
                 else:
                     right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
@@ -1024,6 +1051,8 @@ class Camera(threading.Thread):
                                          [str("R_" + joint7), str("R_" + joint8), str("L_" + joint9), up_lb3, up_ub3],
                                          [str("L_" + joint7), str("L_" + joint8), str("R_" + joint9), up_lb3, up_ub3]]
 
+                        s.direction = "out"
+
 
                     else:
                         s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
@@ -1033,6 +1062,7 @@ class Camera(threading.Thread):
                                          [str("R_" + joint7), str("R_" + joint8), str("L_" + joint9), down_lb3, down_ub3],
                                          [str("L_" + joint7), str("L_" + joint8), str("R_" + joint9), down_lb3, down_ub3]]
 
+                        s.direction = "in"
 
 
 
@@ -1137,7 +1167,7 @@ class Camera(threading.Thread):
         Excel.wf_joints(exercise_name, list_joints)
 
 
-    def hand_up_and_band_angles(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side, differ=100):
+    def hand_up_and_band_angles(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side, differ=70):
         flag = True
         counter = 0
         list_joints = []
@@ -1166,7 +1196,37 @@ class Camera(threading.Thread):
                              joints[str("L_wrist")], joints[str("L_elbow")], joints[str("L_shoulder")],
                              right_angle, left_angle, right_angle_2, left_angle_2]
 
+
+                if side == "right":
+                    s.last_entry_angles = [right_angle, right_angle_2]
+                    if flag == False:
+                        s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), one_lb, one_ub],
+                                         [str("R_wrist"), str("R_elbow"), str("R_shoulder"), 135, 180]]
+                        s.direction = "left"
+
+
+                    else:
+                        s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), two_lb, two_ub],
+                                         [str("R_wrist"), str("R_elbow"), str("R_shoulder"), 135, 180]]
+
+                        s.direction = "right"
+
+                else:
+                    s.last_entry_angles = [left_angle, left_angle_2]
+                    if flag == False:
+                        s.information = [[str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), one_lb, one_ub],
+                                         [str("L_wrist"), str("L_elbow"), str("L_shoulder"), 135, 180]]
+                        s.direction = "right"
+
+
+                    else:
+                        s.information = [[str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), two_lb, two_ub],
+                                         [str("L_wrist"), str("L_elbow"), str("L_shoulder"), 135, 180]]
+                        s.direction = "left"
+
+
                 list_joints.append(copy.deepcopy(new_entry))
+
 
                 ##############################################################################
                 print(left_angle, " ", right_angle)
@@ -1181,33 +1241,45 @@ class Camera(threading.Thread):
 
                 if side == 'right':
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < right_angle < one_ub)  & (joints["nose"].y-150>joints["R_wrist"].y) & (joints[str("L_shoulder")].x+100<joints[str("R_wrist")].x) &\
-                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) &  (130 < right_angle_2< 180) & (not flag):
+                        if (one_lb < right_angle < one_ub) &  (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) &\
+                        (135 < right_angle_2< 180) & s.reached_max_limit &(not flag):
                             flag = True
                             counter += 1
                             s.patient_repetitions_counting_in_exercise += 1
                             s.number_of_repetitions_in_training += 1
                             print("counter:" + str(counter))
+                            s.all_rules_ok = True
+                            s.was_in_opposite_limit = False
                             #self.change_count_screen(counter)
                             # if not s.robot_count:
                             # say(str(counter))
-                        elif (two_lb < right_angle < two_ub) & (joints[str("L_shoulder")].x > joints[str("R_wrist")].x)  & (130 < right_angle_2< 180) & (flag):
+                        elif (two_lb < right_angle < two_ub) & (135 < right_angle_2< 180) & ((abs(joints["L_shoulder"].x - joints["R_shoulder"].x) > s.dist_between_shoulders - 30) or\
+                                (abs(joints["L_shoulder"].y - joints["R_shoulder"].y) < 30) or (joints["L_shoulder"].x - 70 > joints["R_wrist"].x) or\
+                                (joints["R_shoulder"].x + s.dist_between_shoulders > joints["R_wrist"].x)) & (flag):
                             flag = False
+                            s.all_rules_ok = False
+                            s.was_in_opposite_limit = True
 
                 else:
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < left_angle < one_ub) & (joints[str("R_shoulder")].x-100>joints[str("L_wrist")].x)& (joints[str("nose")].y - 150 > joints[str("L_wrist")].y) & \
-                                (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (130 < left_angle_2< 180) & (not flag):
+                        if (one_lb < left_angle < one_ub) &   (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) &\
+                                (135 < left_angle_2< 180) & s.reached_max_limit & (not flag):
                             flag = True
                             counter += 1
                             s.number_of_repetitions_in_training += 1
                             s.patient_repetitions_counting_in_exercise += 1
                             print("counter:" + str(counter))
+                            s.all_rules_ok = True
+                            s.was_in_opposite_limit = False
                             #self.change_count_screen(counter)
                             #if not s.robot_count:
                             # say(str(counter))
-                        elif (two_lb < left_angle < two_ub) & (joints[str("R_shoulder")].x < joints[str("L_wrist")].x) & (130 < left_angle_2< 180) & (flag):
+                        elif (two_lb < left_angle < two_ub) & (135 < left_angle_2< 180) & ((abs(joints["L_shoulder"].x - joints["R_shoulder"].x) > s.dist_between_shoulders - 30) or\
+                                (abs(joints["L_shoulder"].y - joints["R_shoulder"].y) < 30) or (joints["R_shoulder"].x + 70 < joints["L_wrist"].x) or\
+                                (joints["L_shoulder"].x - s.dist_between_shoulders < joints["L_wrist"].x) or (joints["nose"].x<joints["L_wrist"].x)) & (flag):
                             flag = False
+                            s.all_rules_ok = False
+                            s.was_in_opposite_limit = True
 
             if counter == s.rep:
                 s.req_exercise = ""
@@ -1308,7 +1380,7 @@ class Camera(threading.Thread):
     def stick_switch(self):  # EX14
         # self.exercise_two_angles_3d("stick_switch", "shoulder", "elbow", "wrist", 0, 180, 140, 180,
         #                             "wrist", "hip", "hip", 95, 140, 35, 70, True, True)
-        self.exercise_two_angles_3d_with_axis_check("stick_switch", "shoulder", "elbow","wrist", 0, 180, 120, 180,
+        self.exercise_two_angles_3d_with_axis_check("stick_switch", "shoulder", "elbow","wrist", 0, 180, 135, 180,
                                     "wrist", "hip", "hip",85,160,10,70, True, True, 70)
 
 
@@ -1324,17 +1396,18 @@ class Camera(threading.Thread):
 
     ######################################################  Set with a weights
 
-    def weights_right_hand_up_and_bend(self):  # EX16
-        self.hand_up_and_band_angles("weights_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 140, 180, "right")
-
-
-    def weights_left_hand_up_and_bend(self):  # EX17
-        self.hand_up_and_band_angles("weights_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 140,
-                                            180, "left")
+    # def weights_right_hand_up_and_bend(self):  # EX16
+    #     self.hand_up_and_band_angles("weights_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 140, 180, "right")
+    #
+    #
+    # def weights_left_hand_up_and_bend(self):  # EX17
+    #     self.hand_up_and_band_angles("weights_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 140,
+    #                                         180, "left")
 
     def weights_open_arms_and_forward(self):  # EX18
-        self.exercise_two_angles_3d("weights_open_arms_and_forward", "hip", "shoulder", "elbow", 20, 110, 80, 120,
-                                    "elbow", "shoulder", "shoulder", 60, 125, 150, 180, True)
+        self.exercise_three_angles_3d("weights_open_arms_and_forward", "hip", "shoulder", "elbow", 80, 120, 20, 110,
+                                      "shoulder", "elbow", "wrist", 155, 180, 0, 180,
+                                      "elbow", "shoulder", "shoulder", 160, 180, 60, 120, True)
 
     def weights_abduction(self):  # EX19
         self.exercise_two_angles_3d("weights_abduction" , "shoulder", "elbow", "wrist", 140,180,140,180,
@@ -1343,14 +1416,14 @@ class Camera(threading.Thread):
     ################################################# Set of exercises without equipment
     def notool_hands_behind_and_lean(self): # EX20
         self.exercise_two_angles_3d_with_axis_check("notool_hands_behind_and_lean", "shoulder", "elbow", "wrist", 10,70,10,70,
-                                    "elbow", "hip", "hip", 120, 170, 80, 120,True, True, 30)
+                                    "elbow", "hip", "hip", 120, 170, 80, 120,True, True, 50)
                                     # "elbow", "hip", "hip", 30, 100, 125, 170,True, True)
 
     def notool_right_hand_up_and_bend(self):  # EX21
-        self.hand_up_and_band_angles("notool_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 140, 180, "right")
+        self.hand_up_and_band_angles("notool_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 150, 140, 180, "right")
 
     def notool_left_hand_up_and_bend(self): #EX22
-        self.hand_up_and_band_angles("notool_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 160, 140, 180, "left")
+        self.hand_up_and_band_angles("notool_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 150, 140, 180, "left")
 
     def notool_raising_hands_diagonally(self): # EX23
         self.exercise_two_angles_3d_with_axis_check("notool_raising_hands_diagonally", "wrist", "shoulder", "hip", 80, 135, 105, 150,
