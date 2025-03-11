@@ -214,15 +214,13 @@ class Camera(threading.Thread):
 
     def run(self):
         print("CAMERA START")
-        medaip = PyZedWrapper()
-        medaip.start()
+        s.zed_camera = PyZedWrapper()
+        s.zed_camera.start()
 
-        self.zed = PyZedWrapper.get_zed(medaip)
+        self.zed = PyZedWrapper.get_zed(s.zed_camera)
 
         while not s.finish_program:
             time.sleep(0.0001)
-
-
 
             if s.asked_for_measurement:
                 time.sleep(9)
@@ -359,6 +357,7 @@ class Camera(threading.Thread):
                         joint.position = kp_3d  # Store raw position initially
                         self.joints[organ] = joint
 
+                s.latest_keypoints = self.joints
                 return self.joints
             else:
                 time.sleep(0.01)
@@ -445,17 +444,17 @@ class Camera(threading.Thread):
                                      joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
                                      right_angle, left_angle, right_angle2, left_angle2]
 
-                        # right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("L_" + joint5)],
-                        #                                   joints[str("R_" + joint6)])
-                        # left_angle2 = self.calc_angle_3d(joints[str("L_" + joint4)], joints[str("R_" + joint5)],
-                        #                                  joints[str("L_" + joint6)])
-                        #
-                        # new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
-                        #              joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
-                        #              joints[str("R_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
-                        #              joints[str("L_" + joint4)], joints[str("R_" + joint5)], joints[str("L_" + joint6)],
-                        #              right_angle, left_angle, right_angle2, left_angle2]
-
+                        if flag == False:
+                            s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb, up_ub],
+                                             [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
+                                             [str("R_" + joint4), str("R_" + joint5), str("L_" + joint6), up_lb2, up_ub2],
+                                             [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), up_lb2, up_ub2]]
+                        else:
+                            s.information = [
+                                [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+                                [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
+                                [str("R_" + joint4), str("R_" + joint5), str("L_" + joint6), down_lb2, down_ub2],
+                                [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), down_lb2, down_ub2]]
 
                     else:
                         right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
@@ -468,6 +467,32 @@ class Camera(threading.Thread):
                                      joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
                                      joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
                                      right_angle, left_angle, right_angle2, left_angle2]
+
+                        #
+                        # # if flag == False:
+                        # s.information = [
+                        #     [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+                        #     [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
+                        #     [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
+                        #     [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb2, down_ub2]]
+
+                        if flag == False:
+                            s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb, up_ub],
+                                             [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
+                                             [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), up_lb2,up_ub2],
+                                             [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb2, up_ub2]]
+                        else:
+                            s.information = [
+                                    [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+                                    [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
+                                    [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
+                                    [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb2, down_ub2]]
+
+                        # else:
+
+
+
+                    s.last_entry_angles = [right_angle, left_angle, right_angle2, left_angle2]
 
                     ##############################################################################
                     print(str(joints[str("R_" + joint1)]))
@@ -508,25 +533,30 @@ class Camera(threading.Thread):
 
                         if left_right_differ:
                             if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
-                                    (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & (not flag):
+                                    (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & s.reached_max_limit &(not flag):
                                 flag = True
                                 counter += 1
                                 s.number_of_repetitions_in_training += 1
                                 s.patient_repetitions_counting_in_exercise+=1
                                 #self.change_count_screen(counter)
                                 print("counter:"+ str(counter))
-                              #  if not s.robot_count:
+                                s.all_rules_ok = True
+                                s.was_in_opposite_limit = False
+
+
+                            #  if not s.robot_count:
                               #   say(str(counter))
 
 
                             elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
                                     (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & (flag):
                                 flag = False
-
+                                s.was_in_opposite_limit = True
+                                s.all_rules_ok = False
 
                         else:
                             if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
-                                    (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
+                                    (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & s.reached_max_limit & (not flag):
                                 flag = True
                                 counter += 1
                                 s.number_of_repetitions_in_training += 1
@@ -535,9 +565,17 @@ class Camera(threading.Thread):
                                 print("counter:" + str(counter))
                                 #  if not s.robot_count:
                                 # say(str(counter))
+
+                                s.all_rules_ok = True
+                                s.was_in_opposite_limit = False
+
+
+
                             elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
                                     (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & (flag):
                                 flag = False
+                                s.was_in_opposite_limit = True
+                                s.all_rules_ok = False
 
                 if counter == s.rep:
                     s.req_exercise = ""
@@ -604,8 +642,6 @@ class Camera(threading.Thread):
                                      right_angle, left_angle, right_angle2, left_angle2]
 
 
-
-
                     else:
                         right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
                                                        joints[str("R_" + joint6)], "R_2")
@@ -617,6 +653,23 @@ class Camera(threading.Thread):
                                      joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
                                      joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
                                      right_angle, left_angle, right_angle2, left_angle2]
+
+                        if flag == False:
+                            s.information = [
+                                [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb_right, up_ub_right],
+                                [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb_left, up_ub_left],
+                                [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), up_lb_right2, up_ub_right2],
+                                [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb_left2, up_ub_left2]]
+                        else:
+                            s.information = [
+                                [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb_right, down_ub_right],
+                                [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb_left, down_ub_left],
+                                [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb_right2, down_ub_right2],
+                                [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb_left2, down_ub_left2]]
+
+
+
+                    s.last_entry_angles = [right_angle, left_angle, right_angle2, left_angle2]
 
                     ##############################################################################
                     print(str(joints[str("R_" + joint1)]))
@@ -659,18 +712,25 @@ class Camera(threading.Thread):
 
 
                     if (up_lb_right < right_angle < up_ub_right) & (up_lb_left < left_angle < up_ub_left) & \
-                            (up_lb_right2 < right_angle2 < up_ub_right2) & (up_lb_left2 < left_angle2 < up_ub_left2) & (not flag):
+                            (up_lb_right2 < right_angle2 < up_ub_right2) & (up_lb_left2 < left_angle2 < up_ub_left2) & s.reached_max_limit & (not flag):
                         flag = True
                         counter += 1
                         s.number_of_repetitions_in_training += 1
                         s.patient_repetitions_counting_in_exercise+=1
                         #self.change_count_screen(counter)
                         print("counter:" + str(counter))
+                        s.all_rules_ok = True
+                        s.was_in_opposite_limit = False
+
                         #  if not s.robot_count:
                         # say(str(counter))
                     elif (down_lb_right < right_angle < down_ub_right) & (down_lb_left < left_angle < down_ub_left) & \
                             (down_lb_right2 < right_angle2 < down_ub_right2) & (down_lb_left2 < left_angle2 < down_ub_left2) & (flag):
                         flag = False
+                        s.was_in_opposite_limit = True
+                        s.all_rules_ok = False
+
+
 
                 if counter == s.rep:
                     s.req_exercise = ""
@@ -738,6 +798,25 @@ class Camera(threading.Thread):
                                  joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("R_" + joint6)],
                                  right_angle, left_angle, right_angle2, left_angle2]
 
+                    if left_right_differ:
+                        if flag == False:
+                            s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb, up_ub],
+                                             [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
+                                             [str("R_" + joint4), str("R_" + joint5), str("L_" + joint6), up_lb2, up_ub2],
+                                             [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), down_lb2, down_ub2]]
+
+                            s.side = "right"
+
+                        else:
+
+                            s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+                                             [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
+                                             [str("R_" + joint4), str("R_" + joint5), str("L_" + joint6), down_lb2,
+                                              down_ub2],
+                                             [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), up_lb2,
+                                              up_ub2]]
+
+                            s.side = "left"
 
                 else:
                     right_angle2 = self.calc_angle_3d(joints[str("R_" + joint4)], joints[str("R_" + joint5)],
@@ -750,6 +829,21 @@ class Camera(threading.Thread):
                                  joints[str("R_" + joint4)], joints[str("R_" + joint5)], joints[str("R_" + joint6)],
                                  joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
                                  right_angle, left_angle, right_angle2, left_angle2]
+
+                    # if flag == False:
+                    #     s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb, up_ub],
+                    #                      [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
+                    #                      [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), up_lb2, up_ub2],
+                    #                      [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb2, up_ub2]]
+                    # else:
+                    #     s.information = [
+                    #         [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+                    #         [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
+                    #         [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
+                    #         [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb2, down_ub2]]
+
+
+                s.last_entry_angles = [right_angle, left_angle, right_angle2, left_angle2]
 
                 ##############################################################################
                 print(left_angle, " ", right_angle)
@@ -777,11 +871,13 @@ class Camera(threading.Thread):
                     print("second angle stdev: ", np.nanstd(list_second_angle))
                     print("distance between shoulders: "+str(abs(joints["L_shoulder"].x - joints["R_shoulder"].x)))
                     if left_right_differ:
+
                         if wrist_check:
-                            if (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
+                            if ((down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
                                     (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
                                     (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & \
-                                    (joints["R_wrist"].x - joints["L_shoulder"].x > 50) & (not flag):
+                                    (joints["R_wrist"].x - joints["L_shoulder"].x > 50) & s.reached_max_limit &\
+                                    (not flag)):
                                 flag = True
                                 counter += 1
                                 s.number_of_repetitions_in_training += 1
@@ -790,18 +886,25 @@ class Camera(threading.Thread):
                                 print("counter:" + str(counter))
                                 #  if not s.robot_count:
                                 # say(str(counter))
+                                s.all_rules_ok = True
+                                s.was_in_opposite_limit = False
+
                             elif (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
                                     (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
                                     (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & \
-                                    ( joints["R_shoulder"].x-joints["L_wrist"].x > 50)& (flag):
+                                    ( joints["R_shoulder"].x-joints["L_wrist"].x > 50)&  s.reached_max_limit & (flag):
 
                                 flag = False
+                                s.all_rules_ok = True
+                                s.was_in_opposite_limit = True
+
 
 
                         else:
                             if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
                                     (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (not flag):
+                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & s.reached_max_limit &\
+                                    (not flag):
                                 flag = True
                                 counter += 1
                                 s.number_of_repetitions_in_training += 1
@@ -810,15 +913,23 @@ class Camera(threading.Thread):
                                 print("counter:" + str(counter))
                                 #  if not s.robot_count:
                                 # say(str(counter))
+                                s.all_rules_ok = True
+                                s.was_in_opposite_limit = False
+
+
                             elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
                                     (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & (flag):
+                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) &  s.reached_max_limit & (flag):
                                 flag = False
+                                s.all_rules_ok = True
+                                s.was_in_opposite_limit = False
+
+
 
 
                     else:
                         if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
-                                (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & (not flag):
+                                (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) &  s.reached_max_limit & (not flag):
                             flag = True
                             counter += 1
                             s.number_of_repetitions_in_training += 1
@@ -827,9 +938,16 @@ class Camera(threading.Thread):
                             print("counter:" + str(counter))
                             #  if not s.robot_count:
                             # say(str(counter))
+                            s.all_rules_ok = True
+                            s.was_in_opposite_limit = True
+
+
+
                         elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
-                                (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & (flag):
+                                (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) &  s.reached_max_limit & (flag):
                             flag = False
+                            s.all_rules_ok = True
+                            s.was_in_opposite_limit = True
 
             if counter == s.rep:
                 s.req_exercise = ""
@@ -897,6 +1015,27 @@ class Camera(threading.Thread):
                                  joints[str("L_" + joint7)], joints[str("L_" + joint8)], joints[str("R_" + joint9)],
                                  right_angle, left_angle, right_angle2, left_angle2, right_angle3, left_angle3]
 
+
+                    if flag == False:
+                        s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb, up_ub],
+                                         [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
+                                         [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), up_lb2, up_ub2],
+                                         [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb2, up_ub2],
+                                         [str("R_" + joint7), str("R_" + joint8), str("L_" + joint9), up_lb3, up_ub3],
+                                         [str("L_" + joint7), str("L_" + joint8), str("R_" + joint9), up_lb3, up_ub3]]
+
+
+                    else:
+                        s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+                                         [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
+                                         [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
+                                         [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb2, down_ub2],
+                                         [str("R_" + joint7), str("R_" + joint8), str("L_" + joint9), down_lb3, down_ub3],
+                                         [str("L_" + joint7), str("L_" + joint8), str("R_" + joint9), down_lb3, down_ub3]]
+
+
+
+
                 else:
                     right_angle3 = self.calc_angle_3d(joints[str("R_" + joint7)], joints[str("R_" + joint8)],
                                                       joints[str("R_" + joint9)], "R_3")
@@ -910,6 +1049,27 @@ class Camera(threading.Thread):
                                  joints[str("R_" + joint7)], joints[str("R_" + joint8)], joints[str("R_" + joint9)],
                                  joints[str("L_" + joint7)], joints[str("L_" + joint8)], joints[str("L_" + joint9)],
                                  right_angle, left_angle, right_angle2, left_angle2, right_angle3, left_angle3]
+
+                    if flag == False:
+                        s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb, up_ub],
+                                         [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
+                                         [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), up_lb2, up_ub2],
+                                         [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb2, up_ub2],
+                                         [str("R_" + joint7), str("R_" + joint8), str("R_" + joint9), up_lb3, up_ub3],
+                                         [str("L_" + joint7), str("L_" + joint8), str("L_" + joint9), up_lb3, up_ub3]]
+
+
+                    else:
+                        s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+                                         [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
+                                         [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
+                                         [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb2, down_ub2],
+                                         [str("R_" + joint7), str("R_" + joint8), str("R_" + joint9), down_lb3, down_ub3],
+                                         [str("L_" + joint7), str("L_" + joint8), str("L_" + joint9), down_lb3, down_ub3]]
+
+
+                s.last_entry_angles = [right_angle, left_angle, right_angle2, left_angle2, right_angle3, left_angle3]
+
 
                 ##############################################################################
                 print(left_angle, " ", right_angle)
@@ -927,12 +1087,14 @@ class Camera(threading.Thread):
 
                     if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
                             (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
-                            (up_lb3 < right_angle3 < up_ub3) & (up_lb3 < left_angle3 < up_ub3) & (not flag):
+                            (up_lb3 < right_angle3 < up_ub3) & (up_lb3 < left_angle3 < up_ub3) & s.reached_max_limit &(not flag):
                         flag = True
                         counter += 1
                         s.number_of_repetitions_in_training += 1
                         s.patient_repetitions_counting_in_exercise += 1
                         print("counter:" + str(counter))
+                        s.all_rules_ok = True
+                        s.was_in_opposite_limit = False
                         #self.change_count_screen(counter)
                        # if not s.robot_count:
                        #  say(str(counter))
@@ -940,6 +1102,9 @@ class Camera(threading.Thread):
                             (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
                             (down_lb3 < right_angle3 < down_ub3) & (down_lb3 < left_angle3 < down_ub3) & (flag):
                         flag = False
+                        s.all_rules_ok = False
+                        s.was_in_opposite_limit = True
+
 
             if counter == s.rep:
                 s.req_exercise = ""
@@ -1074,7 +1239,7 @@ class Camera(threading.Thread):
 ######################################################### First set of ball exercises
 
     def ball_bend_elbows(self):  # EX1
-        self.exercise_two_angles_3d("ball_bend_elbows", "shoulder", "elbow", "wrist",130, 180, 10, 50,
+        self.exercise_two_angles_3d("ball_bend_elbows", "shoulder", "elbow", "wrist", 10, 50, 120, 180,
                                     "elbow", "shoulder", "hip", 0, 70, 0, 70)
 
     def ball_raise_arms_above_head(self):  # EX2
@@ -1083,21 +1248,20 @@ class Camera(threading.Thread):
 
 
     def ball_switch(self):  # EX3
-        self.exercise_two_angles_3d_with_axis_check("ball_switch", "shoulder", "elbow","wrist", 0, 180, 120, 180,
-                                    "wrist", "hip", "hip",85,160,30,70, True, True, 70)
+        self.exercise_two_angles_3d_with_axis_check("ball_switch", "shoulder", "elbow","wrist", 0, 180, 135, 180,
+                                    "wrist", "hip", "hip",100,160,40,70, True, True, 70)
                                     #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
-
-
 
 
 ######################################################### Second set of ball exercises
 
     def ball_open_arms_and_forward(self):  # EX4
-        self.exercise_two_angles_3d("ball_open_arms_and_forward", "hip", "shoulder", "elbow", 20, 110, 80, 120,
-                                    "elbow", "shoulder", "shoulder", 60, 120, 140,180,True)
+        self.exercise_three_angles_3d("ball_open_arms_and_forward", "hip", "shoulder", "elbow", 80, 120,20, 110,
+                                    "shoulder", "elbow", "wrist", 155, 180 , 0, 180,
+                                    "elbow", "shoulder", "shoulder", 160,180, 60, 120 ,True)
 
     def ball_open_arms_above_head(self):  # EX5
-        self.exercise_two_angles_3d("ball_open_arms_above_head", "elbow", "shoulder", "hip", 140,180, 80, 110,
+        self.exercise_two_angles_3d("ball_open_arms_above_head", "elbow", "shoulder", "hip", 135,180, 80, 110,
                                    "shoulder", "elbow", "wrist", 130, 180, 130, 180)
 
 
@@ -1105,7 +1269,7 @@ class Camera(threading.Thread):
 
     def band_open_arms(self):  # EX6
         self.exercise_two_angles_3d("band_open_arms","hip", "shoulder", "wrist", 70, 120, 40, 120,
-                                    "wrist", "shoulder", "shoulder", 140,170,0,120,True)
+                                    "wrist", "shoulder", "shoulder", 140,170,0,125,True)
 
         #"wrist", "shoulder", "shoulder", 100, 160,75, 95, True)
 
@@ -1116,21 +1280,21 @@ class Camera(threading.Thread):
 
 
     def band_up_and_lean(self):  # EX8
-        self.exercise_two_angles_3d_with_axis_check("band_up_and_lean", "shoulder", "elbow", "wrist", 110, 180, 110,180,
-                                   "elbow", "hip", "hip", 100, 170, 50, 100, True, True,30)
+        self.exercise_two_angles_3d_with_axis_check("band_up_and_lean", "shoulder", "elbow", "wrist", 90, 180, 120,180,
+                                   "elbow", "hip", "hip", 120, 170, 50, 100, True, True,30)
 
     def band_straighten_left_arm_elbows_bend_to_sides(self):  # EX9
-        self.exercise_two_angles_3d_one_side("band_straighten_left_arm_elbows_bend_to_sides", "shoulder", "elbow", "wrist", 0, 65, 0,65, 140,180, 0, 80,
+        self.exercise_two_angles_3d_one_side("band_straighten_left_arm_elbows_bend_to_sides", "shoulder", "elbow", "wrist", 0, 65, 0,65, 140,180, 0, 60,
                                    "elbow", "shoulder", "hip", 60, 120, 60, 120, 60, 120,60,120)
 
 
     def band_straighten_right_arm_elbows_bend_to_sides(self):  # EX10
-        self.exercise_two_angles_3d_one_side("band_straighten_right_arm_elbows_bend_to_sides", "shoulder", "elbow", "wrist", 140, 180, 0,80, 0,65, 0, 65,
+        self.exercise_two_angles_3d_one_side("band_straighten_right_arm_elbows_bend_to_sides", "shoulder", "elbow", "wrist", 140, 180, 0,60, 0,65, 0, 65,
                                    "elbow", "shoulder", "hip", 60, 120, 60, 120, 60, 120,60,120)
 
 ######################################################  Set with a stick
     def stick_bend_elbows(self):  # EX11
-        self.exercise_two_angles_3d("stick_bend_elbows", "shoulder", "elbow", "wrist",135, 180, 10, 70,
+        self.exercise_two_angles_3d("stick_bend_elbows", "shoulder", "elbow", "wrist",10, 70, 120, 180,
                                     "elbow", "shoulder", "hip", 0, 50, 0, 50)
 
     def stick_bend_elbows_and_up(self):  # EX12

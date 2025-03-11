@@ -1,162 +1,175 @@
-import pyzed.sl as sl
 import threading
+import time
+import numpy as np
 import cv2
-import mediapipe as mp
-import Settings as s
-import sys
+import pyzed.sl as sl
+import tkinter as tk
+from tkinter import ttk
+import Settings as s  # Controlled shutdown
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from mpl_toolkits.mplot3d import Axes3D
 
-
-class MP(threading.Thread):
-
-    def __init__(self):
-        threading.Thread.__init__(self)
-        print("MP INITIALIZATION")
+class PyZedWrapper(threading.Thread):
+    def __init__(self, update_gui_callback):
+        """Initialize the ZED Camera Thread."""
+        super().__init__()
         self.zed = sl.Camera()
+        self.lock = threading.Lock()
+        self.latest_keypoints = None
+        self.running = True
+        self.update_gui_callback = update_gui_callback  # GUI update callback
 
+    def stop(self):
+        """Stop the thread safely."""
+        self.running = False
+        s.finish_program = True
+
+    def get_latest_keypoints(self):
+        """Retrieve the latest detected 3D keypoints safely."""
+        with self.lock:
+            return self.latest_keypoints.copy() if self.latest_keypoints is not None else None
 
     def run(self):
-        print("MP START")
-        show = True
-        mp_drawing = mp.solutions.drawing_utils
-        mp_drawing_styles = mp.solutions.drawing_styles
-        mp_pose = mp.solutions.pose
-
-        ################################################################
-        # Create a ZED camera object
-
-        # Set configuration parameters
+        """Main thread function to capture frames and detect 3D keypoints."""
         init = sl.InitParameters()
         init.camera_resolution = sl.RESOLUTION.HD720
-        init.coordinate_system= sl.COORDINATE_SYSTEM.IMAGE
+        init.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Y_UP  # 3D-Friendly coordinate system
         init.depth_mode = sl.DEPTH_MODE.ULTRA
         init.coordinate_units = sl.UNIT.MILLIMETER
-        init.camera_fps=60
-        #if len(sys.argv) >= 2:
-        #    init.svo_input_filename = sys.argv[1]
+        init.camera_fps = 30
 
-        # Open the camera
-        #################למחוק בסוף
-        self.zed.close()
         err = self.zed.open(init)
         if err != sl.ERROR_CODE.SUCCESS:
             print(repr(err))
             self.zed.close()
             exit(1)
-        # Display help in console
-        # print_help()
 
-        # Define the Objects detection module parameters
         body_params = sl.BodyTrackingParameters()
-        # Set runtime parameters for body tracking
-        body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_FAST
+        body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_MEDIUM
         body_params.enable_tracking = True
-        body_params.image_sync = True
-        # body_params.enable_segmentation = False
         body_params.enable_body_fitting = True
         body_params.body_format = sl.BODY_FORMAT.BODY_18
+        self.zed.enable_body_tracking(body_params)
 
-        # Set runtime parameters after opening the camera
         runtime = sl.RuntimeParameters()
-        sl.RuntimeParameters.enable_fill_mode
-        runtime.measure3D_reference_frame = sl.REFERENCE_FRAME.WORLD
+        bodies = sl.Bodies()
+        selected_keypoints = list(range(18))  # Use all 18 keypoints
 
-        # if detection_parameters.enable_tracking:
-        # Set positional tracking parameters
-        positional_tracking_parameters = sl.PositionalTrackingParameters()
-        # Enable positional tracking
-        positional_tracking_parameters.set_as_static = True
-        self.zed.enable_positional_tracking(positional_tracking_parameters)
+        while self.zed.is_opened() and self.running:
+            if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
+                self.zed.retrieve_bodies(bodies, sl.BodyTrackingRuntimeParameters())
+                body_list = bodies.body_list
 
-        # Enable body tracking
-        zed_error = self.zed.enable_body_tracking(body_params)
-        if zed_error != sl.ERROR_CODE.SUCCESS:
-            print("enable_body_tracking", zed_error, "\nExit program.")
-            self.zed.close()
-            exit(-1)
+                keypoints_list = []
+                for body in body_list:
+                    if body.keypoint is not None:
+                        keypoints = np.array(body.keypoint, dtype=float)  # Get 3D keypoints
+                        for idx in selected_keypoints:
+                            if len(keypoints) > idx:
+                                kp = keypoints[idx]
+                                keypoints_list.append(kp if kp[0] != 0 else [np.nan, np.nan, np.nan])
 
-        # Prepare new image size to retrieve half-resolution images
-        image_size = self.zed.get_camera_information().camera_configuration.resolution;
+                with self.lock:
+                    self.latest_keypoints = keypoints_list
 
+                self.update_gui_callback()  # Update GUI with new keypoints
 
-        #image_size.width = image_size.width
-        #image_size.height = image_size.height
-        # image_size.height = image_size.height / 2
-
-        # Declare your sl.Mat matrices
-
-        ################################################################
-        image = sl.Mat()
-
-        with mp_pose.Pose(
-                min_detection_confidence=0.85,
-                min_tracking_confidence=0.7) as pose:
-
-            # Create a UDP socket
-            #sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            #server_address = ('localhost', 7000)
-
-            while self.zed.is_opened() and not s.finish_workout:
-
-                if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
-
-                    self.zed.retrieve_image(image, sl.VIEW.LEFT)
-                    self.zed.retrieve_image(image, sl.VIEW.RIGHT)
-                    frame = image.get_data()
-                    # Convert the frame to RGB format (MediaPipe requires RGB input)
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    results = pose.process(frame_rgb)
-
-                    lm_dict = {'nose': "0", 'neck': "1", 'R_shoulder': "2", 'R_elbow': "3", 'R_wrist': "4",
-                               'L_shoulder': "5", 'L_elbow': "6", 'L_wrist': "7", 'R_hip': "8", 'R_knee': "9",
-                               'R_ankle': "10", 'L_hip': "11", 'L_knee': "12", 'L_ankle': "13", 'R_eye': "14", 'L_eye': "15",
-                               'R_ear': "16", 'L_ear': "17"}
-
-                    message = ''
-                    if results.pose_landmarks is not None:
-                        for k, v in lm_dict.items():
-                            j = results.pose_landmarks.landmark[int(v)]
-                            if j.visibility >= 0.7:
-                                new_j = k + "," + str(j.x * image_size.width) + "," + str(
-                                    -j.y * image_size.height) + "," + str(-j.z)
-                            else:
-                                new_j = k + ",0,0,0"
-                            message += new_j + "/"
-                    else:
-                        for k, v in lm_dict.items():
-                            new_j = k + ",0,0,0"
-                            message += new_j + "/"
-
-                    frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-
-                    mp_drawing.draw_landmarks(
-                        frame_rgb,
-                        results.pose_landmarks,
-                        mp_pose.POSE_CONNECTIONS,
-                        landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
-                    # Present camera's video: Flip the image horizontally for a selfie-view display.
-                    zoom_out_factor = 0.5  # Adjust the factor to control the level of zoom-out
-                    resized_frame = cv2.resize(frame_rgb, None, fx=zoom_out_factor, fy=zoom_out_factor)
-
-                    if show:
-                        cv2.imshow("ZED Camera with Skeleton", resized_frame)
-
-                    # Stop MediaPipe:
-                    key = cv2.waitKey(10)
-                    if s.finish_workout or key == ord('q'):
-                        s.finish_workout = True
-                        break
-
-            self.zed.close()
+        self.zed.close()
+        print("Camera closed")
 
 
-    def get_zed(self):
-         return self.zed
+class PatientGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("3D Patient Progress Monitor")
+
+        # Progress Bar
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(root, length=400, mode='determinate', variable=self.progress_var)
+        self.progress_bar.pack(pady=10)
+
+        # Feedback Label
+        self.feedback_label = tk.Label(root, text="Adjust your position", font=("Arial", 14))
+        self.feedback_label.pack(pady=5)
+
+        # 3D Figure Setup
+        self.figure = plt.figure(figsize=(5, 5))
+        self.ax = self.figure.add_subplot(111, projection='3d')
+        self.canvas = FigureCanvasTkAgg(self.figure, master=root)
+        self.canvas.get_tk_widget().pack(pady=10)
+
+        # Start ZED camera thread
+        self.zed_thread = PyZedWrapper(self.update_gui)
+        self.zed_thread.start()
+
+        self.update_gui()
+
+    def draw_3d_stick_figure(self, keypoints):
+        """Draw a simple 3D stick figure based on 3D keypoints."""
+        self.ax.clear()
+        self.ax.set_xlim(-500, 500)
+        self.ax.set_ylim(-500, 500)
+        self.ax.set_zlim(0, 1500)  # Assuming height is 1.5m
+        self.ax.set_xlabel("X")
+        self.ax.set_ylabel("Y")
+        self.ax.set_zlabel("Z")
+        self.ax.view_init(elev=20, azim=30)  # Set good viewing angle
+
+        if keypoints is None:
+            return
+
+        # Define key joint connections (Skeleton Structure)
+        body_connections = [
+            (0, 1), (1, 2), (2, 3), (3, 4),  # Right arm
+            (0, 5), (5, 6), (6, 7), (7, 8),  # Left arm
+            (0, 9), (9, 10), (10, 11), (11, 12),  # Right leg
+            (0, 13), (13, 14), (14, 15), (15, 16)  # Left leg
+        ]
+
+        # Draw skeleton in 3D
+        for joint1, joint2 in body_connections:
+            if all(not np.isnan(kp[0]) for kp in [keypoints[joint1], keypoints[joint2]]):
+                self.ax.plot(
+                    [keypoints[joint1][0], keypoints[joint2][0]],
+                    [keypoints[joint1][1], keypoints[joint2][1]],
+                    [keypoints[joint1][2], keypoints[joint2][2]], 'ro-')
+
+        self.canvas.draw()
+
+    def update_gui(self):
+        """Update progress bar and visual feedback based on keypoints."""
+        keypoints = self.zed_thread.get_latest_keypoints()
+        if keypoints is not None:
+            self.draw_3d_stick_figure(keypoints)
+
+            # Example logic for feedback
+            right_hand_z = keypoints[3][2] if not np.isnan(keypoints[3][2]) else None
+            left_hand_z = keypoints[7][2] if not np.isnan(keypoints[7][2]) else None
+
+            if right_hand_z and right_hand_z < 600:
+                feedback = "Move your right hand forward!"
+            elif left_hand_z and left_hand_z < 600:
+                feedback = "Move your left hand forward!"
+            else:
+                feedback = "Good position!"
+
+            self.feedback_label.config(text=feedback)
+
+            # Simulated progress bar based on hand distance
+            progress = (1000 - right_hand_z) / 10 if right_hand_z else 50
+            self.progress_var.set(max(0, min(100, progress)))
+
+        self.root.after(100, self.update_gui)  # Schedule next update
+
+    def stop(self):
+        """Stop camera thread when closing the GUI."""
+        self.zed_thread.stop()
+        self.root.destroy()
 
 
-
-
-if __name__ == ('__main__'):
-    s.stop = False
-    s.finish_workout = False
-    mediap = MP()
-    mediap.start()
+if __name__ == '__main__':
+    root = tk.Tk()
+    gui = PatientGUI(root)
+    root.protocol("WM_DELETE_WINDOW", gui.stop)
+    root.mainloop()

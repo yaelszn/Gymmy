@@ -43,7 +43,10 @@ if __name__ == '__main__':
     #s.exercises_start=False
     s.waved_has_tool= True # True just in order to go through the loop in Gymmy
     # s.finished_training_adding_to_excel= False
+    s.side = None
     s.ex_list = {}
+    s.reached_max_limit = False
+    s.latest_keypoints = {}
     s.effort=None
     s.starts_and_ends_of_stops =[]
     s.stop_requested = False

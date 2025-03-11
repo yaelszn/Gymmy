@@ -14,7 +14,11 @@ from datetime import datetime
 import numpy as np
 import openpyxl
 import matplotlib
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import QVBoxLayout, QLabel
 from matplotlib import pyplot as plt
+
+from PyZedWrapper import PyZedWrapper
 
 matplotlib.use('TkAgg')  # Use the TkAgg backend
 import cv2
@@ -2137,23 +2141,27 @@ def convert_white_to_transparent(image_path, tolerance=100):
     img.putdata(newData)
     return img
 
+
 #Page that appears when there is an exercise
 class ExercisePage(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
-
+    def __init__(self, master, exercise_type, reverse_color, reverse_bar, min_distance, max_distance, which_side= None):
+        super().__init__(master)
+        self.start_of_500_ms = None
         # The subjects from which the algorithm can choose
-        subjects = ["butterflies", "galaxy", "garden"]
+        subjects = ["garden", "galaxy", "butterflies"]
         random.shuffle(subjects)
         self.chosen_subject = subjects[0]  # Instance variable for later use
+
+        self.comment = None
+        self.can_comment = False
 
         # Create a canvas for layering background and transparent image
         self.canvas = tk.Canvas(self, width=1024, height=576)
         self.canvas.pack(fill="both", expand=True)
 
         # Load background image
-        background_image = Image.open(f'Pictures/{self.chosen_subject}/background.jpg')
-        self.background_photo = ImageTk.PhotoImage(background_image)
+        self.background_image = Image.open(f'Pictures/{self.chosen_subject}/background.jpg')
+        self.background_photo = ImageTk.PhotoImage(self.background_image)
 
         self.stop_training_button_img = Image.open("Pictures/stop_training_button.jpg")
         self.stop_training_button_photo = ImageTk.PhotoImage(self.stop_training_button_img)
@@ -2180,20 +2188,14 @@ class ExercisePage(tk.Frame):
 
         # Predetermined positions (you can adjust these to your liking)
         self.positions = [
-            (180, 10), (350, 10), (520, 10), (690, 10),
-            (130, 190), (300, 190), (470, 190), (640, 190), (820, 190),
-            (130, 370), (300, 370), (470, 370), (640, 370), (820, 370)
+            (200, 250), (370, 250), (540, 250), (710, 250), (880, 250),
+            (200, 420), (370, 420), (540, 420), (710, 420), (880, 420)
         ]
 
-
-        # Shuffle the positions to make their selection random
-        random.shuffle(self.positions)
 
         # Track count for patient repetitions
         self.count = 1
 
-        # Start the loop using after()
-        self.update_exercise()
 
         # Add a scale widget
         self.scale_value_label = tk.Label(self, text=f"Volume \n {s.volume*100}", font=("Arial", 16, "bold"), bg="white", fg="black")
@@ -2210,35 +2212,85 @@ class ExercisePage(tk.Frame):
         self.last_update_time = 0
 
         # Label for repetition count
-        self.repetition_label = tk.Label(self,
+        self.repetition_label_robot = tk.Label(self,
                                          text=f":רובוט\n{s.robot_counter}/{s.rep}",
-                                         font=("Arial", 30, "bold"),
+                                         font=("Arial", 35, "bold"),
                                          bg="white", fg="black",
                                          justify="center", anchor="center")
 
-        self.repetition_label.place(x=890, y=10)  # Adjust x, y for correct positioning
+        self.repetition_label_robot.place(x=870, y=10)  # Adjust x, y for correct positioning
 
-        # Start updating the label dynamically
-        self.update_repetition_label()
+        # Label for repetition count
+        self.repetition_label_patient = tk.Label(self,
+                                         text=f"{s.patient_repetitions_counting_in_exercise}",
+                                         font=("Arial", 70, "bold"),
+                                         bg="white", fg="black",
+                                         justify="center", anchor="center")
 
-        # skip_explanation_button_img = Image.open("Pictures//skip_explanation_button.jpg")
-        # skip_explanation_button_photo = ImageTk.PhotoImage(skip_explanation_button_img)
-        # skip_explanation_button = tk.Button(self, image=skip_explanation_button_photo,
-        #                                     command=lambda: self.on_click_skip_exercise(),
-        #                                     width=skip_explanation_button_img.width,
-        #                                     height=skip_explanation_button_img.height, bd=0,
-        #                                     highlightthickness=0)
-        # skip_explanation_button.image = skip_explanation_button_photo
-        # skip_explanation_button.place(x=30, y=500)
+        self.repetition_label_patient.place(x=480, y=10)  # Adjust x, y for correct positioning
 
-    def on_click_skip_exercise(self):
-        s.skip = True
-        s.exercises_skipped[self.exercise] = {str(s.robot_counter)}
+        ###########################################################################
+        self.exercise_type = exercise_type
+        # self.real_distance = real_distance  # ✅ Manually set real distance
+        self.reverse_color = reverse_color
+        self.reverse_bar = reverse_bar
+        self.min_distance = min_distance
+        self.max_distance = max_distance
+        self.which_side = which_side
 
-    def update_repetition_label(self):
-        """Updates the repetition label dynamically based on robot's count."""
-        self.repetition_label.config(text=f":רובוט\n{s.robot_counter}/{s.rep}")
-        self.after(100, self.update_repetition_label)  # Check every 100ms
+        # # Create a canvas for images
+        # self.canvas = tk.Canvas(self, width=background_image.width, height=background_image.height)
+        # self.canvas.pack(fill="both", expand=True)
+        # self.bg_image = self.canvas.create_image(0, 0, image=self.background_photo, anchor="nw")
+
+        # Bar properties
+        self.bar_start_x = self.background_image.width // 2  # Center
+        self.bar_start_y = self.background_image.height - 30  # Bottom
+        self.bar_width = 30  # Thickness
+        self.bar_length = 0  # Initial length
+        self.bar_color = "red"  # Default color
+
+        # Create the bar
+        self.bar = self.canvas.create_rectangle(
+            self.bar_start_x, self.bar_start_y - self.bar_width // 2,
+            self.bar_start_x, self.bar_start_y + self.bar_width // 2,
+            fill=self.bar_color, outline=""
+        )
+
+        # Comment Label (Updates dynamically)
+        self.comment_label = tk.Label(self, text="", font=("Arial", 50, "bold"), fg="red", bg="white")
+        self.comment_label.place(x=0, y=20)  # Temporary position
+
+        # if s.req_exercise == "ball_open_arms_and_forward":
+        #     s.was_in_opposite_limit = False
+        # else:
+        #     s.was_in_opposite_limit = True
+
+        # Start GUI update loop
+        self.after(1, self.update_exercise())
+
+    def center_comment_label(self):
+        """Centers the comment label dynamically based on its width."""
+        self.update_idletasks()  # Ensure Tkinter updates the label size
+        canvas_width = self.winfo_width()  # Get the current width of the frame
+        label_width = self.comment_label.winfo_reqwidth()  # Get the current width of the label
+
+        # Set new position to center the label
+        self.comment_label.place(x=(canvas_width - label_width) // 2, y=250)
+
+    def update_bar(self, keypoints):
+        """Updates the bar based on the selected exercise type."""
+        if self.exercise_type == "wrist_distance_x":  # פתיחת ידיים לצדדים
+            self.update_wrist_distance_x(keypoints)
+        elif self.exercise_type == "shoulders_distance_x":  # כל ה-switch
+            self.update_shoulders_distance_x(keypoints)
+        elif self.exercise_type == "single_wrist_x":
+            self.update_single_wrist_x(keypoints)  # Right wrist & shoulder
+        elif self.exercise_type == "wrist_height_y":
+            self.update_wrist_height_y(keypoints)
+        elif self.exercise_type == "shoulders_distance_y":
+            self.update_shoulders_distance_y(keypoints)
+
 
 
     def on_scale_moved(self, value):
@@ -2258,9 +2310,41 @@ class ExercisePage(tk.Frame):
         # Non-blocking exercise loop using after()
 
         if (not s.gymmy_done) or (not s.camera_done):  # While the exercise is still running
+
+            self.repetition_label_robot.config(text=f":רובוט\n{s.robot_counter}/{s.rep}")
+            # Label for repetition count
+            self.repetition_label_patient.config(text=f"{s.patient_repetitions_counting_in_exercise}")
+
+
+            keypoints = s.latest_keypoints
+
+            if keypoints:
+                self.update_bar(keypoints)
+
+            if s.reached_max_limit and self.start_of_500_ms is None:
+                self.start_of_500_ms = time.time()
+
+            elif s.reached_max_limit and self.start_of_500_ms is not None:
+                if time.time() - self.start_of_500_ms >= 0.5:  # 50 milliseconds = 0.05 seconds
+                    self.can_comment = True
+
+            elif not s.reached_max_limit:
+                self.start_of_500_ms = None
+                self.can_comment = False
+
+            if s.reached_max_limit and not s.all_rules_ok and s.was_in_opposite_limit and self.can_comment:
+                    self.check_are_there_comments()
+
+
+            #
+            # elif not s.all_rules_ok:
+            #     self.start_of_sec = None
+
+
+
             if self.count == s.patient_repetitions_counting_in_exercise:
-                # Get the next random position from the shuffled list
-                x_image, y_image = self.positions[s.patient_repetitions_counting_in_exercise]
+                # Get the center position
+                x_center, y_center = self.positions[self.count - 1]  # Adjust index
 
                 # Path to a random image in the chosen category
                 image_num = random.randint(1, 27)
@@ -2272,10 +2356,18 @@ class ExercisePage(tk.Frame):
                 # Load the image with transparent background into Tkinter
                 exercise_photo = ImageTk.PhotoImage(transparent_image)
 
-                # Place the transparent image on top of the background
-                self.canvas.create_image(x_image, y_image, image=exercise_photo, anchor="nw")
+                # Get image dimensions (corrected)
+                img_width, img_height = transparent_image.width, transparent_image.height
 
-                # Append each image reference to the list to prevent garbage collection
+                # Place the image at the exact center
+                self.canvas.create_image(
+                    x_center,  # Exact center X
+                    y_center,  # Exact center Y
+                    image=exercise_photo,
+                    anchor="center"  # Center the image properly
+                )
+
+                # Append each image reference to prevent garbage collection
                 self.image_references.append(exercise_photo)
 
                 # Increment the count to wait for the next successful repetition
@@ -2332,54 +2424,510 @@ class ExercisePage(tk.Frame):
             s.did_training_paused = True
 
 
-class ChooseTrainingOrExerciseInformation(tk.Frame):
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
 
-        image = Image.open('Pictures//background.jpg')
-        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
-        tk.Label(self, image = self.photo_image).pack()
-        name_label(self, 250, 250)
 
-        to_previous_button_img = Image.open("Pictures//previous.jpg")
-        to_previous_button_photo = ImageTk.PhotoImage(to_previous_button_img)
-        to_previous_button = tk.Button(self, image=to_previous_button_photo, command=lambda: self.to_previous_button_click(),
-                                   width=to_previous_button_img.width, height=to_previous_button_img.height, bd=0,
-                                   highlightthickness=0)  # Set border width to 0 to remove button border
-        to_previous_button.image = to_previous_button_photo  # Store reference to image to prevent garbage collection
-        to_previous_button.place(x=30, y=30)
+    #########################################
+    def update_wrist_height_y(self, keypoints):
 
-        # Load images for buttons
-        training_image = Image.open("Pictures//information_training_button.jpg")
-        training_photo = ImageTk.PhotoImage(training_image)
-        exercise_image = Image.open("Pictures//to_information_exercises_button.jpg")
-        exercise_photo = ImageTk.PhotoImage(exercise_image)
+        # Get wrist and shoulder positions
+        right_wrist = keypoints["R_wrist"]  # Right wrist
+        left_wrist = keypoints["L_wrist"]  # Left wrist
+        right_shoulder = keypoints["R_shoulder"]  # Right shoulder
+        left_shoulder = keypoints["L_shoulder"]  # Left shoulder
 
-        # Store references to prevent garbage collection
-        self.training_photo = training_photo
-        self.patient_photo = exercise_photo
+        # Ensure all keypoints are detected
+        if any(np.all(kp == -1) for kp in [right_wrist, left_wrist, right_shoulder, left_shoulder]):
+            return  # Skip if any keypoint is missing
 
-        # Create buttons with images
-        enter_trainings = tk.Button(self, image=training_photo,
-                                              command=self.on_click_training_chosen,
-                                              width=training_image.width, height=training_image.height,
-                                              bg='#50a6ad', bd=0, highlightthickness=0)
-        enter_trainings.place(x=160, y=130)
+        # Compute average heights
+        wrist_heights = (right_wrist.y + left_wrist.y) / 2
+        shoulder_heights = (right_shoulder.y + left_shoulder.y) / 2
 
-        enter_exercises = tk.Button(self, image=exercise_photo,
-                                            command=self.on_click_exercise_chosen,
-                                            width=exercise_image.width, height=exercise_image.height,
-                                            bg='#50a6ad', bd=0, highlightthickness=0)
-        enter_exercises.place(x=540, y=130)
+        # Compute wrist-to-shoulder height difference (preserving sign)
+        wrist_height_avg = wrist_heights - shoulder_heights
 
-    def to_previous_button_click(self):
-        s.screen.switch_frame(PatientDisplaying)
+        # Maximum bar length
+        max_bar_length = self.background_image.width // 2
 
-    def on_click_training_chosen(self):
-        s.screen.switch_frame(InformationAboutTrainingPage)
+        # Scale the bar length
+        if wrist_height_avg >= self.max_distance:
+            scaled_length = 0 if not self.reverse_bar else max_bar_length  # Default: Smallest bar when far below shoulders
+        elif wrist_height_avg <= self.min_distance:
+            scaled_length = max_bar_length if not self.reverse_bar else 0  # Default: Full bar when above shoulders
+        else:
+            # Interpolate smoothly between min and max distances
+            scaled_length = max_bar_length * (
+                        1 - (wrist_height_avg - self.min_distance) / (self.max_distance - self.min_distance))
 
-    def on_click_exercise_chosen(self):
-        s.screen.switch_frame(ChooseBallExercisesPage)
+            # If reversed, flip the scaling effect
+            if self.reverse_bar:
+                scaled_length = max_bar_length - scaled_length
+
+        # Set color: Green when close, transitioning to red when far
+        self.bar_color = self.get_color_gradient(wrist_height_avg, self.min_distance, self.max_distance,
+                                                 reverse=self.reverse_color)
+
+        # print("Height Difference:", wrist_height_avg, "| Scaled Length:", scaled_length)
+
+        # Update the bar display
+        self.update_bar_display(scaled_length)
+
+
+    def update_wrist_distance_x(self, keypoints):
+        right_wrist = keypoints["R_wrist"]  # Right wrist
+        left_wrist = keypoints["L_wrist"]  # Left wrist
+
+        if np.all(right_wrist == -1) or np.all(left_wrist == -1):
+            return  # Skip if any wrist is missing
+
+        # Compute hand distance
+        distance = abs(right_wrist.x - left_wrist.x)
+
+        # # Define key distances
+        # min_distance = self.real_distance   # The closest distance (smallest bar, most red)
+        # max_distance = self.real_distance + 1000  # The farthest distance (largest bar, greenest)
+
+        # if distance <= self.min_distance + 100:
+        #     s.was_in_opposite_limit = True
+
+        # Maximum bar length
+        max_bar_length = self.background_image.width // 2
+
+        # Scale the bar length (opposite logic from shoulders)
+        if distance <= self.min_distance:
+            scaled_length = 0  # Smallest bar when hands are too close
+        elif distance >= self.max_distance:
+            scaled_length = max_bar_length  # Largest bar when hands are far apart
+        else:
+            # Interpolate smoothly
+            scaled_length = max_bar_length * ((distance - self.min_distance) / (self.max_distance - self.min_distance))
+
+        # Set color: Green when far, transitioning to red when close
+        self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance,
+                                                 reverse=self.reverse_color)
+
+        # Update the bar display
+        self.update_bar_display(scaled_length)
+
+    def update_shoulders_distance_x(self, keypoints):
+        right_shoulder = keypoints["R_shoulder"]  # Right shoulder
+        left_shoulder = keypoints["L_shoulder"]  # Left shoulder
+
+        if np.all(right_shoulder == -1) or np.all(left_shoulder == -1):
+            return  # Skip if any shoulder is missing
+
+        # Compute shoulder distance
+        distance = abs(right_shoulder.x - left_shoulder.x)
+
+        # # Define key distances
+        # max_distance = self.real_distance  # The furthest distance (smallest bar)
+        # # min_distance = self.real_distance - self.real_distance/2 + 40  # The ideal distance (full bar)
+        # min_distance = self.real_distance -70
+
+        if distance >= s.dist_between_shoulders - 30 and abs(right_shoulder.y - left_shoulder.y) <= 10:
+            s.all_rules_ok = False
+            s.was_in_opposite_limit = True
+
+        # Scale the bar length
+        if distance >= self.max_distance:
+            scaled_length = 0  # Smallest bar when far apart
+        elif distance <= self.min_distance:
+            scaled_length = self.background_image.width // 2  # Full bar at best proximity
+        else:
+            # Interpolate smoothly between the two distances
+            max_bar_length = self.background_image.width // 2
+            scaled_length = max_bar_length * (
+                        1 - (distance - self.min_distance) / (self.max_distance - self.min_distance))
+
+        # Set color: Green when close, transitioning to red when far
+        self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance, self.reverse_color)
+
+        # Update the bar display
+        self.update_bar_display(scaled_length)
+
+        # reverse_color=False, reverse_bar=True
+
+    def update_shoulders_distance_y(self, keypoints):
+        # Get shoulder positions
+        right_shoulder = keypoints["R_shoulder"]  # Right shoulder
+        left_shoulder = keypoints["L_shoulder"]  # Left shoulder
+
+        # Ensure all keypoints are detected
+        if np.all(right_shoulder == -1) or np.all(left_shoulder == -1):
+            return  # Skip if any keypoint is missing
+
+        # Compute absolute **vertical** distance between shoulders (ignoring direction)
+        distance = abs(right_shoulder[1] - left_shoulder[1])
+        #
+        # # Define key distances
+        # min_distance = 0  # Shoulders perfectly aligned (Ideal, full bar)
+        # max_distance = 70  # Maximum misalignment (smallest bar)
+
+        # Maximum bar length
+        max_bar_length = self.background_image.width // 2
+
+        # Scale the bar length
+        if distance >= self.max_distance:
+            scaled_length = 0 if not self.reverse_bar else max_bar_length  # Default: Shortest bar when far apart
+        elif distance <= self.min_distance:
+            scaled_length = max_bar_length if not self.reverse_bar else 0  # Default: Longest bar when shoulders aligned
+        else:
+            # Interpolate smoothly
+            scaled_length = max_bar_length * (
+                        1 - (distance - self.min_distance) / (self.max_distance - self.min_distance))
+
+            # If reversed, flip the scaling effect
+            if self.reverse_bar:
+                scaled_length = max_bar_length - scaled_length
+
+        # Set color based on `reverse_color`
+        self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance,
+                                                 reverse=self.reverse_color)
+
+        # print("Shoulder Height Difference:", distance, "| Scaled Length:", scaled_length)
+
+        # Update the bar display
+        self.update_bar_display(scaled_length)
+
+
+    def get_color_gradient(self, distance, min_distance, max_distance, reverse=False):
+        """Returns the color based on distance: red when far, green when close, but prevents fluctuations."""
+
+        # Normalize distance to [0,1] range
+        norm_factor = (distance - min_distance) / (max_distance - min_distance)
+        norm_factor = max(0, min(1, norm_factor))  # Clamp to [0,1]
+
+        # Convert to discrete 10-step levels (0-9)
+        step = max(0, min(9, int(norm_factor * 10)))  # Ensure step is between 0-9
+
+        # If all_rules_ok is False, prevent step beyond 8
+        if not s.all_rules_ok:
+            step = min(step, 8)  # Limit to step 8 (not fully green)
+            self.comment = None
+
+        max_green = 150  # Maximum green value (Never full 255)
+
+        if reverse:
+            r = max(0, min(255, int(255 * (step / 8))))  # Ensure within [0, 255]
+            g = max(0, min(255, int(max_green * (1 - step / 8))))
+        else:
+            r = max(0, min(255, int(255 * (1 - step / 8))))
+            g = max(0, min(255, int(max_green * (step / 8))))
+
+            # If all_rules_ok is True and max limit is reached, return fully green
+        if s.all_rules_ok and s.reached_max_limit:
+            return "#00FF00"
+
+        # Convert RGB to valid hex color format
+        return f"#{r:02X}{g:02X}00"
+
+    def update_bar_display(self, scaled_length):
+        """Ensures the bar length correctly maps to increasing distances."""
+
+        max_width = self.background_image.width // 2  # Default max width
+        max_limited_width = int(max_width * 0.8)  # 80% limit
+
+        # If all_rules_ok is False, limit bar length to 80% max
+        if not s.all_rules_ok:
+            max_width = max_limited_width  # Limit max width to 80%
+
+        # Ensure scaled_length is increasing consistently with distance
+        scaled_length = min(scaled_length, max_width)  # Ensure it does not exceed max width
+        scaled_length = max(0, scaled_length)  # Ensure it never becomes negative
+
+        # Check if it reaches the 80% limit
+        if scaled_length >= max_limited_width:
+            s.reached_max_limit = True  # Set condition as True
+
+        if s.all_rules_ok:
+            self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+            self.comment_label.place_forget()  # Remove from layout
+
+        if scaled_length < max_limited_width:
+            s.reached_max_limit = False
+            self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+            self.comment_label.place_forget()  # Remove from layout
+
+        # Update the bar's position on the canvas
+        self.canvas.coords(self.bar,
+                           self.bar_start_x - scaled_length // 2, self.bar_start_y - self.bar_width // 2,
+                           self.bar_start_x + scaled_length // 2, self.bar_start_y + self.bar_width // 2)
+        self.canvas.itemconfig(self.bar, fill=self.bar_color)
+
+    def check_are_there_comments(self):
+
+        angles = s.last_entry_angles
+
+        # use_alternate_angles = s.last_entry_angles[-3]
+        # left_right_differ = s.last_entry_angles[-2]
+        # side = s.last_entry_angles[-1]
+
+        # Iterate over first_part in steps of 3
+        for i in range(0, len(angles)):
+            angle = angles[i]
+            information_angle = s.information[i]
+
+            # s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
+            #                  [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
+            #                  [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
+            #                  [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb2, up_ub2]
+            if angle:
+                if not information_angle[3] <= angle <= information_angle[4]:
+                    if angle <= information_angle[3]:
+                        self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
+                                                       "smaller", s.side)
+                    else:
+                        self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
+                                                       "bigger", s.side)
+
+            if self.comment is not None:
+                print(self.comment)
+                self.comment_label.config(text=self.comment, fg="red", font=("Arial", 50, "bold"), bg="white")
+                self.center_comment_label()  # Reposition after updating text
+                break
+
+    def what_to_comment(self, joint1, joint2, joint3, biggerORsmaller="smaller", side="left"):
+        cleaned_joint_1 = (joint1.split("_"))[-1]
+        cleaned_joint_2 = (joint2.split("_"))[-1]
+        cleaned_joint_3 = (joint3.split("_"))[-1]
+
+        comments = []
+
+
+        if not s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
+            if cleaned_joint_2 == "elbow":
+                if biggerORsmaller == "smaller":
+                    comments.append("יישר יותר את המרפקים")
+                else:
+                    comments.append("כופף יותר את המרפקים")
+
+
+        else:
+            if s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
+                if joint2 == "L_elbow":
+                    if biggerORsmaller == "smaller":
+                        comments.append("יישר יותר את יד שמאל")
+                    else:
+                       comments.append("כופף מעט את יד שמאל")
+
+                elif joint2 == "R_elbow":
+                    if biggerORsmaller == "smaller":
+                        comments.append("כופף מעט פחות את יד ימין")
+                    else:
+                        comments.append("כופף יותר את יד ימין")
+
+
+            elif s.req_exercise == "band_straighten_right_arm_elbows_bend_to_sides":
+                if joint2 == "L_elbow":
+                    if biggerORsmaller == "smaller":
+                        comments.append("כופף מעט פחות את יד שמאל")
+                    else:
+                       comments.append("כופף יותר את יד שמאל")
+
+                elif joint2 == "R_elbow":
+                    if biggerORsmaller == "smaller":
+                        comments.append("יישר יותר את יד ימין")
+                    else:
+                        comments.append("כופף מעט את יד ימין")
+
+
+
+
+
+
+        if ((cleaned_joint_1 == "hip" and cleaned_joint_3 == "elbow") or (
+                cleaned_joint_3 == "hip" and cleaned_joint_1 == "elbow")) and cleaned_joint_2 == "shoulder":
+            if biggerORsmaller == "smaller":
+                comments.append("הרם יותר גבוה את הידיים")
+            else:
+                comments.append("הורד מעט את הידיים")
+
+
+        if joint1 == "L_wrist" and joint2 == "L_hip" and joint3 == "R_hip":
+            if biggerORsmaller == "smaller":
+                if side is not None:
+                    if side == "left":
+                        comments.append("סחוט קצת יותר את הגב")
+                    else:
+                        comments.append("סחוט מעט פחות את הגב")
+
+            if biggerORsmaller == "bigger":
+                if side is not None:
+                    if side == "left":
+                        comments.append("סחוט מעט פחות את הגב")
+                    else:
+                        comments.append("סחוט קצת יותר את הגב")
+
+
+        if joint1 == "R_wrist" and joint2 == "R_hip" and joint3 == "L_hip":
+            if biggerORsmaller == "smaller":
+                if side is not None:
+                    if side == "left":
+                        comments.append("סחוט מעט פחות את הגב")
+                    else:
+                        comments.append("סחוט קצת יותר את הגב")
+
+            if biggerORsmaller == "bigger":
+                if side is not None:
+                    if side == "left":
+                        comments.append("סחוט קצת יותר את הגב")
+                    else:
+                        comments.append("סחוט מעט פחות את הגב")
+
+
+        if joint1 == "R_elbow" and joint2 == "R_shoulder" and joint3 == "L_shoulder":
+            if biggerORsmaller == "smaller":
+                comments.append("פתח יותר את הידיים")
+            else:
+                comments.append("פתח פחות את הידיים")
+
+        if joint1 == "L_elbow" and joint2 == "L_shoulder" and joint3 == "R_shoulder":
+            if biggerORsmaller == "smaller":
+                comments.append("פתח יותר את הידיים")
+            else:
+                comments.append("פתח פחות את הידיים")
+
+
+        if joint1 == "R_wrist'" and joint2 == "R_shoulder" and joint3 == "L_shoulder":
+            if biggerORsmaller == "smaller":
+                comments.append("פתח יותר את הידיים")
+            else:
+                comments.append("פתח פחות את הידיים")
+
+        if joint1 == "L_wrist" and joint2 == "L_shoulder" and joint3 == "R_shoulder":
+            if biggerORsmaller == "smaller":
+                comments.append("פתח יותר את הידיים")
+            else:
+                comments.append("פתח פחות את הידיים")
+
+        if joint1 == "L_elbow" and joint2 == "L_hip" and joint3 == "R_hip":
+            if biggerORsmaller == "smaller":
+                if side is not None:
+                    if side == "left":
+                        comments.append("מתח את יד שמאל עוד למטה")
+                    else:
+                        comments.append("מתח את יד שמאל עוד קצת למעלה")
+
+            if biggerORsmaller == "bigger":
+                if side is not None:
+                    if side == "left":
+                        comments.append("מתח מעט פחות את יד שמאל")
+                    else:
+                        comments.append("הבא את יד שמאל מעט יותר לכיוון הרצפה")
+
+
+        if joint1 == "R_elbow" and joint2 == "R_hip" and joint3 == "L_hip":
+            if biggerORsmaller == "smaller":
+                if side is not None:
+                    if side == "left":
+                        comments.append("מתח את יד ימין עוד קצת למעלה")
+                    else:
+                        comments.append("מתח את יד ימין עוד למטה")
+
+            if biggerORsmaller == "bigger":
+                if side is not None:
+                    if side == "left":
+                        comments.append("הבא את יד ימין מעט יותר לכיוון הרצפה")
+
+                    else:
+                        comments.append("מתח מעט פחות את יד ימין")
+
+
+
+        if comments:
+            if self.comment in comments:
+                pass  # Keep the same comment
+            else:
+                self.comment = comments[0]  # Pick the first comment if the current one is not in the list
+        else:
+            self.comment = None  # No comments, reset
+
+
+class ExercisePageNew(tk.Frame):
+    def __init__(self, master, exercise_type, reverse_color, reverse_bar, min_distance, max_distance, side= None , **kwargs):
+
+        super().__init__(master, **kwargs)
+
+
+
+
+    # def update_single_wrist_x(self, keypoints):
+    #
+    #     # Get wrist and shoulder positions
+    #     if self.side == "left":
+    #         wrist = keypoints["L_wrist"]
+    #         shoulder = keypoints["L_shoulder"]
+    #
+    #     else:
+    #         wrist = keypoints["R_wrist"]
+    #         shoulder = keypoints["R_shoulder"]
+    #
+    #     # Ensure both keypoints are detected
+    #     if np.all(wrist == -1) or np.all(shoulder == -1):
+    #         return  # Skip if any keypoint is missing
+    #
+    #     # Compute horizontal distance from shoulder to wrist (X-axis)
+    #     distance = abs(wrist[0] - shoulder[0])  # Distance in pixels
+    #
+    #     # Maximum bar length
+    #     max_bar_length = self.background_pil.width // 2
+    #
+    #     # Scale the bar length
+    #     if distance <= self.min_distance:
+    #         scaled_length = 0  # Smallest bar when wrist is at shoulder level
+    #     elif distance >= self.max_distance:
+    #         scaled_length = max_bar_length  # Largest bar when wrist is at max distance
+    #     else:
+    #         # Interpolate smoothly between min and max distances
+    #         scaled_length = max_bar_length * (distance / self.max_distance)
+    #
+    #     # Set color gradient: Red when wrist is aligned, transitioning to green as it moves away
+    #     self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance, reverse=self.reverse_color)
+    #
+    #     # Update the bar display
+    #     self.update_bar_display(scaled_length)
+
+    #למעל הראש לא reverse_bar אבל כן בצבעים reverse ומינומום -200 מקסימום 200
+    # לכיפוף מרפקים כן reverse בצבעים לא בבר ומינימום 0 מקסימום 200
+    # לידיים מעל הראש כן צבעים לא בבר, מינימום -200 מקסימום 0
+
+
+        # #lean
+        # elif joint1 == "L_wrist" and joint2 == "L_hip" and joint3 == "R_hip":
+        #     if biggerORsmaller == "smaller":
+        #         if side == "left":
+        #             return "הטה את הגוף מעט פחות לצד שמאל"
+        #         else:
+        #             return "נסה להרים יותר את יד שמאל"
+        #
+        #     else:
+        #         if side == "left":
+        #             return "הטה את הגוף יותר לצד שמאל"
+        #         else:
+        #             return "נסה להרים פחות את יד שמאל"
+        #
+        #
+        # # lean
+        # elif joint1 == "R_wrist" and joint2 == "R_hip" and joint3 == "L_hip":
+        #     if biggerORsmaller == "smaller":
+        #         if side == "right":
+        #             return "הטה את הגוף מעט פחות לצד ימין"
+        #
+        #         else:
+        #             return "נסה להרים יותר את יד ימין"
+        #
+        #     else:
+        #         if side == "right":
+        #             return "הטה את הגוף יותר לצד ימין"
+        #         else:
+        #             return "נסה להרים פחות את מרפק ימין"
+
+
+
+
+
+
+
 
 # class GraphPage(tk.Frame):
 #     def __init__(self, master, exercise, previous, **kwargs):
@@ -3436,13 +3984,56 @@ class Number_of_good_repetitions_page(tk.Frame):
         say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
 
 
-    # class ExercisePage(tk.Frame):
-#     def __init__(self, master):
-#         tk.Frame.__init__(self, master)
-#         image = Image.open('Pictures//exercise.jpg')
-#         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
-#         tk.Label(self, image = self.photo_image).pack()
-#         say("start_ex")
+
+
+class ChooseTrainingOrExerciseInformation(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+
+        image = Image.open('Pictures//background.jpg')
+        self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
+        tk.Label(self, image = self.photo_image).pack()
+        name_label(self, 250, 250)
+
+        to_previous_button_img = Image.open("Pictures//previous.jpg")
+        to_previous_button_photo = ImageTk.PhotoImage(to_previous_button_img)
+        to_previous_button = tk.Button(self, image=to_previous_button_photo, command=lambda: self.to_previous_button_click(),
+                                   width=to_previous_button_img.width, height=to_previous_button_img.height, bd=0,
+                                   highlightthickness=0)  # Set border width to 0 to remove button border
+        to_previous_button.image = to_previous_button_photo  # Store reference to image to prevent garbage collection
+        to_previous_button.place(x=30, y=30)
+
+        # Load images for buttons
+        training_image = Image.open("Pictures//information_training_button.jpg")
+        training_photo = ImageTk.PhotoImage(training_image)
+        exercise_image = Image.open("Pictures//to_information_exercises_button.jpg")
+        exercise_photo = ImageTk.PhotoImage(exercise_image)
+
+        # Store references to prevent garbage collection
+        self.training_photo = training_photo
+        self.patient_photo = exercise_photo
+
+        # Create buttons with images
+        enter_trainings = tk.Button(self, image=training_photo,
+                                              command=self.on_click_training_chosen,
+                                              width=training_image.width, height=training_image.height,
+                                              bg='#50a6ad', bd=0, highlightthickness=0)
+        enter_trainings.place(x=160, y=130)
+
+        enter_exercises = tk.Button(self, image=exercise_photo,
+                                            command=self.on_click_exercise_chosen,
+                                            width=exercise_image.width, height=exercise_image.height,
+                                            bg='#50a6ad', bd=0, highlightthickness=0)
+        enter_exercises.place(x=540, y=130)
+
+    def to_previous_button_click(self):
+        s.screen.switch_frame(PatientDisplaying)
+
+    def on_click_training_chosen(self):
+        s.screen.switch_frame(InformationAboutTrainingPage)
+
+    def on_click_exercise_chosen(self):
+        s.screen.switch_frame(ChooseBallExercisesPage)
 
 
 
@@ -3916,17 +4507,35 @@ if __name__ == "__main__":
     #s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
     s.gymmy_done=False
     s.camera_done= False
+    s.finish_program = False
+
     s.rep=10
     s.volume = 0.3
     s.audio_path = 'audio files/Hebrew/Male/'
     s.finish_workout = False
     pygame.mixer.init()
     s.stop_song = False
+    s.play_song = False
+    s.reached_max_limit = False
+    s.latest_keypoints = []
+
     s.additional_audio_playing =False
     # Start continuous audio in a separate thread
     s.continuous_audio = ContinuousAudio()
     s.continuous_audio.start()
     s.patient_repetitions_counting_in_exercise = 10
-    s.screen.switch_frame(ExercisePage)
+    # Initialize settings variables
+    s.stop = False
+    s.finish_workout = False
+    s.all_rules_ok = False
+    # Start the ZED camera thread
+    s.zed_camera = PyZedWrapper()
+    s.zed_camera.start()
+    # Initialize Tkinter-based GUI system
+    s.screen.switch_frame(ExercisePageNew, exercise_type="shoulders_distance_y", real_distance=140)
+
+    # When needed, switch to the ExercisePage with the camera
+    # s.screen.switch_frame(ExercisePage, camera_thread=s.camera)
+
     app = FullScreenApp(s.screen)
     s.screen.mainloop()

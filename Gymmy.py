@@ -14,8 +14,8 @@ class Gymmy(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
-        self.gymmy = PoppyTorso(camera="dummy", port= "COM4")  # for real robot
-        #self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
+        #self.gymmy = PoppyTorso(camera="dummy", port= "COM4")  # for real robot
+        self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
         print("ROBOT INITIALIZATION")
         #self.gymmy.abs_z.goto_position(0, 1, wait=True)
 
@@ -47,7 +47,7 @@ class Gymmy(threading.Thread):
         self.first_coordination_ex = True
         while not s.finish_program:
             while not s.finish_workout:
-                time.sleep(0.00000001)  # Prevents the MP to stuck
+                time.sleep(0.00001)  # Prevents the MP to stuck
                 if s.req_exercise != "" and not s.req_exercise=="hello_waving":
                     ex = s.req_exercise
 

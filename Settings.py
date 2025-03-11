@@ -6,7 +6,7 @@ def __init__():
     global robot
     global screen
     global continuous_audio
-
+    global zed_camera
 
     global volume
     # global participant_code
@@ -64,6 +64,8 @@ def __init__():
     global gymmy_finished_demo
     global full_name
     global robot_counter
+
+    global reached_max_limit
 
 
 
