@@ -47,6 +47,19 @@ class PyZedWrapper(threading.Thread):
     def get_zed(self):
         return self.zed
 
+    def set_detection_model(self, model):
+        """Change the body tracking model dynamically."""
+        self.zed.disable_body_tracking()  # Stop tracking
+        self.body_params.detection_model = model  # Change model
+        self.zed.enable_body_tracking(self.body_params)  # Restart tracking
+        print(f"Switched to detection model: {model}")
+
+    def set_detection_model_to_accurate(self):
+        self.set_detection_model(sl.BODY_TRACKING_MODEL.HUMAN_BODY_ACCURATE)
+
+    def set_detection_model_to_medium(self):
+        self.set_detection_model(sl.BODY_TRACKING_MODEL.HUMAN_BODY_MEDIUM)
+
     def run(self):
         """Main thread function to capture frames and detect keypoints."""
         print("MP START")
@@ -56,6 +69,7 @@ class PyZedWrapper(threading.Thread):
         init.camera_resolution = sl.RESOLUTION.HD720
         init.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE
         init.depth_mode = sl.DEPTH_MODE.ULTRA
+        init.depth_stabilization = True
         init.coordinate_units = sl.UNIT.MILLIMETER
         init.camera_fps = 60
 
@@ -69,14 +83,14 @@ class PyZedWrapper(threading.Thread):
         positional_tracking_parameters.set_as_static = True
         self.zed.enable_positional_tracking(positional_tracking_parameters)
 
-        body_params = sl.BodyTrackingParameters()
-        body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_MEDIUM
-        body_params.enable_tracking = True
-        body_params.enable_body_fitting = True
-        body_params.body_format = sl.BODY_FORMAT.BODY_18
-        body_params.prediction_timeout_s = 0.2
+        self.body_params = sl.BodyTrackingParameters()
+        self.body_params.detection_model = sl.BODY_TRACKING_MODEL.HUMAN_BODY_MEDIUM
+        self.body_params.enable_tracking = True
+        self.body_params.enable_body_fitting = True
+        self.body_params.body_format = sl.BODY_FORMAT.BODY_18
+        self.body_params.prediction_timeout_s = 0.2
 
-        if self.zed.enable_body_tracking(body_params) != sl.ERROR_CODE.SUCCESS:
+        if self.zed.enable_body_tracking(self.body_params) != sl.ERROR_CODE.SUCCESS:
             print("Error enabling body tracking")
             self.zed.close()
             return
@@ -88,11 +102,32 @@ class PyZedWrapper(threading.Thread):
         runtime = sl.RuntimeParameters()
         selected_keypoints = list(range(18))
 
+        runtime = sl.RuntimeParameters()
+        runtime.enable_depth = True  # Ensure depth sensing is enabled
+
+        image = sl.Mat()
+
         while self.zed.is_opened() and not s.finish_program and self.running:
             if self.zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
                 time.sleep(0.00001)
+
                 # self.zed.retrieve_bodies(bodies, sl.BodyTrackingRuntimeParameters())
                 # body_list = bodies.body_list
+
+                if s.asked_for_measurement:
+                    self.zed.retrieve_image(image, sl.VIEW.LEFT)  # Get the left image from the ZED camera
+
+                    # Convert to OpenCV format
+                    frame = image.get_data()  # Get frame as NumPy array
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+
+                    # Lock and store the latest frame for potential GUI use
+                    with self.lock:
+                        self.latest_frame = frame
+
+                else:
+                    self.latest_frame = None
+
 
                 keypoints_list = []
                 # for body in body_list:
@@ -131,6 +166,7 @@ if __name__ == '__main__':
     s.stop = False
     s.finish_program = False
     s.finish_workout = False
+    s.asked_for_measurement = True
 
     mediap = PyZedWrapper()
     mediap.start()

@@ -2146,7 +2146,7 @@ def convert_white_to_transparent(image_path, tolerance=100):
 class ExercisePage(tk.Frame):
     def __init__(self, master, exercise_type, reverse_color, reverse_bar, min_distance, max_distance, which_side= None):
         super().__init__(master)
-        self.start_of_500_ms = None
+        self.start_of_750_ms = None
         # The subjects from which the algorithm can choose
         subjects = ["garden", "galaxy", "butterflies"]
         random.shuffle(subjects)
@@ -2327,15 +2327,15 @@ class ExercisePage(tk.Frame):
             if keypoints:
                 self.update_bar(keypoints)
 
-            if s.reached_max_limit and self.start_of_500_ms is None:
-                self.start_of_500_ms = time.time()
+            if s.reached_max_limit and self.start_of_750_ms is None:
+                self.start_of_750_ms = time.time()
 
-            elif s.reached_max_limit and self.start_of_500_ms is not None:
-                if time.time() - self.start_of_500_ms >= 0.5:  # 50 milliseconds = 0.05 seconds
+            elif s.reached_max_limit and self.start_of_750_ms is not None:
+                if time.time() - self.start_of_750_ms >= 0.75:  # 50 milliseconds = 0.05 seconds
                     self.can_comment = True
 
             elif not s.reached_max_limit:
-                self.start_of_500_ms = None
+                self.start_of_750_ms = None
                 self.can_comment = False
 
             if s.reached_max_limit and not s.all_rules_ok and s.was_in_opposite_limit and self.can_comment:
@@ -2483,9 +2483,30 @@ class ExercisePage(tk.Frame):
         if any(np.all(kp == -1) for kp in [right_wrist, left_wrist, right_shoulder, left_shoulder]):
             return  # Skip if any keypoint is missing
 
-        # Compute average heights
-        wrist_heights = (right_wrist.y + left_wrist.y) / 2
-        shoulder_heights = (right_shoulder.y + left_shoulder.y) / 2
+        if self.which_side == "both":
+            # Compute average heights
+            wrist_heights = (right_wrist.y + left_wrist.y) / 2
+            shoulder_heights = (right_shoulder.y + left_shoulder.y) / 2
+
+        elif self.which_side == "left":
+            # Compute average heights
+            wrist_heights = left_wrist.y
+            shoulder_heights = left_shoulder.y
+
+        else:
+            # Compute average heights
+            wrist_heights = right_wrist.y
+            shoulder_heights = right_shoulder.y
+
+
+        if s.req_exercise == "band_open_arms_and_up":
+            wrist_distance = abs(right_wrist.x - left_wrist.x)
+
+            if s.direction == "out" and wrist_distance>=s.dist_between_wrists/2:
+                s.direction = "up"
+
+            elif s.direction == "down" and abs(wrist_heights-shoulder_heights)<50:
+                s.direction = "in"
 
         # Compute wrist-to-shoulder height difference (preserving sign)
         wrist_height_avg = wrist_heights - shoulder_heights
@@ -2669,7 +2690,7 @@ class ExercisePage(tk.Frame):
         """Ensures the bar length correctly maps to increasing distances."""
 
         max_width = self.background_image.width // 2  # Default max width
-        max_limited_width = int(max_width * 0.8)  # 80% limit
+        max_limited_width = int(max_width * 0.9)  # 80% limit
 
         # If all_rules_ok is False, limit bar length to 80% max
         if not s.all_rules_ok:
@@ -2697,6 +2718,7 @@ class ExercisePage(tk.Frame):
                            self.bar_start_x - scaled_length // 2, self.bar_start_y - self.bar_width // 2,
                            self.bar_start_x + scaled_length // 2, self.bar_start_y + self.bar_width // 2)
         self.canvas.itemconfig(self.bar, fill=self.bar_color)
+
 
     def check_are_there_comments(self):
 
@@ -2857,13 +2879,7 @@ class ExercisePage(tk.Frame):
                         comments.append("סחוט מעט פחות את הגב")
 
 
-        if joint1 == "R_elbow" and joint2 == "R_shoulder" and joint3 == "L_shoulder":
-            if biggerORsmaller == "smaller":
-                comments.append("פתח יותר את הידיים")
-            else:
-                comments.append("פתח פחות את הידיים")
-
-        if joint1 == "L_elbow" and joint2 == "L_shoulder" and joint3 == "R_shoulder":
+        if cleaned_joint_1 == "elbow" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
             if biggerORsmaller == "smaller":
                 comments.append("פתח יותר את הידיים")
             else:
@@ -4181,6 +4197,143 @@ class StartOfTraining(tk.Frame):
         self.after(get_wav_duration(welcome_to_say)*1000 +1000,lambda: s.screen.switch_frame(StartExplanationPage))
 
 
+
+class CameraScreen(tk.Frame):
+    def __init__(self, master):
+        tk.Frame.__init__(self, master, width=1024, height=576)  # Set frame size
+
+        # Make sure the frame does not shrink or expand
+        self.pack_propagate(False)
+
+        # Create a label for the camera feed
+        self.camera_label = tk.Label(self, width=1024, height=576)  # Set label size
+        self.camera_label.pack()
+
+        # Load all overlay images at once (must be transparent PNGs)
+        self.overlay_images = {
+            3: Image.open(os.path.join(os.getcwd(), "Pictures", "3.png")).convert("RGBA"),
+            2: Image.open(os.path.join(os.getcwd(), "Pictures", "2.png")).convert("RGBA"),
+            1: Image.open(os.path.join(os.getcwd(), "Pictures", "1.png")).convert("RGBA")
+        }
+
+        # Load "TRY AGAIN" image
+        self.try_again_image = Image.open(os.path.join(os.getcwd(), "Pictures", "try_again.png")).convert("RGBA")
+        self.lets_go_image = Image.open(os.path.join(os.getcwd(), "Pictures", "lets_go.png")).convert("RGBA")
+
+
+        welcome_to_say = Excel.which_welcome_record_to_say()
+        say(welcome_to_say)
+        self.after(10, self.update_camera)
+
+        self.count = 0
+        self.target_size = (1024, 576)  # Target size for the camera feed
+
+    def update_camera(self):
+        """Continuously updates the camera feed inside Tkinter."""
+        self.count += 1
+        frame = s.zed_camera.get_latest_frame()  # Retrieve frame from ZED
+
+        if frame is not None:
+            img = Image.fromarray(frame)  # Convert frame to PIL format (Assume already in RGB)
+
+            # Resize frame to fit within the Tkinter frame (1024×576)
+            img = img.resize(self.target_size, Image.LANCZOS)
+
+            # Determine which overlay to display based on count
+            overlay_image = None
+            if 40 <= self.count < 55:
+                if self.count == 40:
+                    say("bip_sound")
+                overlay_image = self.overlay_images[3]  # Show "3.png"
+            elif 55 <= self.count < 70:
+                if self.count == 55:
+                    say("bip_sound")
+                overlay_image = self.overlay_images[2]  # Show "2.png"
+            elif 70 <= self.count < 84:  # Ensure it disappears after 84
+                if self.count == 70:
+                    say("bip_sound")
+                overlay_image = self.overlay_images[1]  # Show "1.png"
+
+            if self.count == 84:
+                say("end_counting_sound")
+                s.screen_finished_counting = True  # Stop overlays after 84
+
+            # If an overlay is selected and count < 84, center it and paste
+            if overlay_image and self.count < 84:
+                x_offset = (1024 - overlay_image.width) // 2
+                y_offset = (576 - overlay_image.height) // 2
+                img.paste(overlay_image, (x_offset, y_offset), overlay_image)
+
+            # Convert final image to Tkinter format
+            imgtk = ImageTk.PhotoImage(image=img)
+            self.camera_label.imgtk = imgtk
+            self.camera_label.config(image=imgtk)
+
+        if s.asked_for_measurement and not s.finished_calibration:
+            if not self.count >=120:
+                self.after(10, self.update_camera)  # Update every 10ms
+
+            else:
+                self.check_if_distances_None()
+
+    def check_if_distances_None(self):
+        """Check if measurements are None, show 'TRY AGAIN' for 2 sec, then restart."""
+        if s.len_left_arm is None or s.len_right_arm is None or s.dist_between_wrists is None or s.dist_between_shoulders is None:
+            print("Some distances are None. Displaying 'TRY AGAIN'.")
+            s.screen_finished_counting = False
+
+            # Get latest camera frame
+            frame = s.zed_camera.get_latest_frame()
+            if frame is not None:
+                img = Image.fromarray(frame).resize(self.target_size, Image.LANCZOS)
+
+                # Center "TRY AGAIN" image
+                x_offset = (1024 - self.try_again_image.width) // 2
+                y_offset = (576 - self.try_again_image.height) // 2
+                img.paste(self.try_again_image, (x_offset, y_offset), self.try_again_image)
+
+                # Convert final image to Tkinter format
+                imgtk = ImageTk.PhotoImage(image=img)
+                self.camera_label.imgtk = imgtk
+                self.camera_label.config(image=imgtk)
+
+            welcome_to_say = Excel.which_welcome_record_to_say()
+            say(welcome_to_say)
+
+            # Display 'TRY AGAIN' for 2 seconds, then restart countdown
+            self.after(get_wav_duration(welcome_to_say)*1000, self.restart_countdown)
+
+        else:
+
+            s.finished_calibration = True
+            # Get latest camera frame
+            frame = s.zed_camera.get_latest_frame()
+            if frame is not None:
+                img = Image.fromarray(frame).resize(self.target_size, Image.LANCZOS)
+
+                # Center "TRY AGAIN" image
+                x_offset = (1024 - self.lets_go_image.width) // 2
+                y_offset = (576 - self.lets_go_image.height) // 2
+                img.paste(self.lets_go_image, (x_offset, y_offset), self.lets_go_image)
+
+                # Convert final image to Tkinter format
+                imgtk = ImageTk.PhotoImage(image=img)
+                self.camera_label.imgtk = imgtk
+                self.camera_label.config(image=imgtk)
+
+            s.asked_for_measurement = False
+            welcome_to_say = Excel.which_welcome_record_to_say()
+            say(welcome_to_say)
+
+
+    def restart_countdown(self):
+        """Restart the countdown process from 3 after displaying 'TRY AGAIN'."""
+        print("🔄 Restarting countdown...")
+        s.screen_finished_counting = False
+        self.count = 20 # Reset count
+        self.update_camera()  # Restart the countdown
+
+
 class StartExplanationPage(tk.Frame):
     def __init__(self, master, **kwargs):
         tk.Frame.__init__(self, master, **kwargs)
@@ -4217,9 +4370,11 @@ class StartExplanationPage(tk.Frame):
     def end_of_explanation(self):
         if not s.explanation_over:
             s.explanation_over = True
+            self.after(500, lambda: s.screen.switch_frame(CameraScreen))
 
     def on_click_skip(self):
         s.explanation_over = True
+        self.after(500, lambda: s.screen.switch_frame(CameraScreen))
 
 
 def wait_until_waving():
@@ -4600,7 +4755,6 @@ if __name__ == "__main__":
     s.play_song = False
     s.reached_max_limit = False
     s.latest_keypoints = []
-
     s.additional_audio_playing =False
     # Start continuous audio in a separate thread
     s.continuous_audio = ContinuousAudio()
@@ -4614,7 +4768,8 @@ if __name__ == "__main__":
     s.zed_camera = PyZedWrapper()
     s.zed_camera.start()
     # Initialize Tkinter-based GUI system
-    s.screen.switch_frame(ExercisePageNew, exercise_type="shoulders_distance_y", real_distance=140)
+    # s.screen.switch_frame(ExercisePageNew, exercise_type="shoulders_distance_y", real_distance=140)
+    s.screen.switch_frame(CameraScreen)
 
     # When needed, switch to the ExercisePage with the camera
     # s.screen.switch_frame(ExercisePage, camera_thread=s.camera)

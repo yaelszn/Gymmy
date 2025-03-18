@@ -24,6 +24,13 @@ if __name__ == '__main__':
     s.stick_exercises_number = 5
     s.weights_exercises_number = 4
     s.no_tool_exercises_number = 6
+
+    s.len_left_arm = None
+    s.len_right_arm = None
+    s.dist_between_wrists = None
+    s.dist_between_shoulders = None
+
+
     s.asked_for_measurement = False
     s.average_dist = None
     s.rep = 5
