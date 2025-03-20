@@ -2144,14 +2144,14 @@ def convert_white_to_transparent(image_path, tolerance=100):
 
 #Page that appears when there is an exercise
 class ExercisePage(tk.Frame):
-    def __init__(self, master, exercise_type, reverse_color, reverse_bar, min_distance, max_distance, which_side= None):
+    def __init__(self, master, exercise_type, reverse_color, reverse_bar, min_distance, max_distance, which_side= None, min_distance_x = None, max_distance_x =None):
         super().__init__(master)
         self.start_of_750_ms = None
         # The subjects from which the algorithm can choose
         subjects = ["garden", "galaxy", "butterflies"]
         random.shuffle(subjects)
         self.chosen_subject = subjects[0]  # Instance variable for later use
-
+        self.percent_of_bar = 0.3
         self.comment = None
         self.can_comment = False
 
@@ -2236,7 +2236,10 @@ class ExercisePage(tk.Frame):
         self.reverse_bar = reverse_bar
         self.min_distance = min_distance
         self.max_distance = max_distance
+        self.min_distance_x = min_distance_x
+        self.max_distance_x = max_distance_x
         self.which_side = which_side
+        self.time_of_comment = 0
 
         # # Create a canvas for images
         # self.canvas = tk.Canvas(self, width=background_image.width, height=background_image.height)
@@ -2294,8 +2297,8 @@ class ExercisePage(tk.Frame):
             self.update_single_wrist_x(keypoints)  # Right wrist & shoulder
         elif self.exercise_type == "wrist_height_y":
             self.update_wrist_height_y(keypoints)
-        elif self.exercise_type == "shoulders_distance_y":
-            self.update_shoulders_distance_y(keypoints)
+        elif self.exercise_type == "wrist_height_y_distance_x":
+            self.update_wrist_height_y_distance_x(keypoints)
 
 
 
@@ -2327,19 +2330,36 @@ class ExercisePage(tk.Frame):
             if keypoints:
                 self.update_bar(keypoints)
 
-            if s.reached_max_limit and self.start_of_750_ms is None:
+            if self.percent_of_bar < 0.2 and self.start_of_750_ms is None and s.all_rules_ok:
                 self.start_of_750_ms = time.time()
 
-            elif s.reached_max_limit and self.start_of_750_ms is not None:
+            elif self.percent_of_bar < 0.2 and self.start_of_750_ms is not None and s.all_rules_ok:
                 if time.time() - self.start_of_750_ms >= 0.75:  # 50 milliseconds = 0.05 seconds
                     self.can_comment = True
 
-            elif not s.reached_max_limit:
+            elif (self.percent_of_bar > 0.2 and not s.reached_max_limit) or (self.percent_of_bar <= 0.2 and not s.all_rules_ok):
                 self.start_of_750_ms = None
                 self.can_comment = False
 
-            if s.reached_max_limit and not s.all_rules_ok and s.was_in_opposite_limit and self.can_comment:
+            else:
+                if s.reached_max_limit and self.start_of_750_ms is None:
+                    self.start_of_750_ms = time.time()
+
+                elif s.reached_max_limit and self.start_of_750_ms is not None:
+                    if time.time() - self.start_of_750_ms >= 0.75:  # 50 milliseconds = 0.05 seconds
+                        self.can_comment = True
+
+                elif not s.reached_max_limit:
+                    self.start_of_750_ms = None
+                    self.can_comment = False
+
+            if (s.reached_max_limit and not s.all_rules_ok  and self.can_comment and s.was_in_first_condition) or \
+                ((s.all_rules_ok and self.percent_of_bar < 0.2 and self.can_comment) or (not s.all_rules_ok and self.percent_of_bar < 0.2 and not s.was_in_first_condition) and\
+                 ((s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]) or not self.exercise_type == "shoulders_distance_x")):
                     self.check_are_there_comments()
+
+            else:
+                self.time_of_comment = 0
 
 
             #
@@ -2499,15 +2519,6 @@ class ExercisePage(tk.Frame):
             shoulder_heights = right_shoulder.y
 
 
-        if s.req_exercise == "band_open_arms_and_up":
-            wrist_distance = abs(right_wrist.x - left_wrist.x)
-
-            if s.direction == "out" and wrist_distance>=s.dist_between_wrists/2:
-                s.direction = "up"
-
-            elif s.direction == "down" and abs(wrist_heights-shoulder_heights)<50:
-                s.direction = "in"
-
         # Compute wrist-to-shoulder height difference (preserving sign)
         wrist_height_avg = wrist_heights - shoulder_heights
 
@@ -2533,6 +2544,76 @@ class ExercisePage(tk.Frame):
                                                  reverse=self.reverse_color)
 
         # print("Height Difference:", wrist_height_avg, "| Scaled Length:", scaled_length)
+
+        # Update the bar display
+        self.update_bar_display(scaled_length)
+
+    import numpy as np
+
+    def update_wrist_height_y_distance_x(self, keypoints):
+        # Get wrist and shoulder positions
+        right_wrist = keypoints["R_wrist"]
+        left_wrist = keypoints["L_wrist"]
+        right_shoulder = keypoints["R_shoulder"]
+        left_shoulder = keypoints["L_shoulder"]
+
+        # Ensure all keypoints are detected
+        if any(np.all(kp == -1) for kp in [right_wrist, left_wrist, right_shoulder, left_shoulder]):
+            return  # Skip if any keypoint is missing
+
+        # Compute wrist-to-wrist distance (x-axis)
+        wrist_distance_x = abs(right_wrist.x - left_wrist.x)
+
+        # Compute wrist-to-shoulder height difference (y-axis)
+        wrist_heights = (right_wrist.y + left_wrist.y) / 2
+        shoulder_heights = (right_shoulder.y + left_shoulder.y) / 2
+        wrist_height_y = wrist_heights - shoulder_heights  # Preserve sign
+
+        # Maximum bar length
+        max_bar_length = self.background_image.width // 2
+        half_bar_length = max_bar_length / 2  # First 50% comes from x-distance
+
+        # Normalize x-distance to the first half of the bar
+        if wrist_distance_x <= self.min_distance_x:
+            scaled_length_x = 0
+        elif wrist_distance_x >= self.max_distance_x:
+            scaled_length_x = half_bar_length
+        else:
+            scaled_length_x = ((wrist_distance_x - self.min_distance_x) / (
+                        self.max_distance_x - self.min_distance_x)) * half_bar_length
+
+        if scaled_length_x < half_bar_length:
+            # If x-distance hasn't filled the first half, only use x-distance
+            scaled_length = scaled_length_x
+        else:
+            # Normalize y-distance to the second half of the bar
+            if wrist_height_y <= self.min_distance:
+                scaled_length_y = half_bar_length
+            elif wrist_height_y >= self.max_distance:
+                scaled_length_y = 0
+            else:
+                scaled_length_y = ((self.max_distance - wrist_height_y) / (
+                            self.max_distance - self.min_distance)) * half_bar_length
+
+            # Final bar length: X contribution + Y contribution
+            scaled_length = half_bar_length + max(0, scaled_length_y)
+
+        # If reversed, flip the scaling effect
+        if self.reverse_bar:
+            scaled_length = max_bar_length - scaled_length
+
+        # Set color using the bar length instead of wrist height
+        self.bar_color = self.get_color_gradient(scaled_length, 0, max_bar_length, reverse=self.reverse_color)
+
+        # Check exercise conditions
+        if s.req_exercise == "band_open_arms_and_up":
+            wrist_distance = abs(right_wrist.x - left_wrist.x)
+
+            if s.direction == "out" and wrist_distance >= s.dist_between_wrists / 2:
+                s.direction = "up"
+
+            elif s.direction == "down" and abs(wrist_heights - shoulder_heights) < 50:
+                s.direction = "in"
 
         # Update the bar display
         self.update_bar_display(scaled_length)
@@ -2584,14 +2665,8 @@ class ExercisePage(tk.Frame):
         # Compute shoulder distance
         distance = abs(right_shoulder.x - left_shoulder.x)
 
-        # # Define key distances
-        # max_distance = self.real_distance  # The furthest distance (smallest bar)
-        # # min_distance = self.real_distance - self.real_distance/2 + 40  # The ideal distance (full bar)
-        # min_distance = self.real_distance -70
-
         if distance >= s.dist_between_shoulders - 30 and abs(right_shoulder.y - left_shoulder.y) <= 10:
             s.all_rules_ok = False
-            s.was_in_opposite_limit = True
 
         # Scale the bar length
         if distance >= self.max_distance:
@@ -2612,47 +2687,47 @@ class ExercisePage(tk.Frame):
 
         # reverse_color=False, reverse_bar=True
 
-    def update_shoulders_distance_y(self, keypoints):
-        # Get shoulder positions
-        right_shoulder = keypoints["R_shoulder"]  # Right shoulder
-        left_shoulder = keypoints["L_shoulder"]  # Left shoulder
-
-        # Ensure all keypoints are detected
-        if np.all(right_shoulder == -1) or np.all(left_shoulder == -1):
-            return  # Skip if any keypoint is missing
-
-        # Compute absolute **vertical** distance between shoulders (ignoring direction)
-        distance = abs(right_shoulder[1] - left_shoulder[1])
-        #
-        # # Define key distances
-        # min_distance = 0  # Shoulders perfectly aligned (Ideal, full bar)
-        # max_distance = 70  # Maximum misalignment (smallest bar)
-
-        # Maximum bar length
-        max_bar_length = self.background_image.width // 2
-
-        # Scale the bar length
-        if distance >= self.max_distance:
-            scaled_length = 0 if not self.reverse_bar else max_bar_length  # Default: Shortest bar when far apart
-        elif distance <= self.min_distance:
-            scaled_length = max_bar_length if not self.reverse_bar else 0  # Default: Longest bar when shoulders aligned
-        else:
-            # Interpolate smoothly
-            scaled_length = max_bar_length * (
-                        1 - (distance - self.min_distance) / (self.max_distance - self.min_distance))
-
-            # If reversed, flip the scaling effect
-            if self.reverse_bar:
-                scaled_length = max_bar_length - scaled_length
-
-        # Set color based on `reverse_color`
-        self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance,
-                                                 reverse=self.reverse_color)
-
-        # print("Shoulder Height Difference:", distance, "| Scaled Length:", scaled_length)
-
-        # Update the bar display
-        self.update_bar_display(scaled_length)
+    # def update_shoulders_distance_y(self, keypoints):
+    #     # Get shoulder positions
+    #     right_shoulder = keypoints["R_shoulder"]  # Right shoulder
+    #     left_shoulder = keypoints["L_shoulder"]  # Left shoulder
+    #
+    #     # Ensure all keypoints are detected
+    #     if np.all(right_shoulder == -1) or np.all(left_shoulder == -1):
+    #         return  # Skip if any keypoint is missing
+    #
+    #     # Compute absolute **vertical** distance between shoulders (ignoring direction)
+    #     distance = abs(right_shoulder.y - left_shoulder.y)
+    #
+    #     if distance <= 30 and abs(right_shoulder.y - left_shoulder.y) <= 10:
+    #         s.all_rules_ok = False
+    #         s.was_in_opposite_limit = True
+    #
+    #     # Maximum bar length
+    #     max_bar_length = self.background_image.width // 2
+    #
+    #     # Scale the bar length
+    #     if distance >= self.max_distance:
+    #         scaled_length = 0 if not self.reverse_bar else max_bar_length  # Default: Shortest bar when far apart
+    #     elif distance <= self.min_distance:
+    #         scaled_length = max_bar_length if not self.reverse_bar else 0  # Default: Longest bar when shoulders aligned
+    #     else:
+    #         # Interpolate smoothly
+    #         scaled_length = max_bar_length * (
+    #                     1 - (distance - self.min_distance) / (self.max_distance - self.min_distance))
+    #
+    #         # If reversed, flip the scaling effect
+    #         if self.reverse_bar:
+    #             scaled_length = max_bar_length - scaled_length
+    #
+    #     # Set color based on `reverse_color`
+    #     self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance,
+    #                                              reverse=self.reverse_color)
+    #
+    #     # print("Shoulder Height Difference:", distance, "| Scaled Length:", scaled_length)
+    #
+    #     # Update the bar display
+    #     self.update_bar_display(scaled_length)
 
 
     def get_color_gradient(self, distance, min_distance, max_distance, reverse=False):
@@ -2700,6 +2775,8 @@ class ExercisePage(tk.Frame):
         scaled_length = min(scaled_length, max_width)  # Ensure it does not exceed max width
         scaled_length = max(0, scaled_length)  # Ensure it never becomes negative
 
+        self.percent_of_bar = scaled_length/max_width
+
         # Check if it reaches the 80% limit
         if scaled_length >= max_limited_width:
             s.reached_max_limit = True  # Set condition as True
@@ -2723,6 +2800,7 @@ class ExercisePage(tk.Frame):
     def check_are_there_comments(self):
 
         angles = s.last_entry_angles
+        self.comments = []
 
         # use_alternate_angles = s.last_entry_angles[-3]
         # left_right_differ = s.last_entry_angles[-2]
@@ -2746,120 +2824,136 @@ class ExercisePage(tk.Frame):
                         self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
                                                        "bigger", s.direction)
 
-            if self.comment is not None:
-                print(self.comment)
-                self.comment_label.config(text=self.comment, fg="red", font=("Arial", 50, "bold"), bg="white")
-                self.center_comment_label()  # Reposition after updating text
-                break
+        if self.comments:
+            if self.comment in self.comments:
+                if time.time() - self.time_of_comment >= 3:
+                    # Choose a different comment if there are more options
+                    new_comments = [c for c in self.comments if c != self.comment]
+                    if new_comments:
+                        self.comment = random.choice(new_comments)
+                        self.time_of_comment = time.time()
+                    else:
+                        pass
+                else:
+                    pass  # Keep the same comment
+            else:
+                self.time_of_comment = time.time()
+                self.comment = self.comments[0]  # Pick the first comment if the current one is not in the list
+        else:
+            self.comment = None  # No comments, reset
+
+        if self.comment is not None:
+            print(self.comment)
+            self.comment_label.config(text=self.comment, fg="red", font=("Arial", 50, "bold"), bg="white")
+            self.center_comment_label()  # Reposition after updating text
+
 
     def what_to_comment(self, joint1, joint2, joint3, biggerORsmaller="smaller", side="left"):
         cleaned_joint_1 = (joint1.split("_"))[-1]
         cleaned_joint_2 = (joint2.split("_"))[-1]
         cleaned_joint_3 = (joint3.split("_"))[-1]
 
-        comments = []
-
 
         if not s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]:
             if cleaned_joint_2 == "elbow":
                 if biggerORsmaller == "smaller":
-                    comments.append("ישר יותר את המרפקים")
+                    self.comments.append("ישר יותר את המרפקים")
                 else:
-                    comments.append("כופף יותר את המרפקים")
+                    self.comments.append("כופף יותר את המרפקים")
 
         elif s.req_exercise == "notool_right_hand_up_and_bend":
             if cleaned_joint_2 == "elbow":
                 if biggerORsmaller == "smaller":
-                    comments.append("ישר יותר את יד ימין")
+                    self.comments.append("ישר יותר את יד ימין")
                 else:
-                    comments.append("כופף מעט את יד ימין")
+                    self.comments.append("כופף מעט את יד ימין")
 
         elif s.req_exercise == "notool_left_hand_up_and_bend":
             if cleaned_joint_2 == "elbow":
                 if biggerORsmaller == "smaller":
-                    comments.append("ישר יותר את יד שמאל")
+                    self.comments.append("ישר יותר את יד שמאל")
                 else:
-                    comments.append("כופף מעט את יד שמאל")
+                    self.comments.append("כופף מעט את יד שמאל")
 
 
         else:
             if s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
                 if joint2 == "L_elbow":
                     if biggerORsmaller == "smaller":
-                        comments.append("ישר יותר את יד שמאל")
+                        self.comments.append("ישר יותר את יד שמאל")
                     else:
-                       comments.append("כופף מעט את יד שמאל")
+                       self.comments.append("כופף מעט את יד שמאל")
 
                 elif joint2 == "R_elbow":
                     if biggerORsmaller == "smaller":
-                        comments.append("כופף מעט פחות את יד ימין")
+                        self.comments.append("כופף מעט פחות את יד ימין")
                     else:
-                        comments.append("כופף יותר את יד ימין")
+                        self.comments.append("כופף יותר את יד ימין")
 
 
             elif s.req_exercise == "band_straighten_right_arm_elbows_bend_to_sides":
                 if joint2 == "L_elbow":
                     if biggerORsmaller == "smaller":
-                        comments.append("כופף מעט פחות את יד שמאל")
+                        self.comments.append("כופף מעט פחות את יד שמאל")
                     else:
-                       comments.append("כופף יותר את יד שמאל")
+                       self.comments.append("כופף יותר את יד שמאל")
 
                 elif joint2 == "R_elbow":
                     if biggerORsmaller == "smaller":
-                        comments.append("ישר יותר את יד ימין")
+                        self.comments.append("ישר יותר את יד ימין")
                     else:
-                        comments.append("כופף מעט את יד ימין")
+                        self.comments.append("כופף מעט את יד ימין")
 
 
         if ((cleaned_joint_1 == "hip" and cleaned_joint_3 == "elbow") or (
                 cleaned_joint_3 == "hip" and cleaned_joint_1 == "elbow")) and cleaned_joint_2 == "shoulder":
             if biggerORsmaller == "smaller":
-                comments.append("הרם יותר גבוה את הידיים")
+                self.comments.append("הרם יותר גבוה את הידיים")
             else:
-                comments.append("הורד מעט את הידיים")
+                self.comments.append("הורד מעט את הידיים")
 
 
         if joint1 == "L_wrist" and joint2 == "L_hip" and joint3 == "R_hip":
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט קצת יותר את הגב")
                     else:
-                        comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט מעט פחות את הגב")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט מעט פחות את הגב")
                     else:
-                        comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט קצת יותר את הגב")
 
 
         if joint1 == "L_hip" and joint2 == "L_shoulder" and joint3 == "L_wrist":
             if s.req_exercise == "band_open_arms":
                 if biggerORsmaller == "smaller":
-                    comments.append("הרם יותר גבוה את הידיים")
+                    self.comments.append("הרם יותר גבוה את הידיים")
                 else:
-                    comments.append("הורד מעט את הידיים")
+                    self.comments.append("הורד מעט את הידיים")
 
             elif s.req_exercise == "notool_left_hand_up_and_bend":
                 if biggerORsmaller == "smaller":
-                    comments.append("הישען מעט פחות לצד ימין")
+                    self.comments.append("הישען מעט פחות לצד ימין")
                 else:
-                    comments.append("הישען יותר ושלח את יד שמאל יותר לכיוון הרצפה")
+                    self.comments.append("הישען יותר ושלח את יד שמאל יותר לכיוון הרצפה")
 
         if joint1 == "R_hip" and joint2 == "R_shoulder" and joint3 == "R_wrist":
             if s.req_exercise == "band_open_arms":
                 if biggerORsmaller == "smaller":
-                    comments.append("הרם יותר גבוה את הידיים")
+                    self.comments.append("הרם יותר גבוה את הידיים")
                 else:
-                    comments.append("הורד מעט את הידיים")
+                    self.comments.append("הורד מעט את הידיים")
 
             elif s.req_exercise == "notool_right_hand_up_and_bend":
                 if biggerORsmaller == "smaller":
-                    comments.append("הישען מעט פחות לצד שמאל")
+                    self.comments.append("הישען מעט פחות לצד שמאל")
                 else:
-                    comments.append("הישען יותר ושלח את יד ימין יותר לכיוון הרצפה")
+                    self.comments.append("הישען יותר ושלח את יד ימין יותר לכיוון הרצפה")
 
 
 
@@ -2867,78 +2961,70 @@ class ExercisePage(tk.Frame):
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט מעט פחות את הגב")
                     else:
-                        comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט קצת יותר את הגב")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט קצת יותר את הגב")
                     else:
-                        comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט מעט פחות את הגב")
 
 
         if cleaned_joint_1 == "elbow" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
             if biggerORsmaller == "smaller":
-                comments.append("פתח יותר את הידיים")
+                self.comments.append("פתח יותר את הידיים")
             else:
-                comments.append("פתח פחות את הידיים")
+                self.comments.append("פתח פחות את הידיים")
 
 
-        if joint1 == "R_wrist'" and joint2 == "R_shoulder" and joint3 == "L_shoulder":
-            if biggerORsmaller == "smaller":
-                comments.append("פתח יותר את הידיים")
-            else:
-                comments.append("פתח פחות את הידיים")
+        if cleaned_joint_1 == "wrist" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
+            if s.req_exercise in ["band_open_arms", "band_open_arms_and_up"]:
+                if biggerORsmaller == "smaller":
+                    self.comments.append("מתח יותר את הגומייה")
+                else:
+                    self.comments.append("מתח פחות את הגומייה")
 
-        if joint1 == "L_wrist" and joint2 == "L_shoulder" and joint3 == "R_shoulder":
-            if biggerORsmaller == "smaller":
-                comments.append("פתח יותר את הידיים")
             else:
-                comments.append("פתח פחות את הידיים")
+                if biggerORsmaller == "smaller":
+                    self.comments.append("פתח יותר את הידיים")
+                else:
+                    self.comments.append("פתח פחות את הידיים")
+
 
         if joint1 == "L_elbow" and joint2 == "L_hip" and joint3 == "R_hip":
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        comments.append("מתח את יד שמאל עוד למטה")
+                        self.comments.append("מתח את יד שמאל עוד למטה")
                     else:
-                        comments.append("מתח את יד שמאל עוד קצת למעלה")
+                        self.comments.append("מתח את יד שמאל עוד קצת למעלה")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        comments.append("מתח מעט פחות את יד שמאל")
+                        self.comments.append("מתח מעט פחות את יד שמאל")
                     else:
-                        comments.append("הבא את יד שמאל מעט יותר לכיוון הרצפה")
+                        self.comments.append("הבא את יד שמאל מעט יותר לכיוון הרצפה")
 
 
         if joint1 == "R_elbow" and joint2 == "R_hip" and joint3 == "L_hip":
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        comments.append("מתח את יד ימין עוד קצת למעלה")
+                        self.comments.append("מתח את יד ימין עוד קצת למעלה")
                     else:
-                        comments.append("מתח את יד ימין עוד למטה")
+                        self.comments.append("מתח את יד ימין עוד למטה")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        comments.append("הבא את יד ימין מעט יותר לכיוון הרצפה")
+                        self.comments.append("הבא את יד ימין מעט יותר לכיוון הרצפה")
 
                     else:
-                        comments.append("מתח מעט פחות את יד ימין")
-
-
-
-        if comments:
-            if self.comment in comments:
-                pass  # Keep the same comment
-            else:
-                self.comment = comments[0]  # Pick the first comment if the current one is not in the list
-        else:
-            self.comment = None  # No comments, reset
+                        self.comments.append("מתח מעט פחות את יד ימין")
 
 
 class ExercisePageNew(tk.Frame):
