@@ -11,11 +11,11 @@ from Camera import Camera
 from Gymmy import Gymmy
 from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
     EffortScale, EntrancePage, ExplanationPage, ExercisePage, Repeat_training_or_not, \
-    Number_of_good_repetitions_page, ClappingPage, Weights, ExercisePageNew, CameraScreen
+    Number_of_good_repetitions_page, ClappingPage, Weights, CalibrationScreen
 import Settings as s
 import Excel
 import random
-from Audio import say, get_wav_duration, ContinuousAudio
+from Audio import say, get_wav_duration, ContinuousAudio, AdditionalAudio
 from datetime import datetime
 import Email
 
@@ -26,7 +26,10 @@ class Training(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
+
         while not s.finish_program:
+            s.exercise_name_repeated_explanation = None
+
             self.training_session()
             if s.finish_program:
                 break
@@ -119,6 +122,8 @@ class Training(threading.Thread):
 
 
     def training_session(self):
+
+
         while s.ex_in_training==[]:
             time.sleep(0.1)
 
@@ -174,25 +179,49 @@ class Training(threading.Thread):
                 if s.stop_requested or s.finish_program:
                     break
 
-            welcome_to_say = Excel.which_welcome_record_to_say()
-            time.sleep(get_wav_duration(welcome_to_say))
+            time.sleep(get_wav_duration("end_calibration"))
 
 
             for i in categories:
                 if s.stop_requested or s.finish_program:
                     break
 
-                exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
-                random.shuffle(exercises_in_category)
+                self.exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
+                random.shuffle(self.exercises_in_category)
                 s.waved_has_tool= False
-                if exercises_in_category!=[]:
+                if self.exercises_in_category!=[]:
                     self.show_screen_category(i)
                     while not s.waved_has_tool:
                          time.sleep(0.0001)
 
                     self.first_coordination_ex = True
+                    j=0
 
-                    for e in exercises_in_category:
+                    while j < len(self.exercises_in_category):
+                        s.last_entry_angles = None
+                        s.hand_not_good = False
+                        s.not_reached_max_limit_rest_rules_ok = False
+                        s.reached_max_limit = False
+                        s.all_rules_ok = False
+                        s.was_in_first_condition = False
+                        e = self.exercises_in_category[j]
+
+                        # if not s.finished_calibration:
+                        #     calibration_help_variable = True
+                        #
+                        # while not s.finished_calibration:
+                        #     time.sleep(0.0001)
+                        #
+                        # if calibration_help_variable: #אם הייתה קליברציה
+                        #     calibration_help_variable = False
+                        #     time.sleep(get_wav_duration("welcome"))
+
+
+                        # if s.try_again_calibration:
+                        #     say("welcome")
+                        #     time.sleep(get_wav_duration("welcome"))
+
+
                         s.was_in_first_condition = False
                         if e in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
                             s.zed_camera.set_detection_model_to_accurate()
@@ -218,22 +247,40 @@ class Training(threading.Thread):
                             else:
                                 self.first_coordination_ex = True
 
-                        self.end_exercise()
+
                         if e in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
                             s.zed_camera.set_detection_model_to_medium()
 
-                        # while (not s.gymmy_done) or (not s.camera_done):
-                            #     # print("not done")
-                            #     time.sleep(0.0001)
-                            #     if s.stop_requested:
-                            #         time.sleep(3)
-                            #         break
+
+                        if not s.try_again_calibration and not s.repeat_explanation:
+                            j+=1
+                            self.end_exercise()
+
+                        elif s.try_again_calibration:
+                            say("try_again_calibration")
+                            time.sleep(get_wav_duration("try_again_calibration"))
+                            s.asked_for_measurement = True
+                            s.screen_finished_counting = False
+                            s.screen.switch_frame(CalibrationScreen)
+
+                            while not s.finished_calibration:
+                                time.sleep(0.0001)
+
+
+                            time.sleep(get_wav_duration("end_calibration"))
+
+                        elif s.repeat_explanation:
+                                s.req_exercise = ""
+
 
                         if s.stop_requested or s.finish_program:
                             break
 
                         while not s.gymmy_done or not s.camera_done:
                             time.sleep(0.001)
+
+
+
 
                 if s.stop_requested or s.finish_program:
                     break
@@ -352,7 +399,16 @@ class Training(threading.Thread):
             s.last_saying_time = datetime.now()
             s.robot_counter= 0
             s.was_in_first_condition = False
-
+            s.time_of_change_position = None
+            s.try_again_calibration = False
+            s.not_reached_max_limit_rest_rules_ok = False
+            s.repeat_explanation = False
+            s.shoulder_problem_calibration = False
+            s.elbow_problem_calibration = False
+            s.hand_not_good = False
+            s.exercise_name_repeated_explanation = None
+            s.suggest_repeat_explanation = False
+            s.last_entry_angles = None
 
         else:
             Excel.find_and_add_training_to_patient()
@@ -370,15 +426,6 @@ class Training(threading.Thread):
         time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep")+1)
 
 
-
-    def random_encouragement(self):
-        enco = ["Well_done", "Very_good", "Excellent"]
-
-        random_class_name = random.choice(enco)
-        random_class = globals()[random_class_name]
-        random_instance = random_class
-        s.screen.switch_frame(random_instance)
-        time.sleep(get_wav_duration(random_class_name)+1)
 
 
     def run_exercise(self, name):
@@ -414,9 +461,13 @@ class Training(threading.Thread):
             s.explanation_over = True
 
 
-
-        while s.req_exercise == name:
+        while s.req_exercise == name and not s.try_again_calibration and not s.repeat_explanation:
             time.sleep(0.00000001)
+
+        if s.try_again_calibration:
+            s.req_exercise = ""
+            s.finished_calibration = False
+
 
 
         print("TRAINING: Exercise ", name, " done")
@@ -482,7 +533,7 @@ class Training(threading.Thread):
         s.len_right_arm = None
         s.dist_between_wrists = None
         s.dist_between_shoulders = None
-
+        s.time_of_change_position = None
         s.average_dist = None
         s.rep = 0
         s.audio_path = None
@@ -491,6 +542,17 @@ class Training(threading.Thread):
         s.gymmy_finished_demo = False
         s.last_saying_time = datetime.now()
         s.robot_counter = 0
+        s.try_again_calibration = False
+        s.not_reached_max_limit_rest_rules_ok = False
+        s.repeat_explanation = False
+        s.shoulder_problem_calibration = False
+        s.elbow_problem_calibration = False
+        s.hand_not_good = False
+        s.exercise_name_repeated_explanation = None
+        s.suggest_repeat_explanation = False
+        s.last_entry_angles = None
+
+
 
     def which_exercise_page(self):
 
@@ -511,7 +573,7 @@ class Training(threading.Thread):
         elif s.req_exercise == "band_open_arms_and_up":
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_height_y_distance_x", reverse_color=False, reverse_bar=False, min_distance=-(average_len_arms-250), max_distance= 0, which_side = None, min_distance_x= s.dist_between_shoulders , max_distance_x=  s.dist_between_wrists/2)
         elif s.req_exercise in ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean"]:
-            s.screen.switch_frame(ExercisePage, exercise_type="shoulders_distance_x", reverse_color=True, reverse_bar=False, min_distance= s.dist_between_shoulders-50, max_distance= s.dist_between_shoulders)
+            s.screen.switch_frame(ExercisePage, exercise_type="shoulders_distance_x", reverse_color=True, reverse_bar=False, min_distance= s.dist_between_shoulders-70, max_distance= s.dist_between_shoulders)
         elif s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_distance_x", reverse_color=False, reverse_bar=False, min_distance= s.dist_between_shoulders+200, max_distance= s.dist_between_shoulders + average_len_arms - 100)
         elif s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]:
@@ -566,12 +628,12 @@ if __name__ == "__main__":
                          str(current_time.minute) + "." + str(current_time.second)
     s.waved = False
     s.finish_workout = False
-    #s.exercise_amount = 6.
     s.finish_program= False
     s.asked_for_measurement= False
     s.rep = 8
+    s.time_of_change_position = None
 
-    s.ex_in_training = ["stick_bend_elbows_and_up"]
+    s.ex_in_training = ["band_up_and_lean"]
         #,"ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"] "ball_bend_elbows" ,
         # ["band_open_arms",  "band_up_and_lean", "band_open_arms_and_up"]
     #s.ex_in_training =  ["ball_raise_arms_above_head"]
@@ -592,6 +654,8 @@ if __name__ == "__main__":
     s.req_exercise=""
     s.ex_list = {}
     s.finished_calibration = False
+    s.repeat_explanation = False
+    s.last_entry_angles = None
 
     s.len_left_arm = None
     s.len_right_arm = None
@@ -599,6 +663,10 @@ if __name__ == "__main__":
     s.dist_between_shoulders = None
     s.len_left_upper_arm = None
     s.len_right_upper_arm = None
+    s.shoulder_problem_calibration = False
+    s.elbow_problem_calibration = False
+    s.hand_not_good = False
+    s.exercise_name_repeated_explanation = None
 
     s.was_in_first_condition = False
     s.screen_finished_counting = False
@@ -620,9 +688,12 @@ if __name__ == "__main__":
     s.full_name = "יעל שניידמן"
     s.play_song = False
     s.explanation_over = False
+    s.suggest_repeat_explanation = False
+
     s.another_training_requested= False
     s.choose_continue_or_not = False
     s.email_of_patient = "yaelszn@gmail.com"
+    s.try_again_calibration = False
     s.number_of_pauses=0
     # Start continuous audio in a separate thread
     s.screen = Screen()
@@ -632,6 +703,7 @@ if __name__ == "__main__":
     s.camera.start()
     s.training.start()
     s.robot.start()
+    s.audio_manager = AdditionalAudio()
     s.continuous_audio = ContinuousAudio()
     s.continuous_audio.start()
     s.screen.switch_frame(StartOfTraining)

@@ -1,7 +1,7 @@
 from datetime import datetime
 import pygame
 import Settings as s
-from Audio import ContinuousAudio
+from Audio import ContinuousAudio, AdditionalAudio
 from Camera import Camera
 from Gymmy import Gymmy
 from TrainingNew import Training
@@ -19,10 +19,10 @@ if __name__ == '__main__':
     s.additional_audio_playing = False
     s.volume = 0
     # Training variables initialization
-    s.ball_exercises_number = 5
+    s.ball_exercises_number = 4
     s.band_exercises_number = 5
     s.stick_exercises_number = 5
-    s.weights_exercises_number = 4
+    s.weights_exercises_number = 2
     s.no_tool_exercises_number = 6
 
     s.len_left_arm = None
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     s.dist_between_wrists = None
     s.dist_between_shoulders = None
 
-
+    s.time_of_change_position = None
     s.asked_for_measurement = False
     s.average_dist = None
     s.rep = 5
@@ -64,11 +64,25 @@ if __name__ == '__main__':
     s.rate= "moderate"
     s.explanation_over= False
     s.gymmy_finished_demo = False
+    s.hand_not_good = False
+    s.exercise_name_repeated_explanation = None
+    s.suggest_repeat_explanation = False
+    s.last_entry_angles = None
+
     s.last_saying_time = datetime.now()
     s.robot_counter = 0
     s.general_sayings = ["","",""]
     s.dist_between_shoulders = 0
     s.number_of_pauses = 0
+    s.not_reached_max_limit_rest_rules_ok = False
+    s.try_again_calibration = False
+    s.repeat_explanation = False
+    s.name_of_exercise_repeated_explanation = None
+    s.shoulder_problem_calibration = False
+    s.elbow_problem_calibration = False
+    s.all_rules_ok = False
+
+
     # Create all components
     s.camera = Camera()
     s.training = Training()
@@ -77,6 +91,8 @@ if __name__ == '__main__':
 
     pygame.mixer.init()
     s.play_song = False
+
+    s.audio_manager = AdditionalAudio()
     # Start continuous audio in a separate thread
     s.continuous_audio = ContinuousAudio()
     s.continuous_audio.start()

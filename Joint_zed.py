@@ -36,13 +36,15 @@ class Joint(object):
         else:
             return False
 
-
     def is_Nan(self, point):
-        value1 = float(point[0])
-        value2 = float(point[1])
-        value3 = float(point[2])
+        if point is None or any(p is None for p in point):
+            return True  # If the whole point or any coordinate is None
 
-        if math.isnan(value1) and math.isnan(value2) and math.isnan(value3):
-            return True
+        try:
+            value1 = float(point[0])
+            value2 = float(point[1])
+            value3 = float(point[2])
+        except (ValueError, TypeError):
+            return True  # In case conversion to float fails
 
-        return False
+        return math.isnan(value1) and math.isnan(value2) and math.isnan(value3)

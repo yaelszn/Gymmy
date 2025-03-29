@@ -173,8 +173,9 @@ class Camera(threading.Thread):
         self.frame_count = 0
         self.start_time = None
         self.joints = {}
-        self.max_angle_jump = 10
         self.previous_angles = {}
+        self.max_angle_jump = 10
+
         s.general_sayings = ["", "", ""]
         self.first_coordination_ex = True
         # Define the keys
@@ -218,39 +219,7 @@ class Camera(threading.Thread):
             print(f"⚠️ Could not calculate the angle for {joint_name}: {e}")
             return None
 
-    # def calc_angle_2d(self, joint1, joint2, joint3, joint_name="default"):
-    #     a = np.array([joint1.x, joint1.y], dtype=np.float32)
-    #     b = np.array([joint2.x, joint2.y], dtype=np.float32)
-    #     c = np.array([joint3.x, joint3.y], dtype=np.float32)
-    #
-    #     ba = a - b  # Vector from joint2 to joint1
-    #     bc = c - b  # Vector from joint2 to joint3
-    #
-    #     try:
-    #         # Compute cosine of the angle
-    #         cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
-    #
-    #         # ✅ Clamp cosine value between -1 and 1 to prevent NaN errors
-    #         cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
-    #
-    #         # Convert to degrees
-    #         angle = np.degrees(np.arccos(cosine_angle))
-    #
-    #         # ✅ Handle cases where the angle gets stuck at 180° due to straight alignment
-    #         if np.isclose(cosine_angle, -1.0, atol=1e-3):
-    #             angle -= 0.1  # Small shift to prevent sticking at 180°
-    #
-    #         # ✅ Ensure angle smoothing to avoid sudden jumps
-    #         if joint_name in self.previous_angles:
-    #             angle = self.limit_angle_jump(angle, joint_name)
-    #
-    #         self.previous_angles[joint_name] = angle
-    #
-    #         return round(angle, 2)
-    #
-    #     except Exception as e:
-    #         print(f"⚠️ Could not calculate the angle for {joint_name}: {e}")
-    #         return None
+
 
     def limit_angle_jump(self, angle, joint_name):
         previous_angle = self.previous_angles[joint_name]
@@ -273,18 +242,30 @@ class Camera(threading.Thread):
 
         return float(np.nanmean(values))  # Compute mean safely
 
+    import math
+
+    def euclidean_distance(self, p1, p2):
+        if None in p1 or None in p2:
+            return None
+        return math.sqrt(
+            (p1[0] - p2[0]) ** 2 +
+            (p1[1] - p2[1]) ** 2 +
+            (p1[2] - p2[2]) ** 2
+        )
+
+
     def run(self):
         print("CAMERA START")
         s.zed_camera = PyZedWrapper()
         s.zed_camera.start()
 
-        self.zed = PyZedWrapper.get_zed(s.zed_camera)
+        # self.zed = PyZedWrapper.get_zed(s.zed_camera)
 
         while not s.finish_program:
             time.sleep(0.0001)
-
             if s.asked_for_measurement and not s.finished_calibration and not s.screen_finished_counting:
-
+                time.sleep(1)
+                s.zed_camera.set_detection_model_to_accurate()
                 while not s.screen_finished_counting:
                     time.sleep(0.001)
 
@@ -296,8 +277,17 @@ class Camera(threading.Thread):
                 left_upper_arm_lengths = []
                 right_upper_arm_lengths = []
 
-                # Collect 60 readings
-                for _ in range(20):
+                j = 0
+                # Define the keys
+                keys = ["nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
+                        "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle", "R_eye", "L_eye", "R_ear", "L_ear"]
+
+                # Create the dictionary with empty lists
+                self.body_parts_dict = {key: [] for key in keys}
+                self.previous_angles = {}
+
+                # Collect 20 readings
+                while j < 20:
                     self.get_skeleton_data_for_measurements()
 
                     # Extract X-coordinates
@@ -307,6 +297,8 @@ class Camera(threading.Thread):
                     R_shoulder_x = self.body_parts_dict["R_shoulder"][-1][0]
                     R_elbow_x = self.body_parts_dict["R_elbow"][-1][0]
                     R_wrist_x = self.body_parts_dict["R_wrist"][-1][0]
+
+
 
                     # Compute distances only if values are valid (not None)
                     if None not in (L_shoulder_x, L_wrist_x):
@@ -322,6 +314,11 @@ class Camera(threading.Thread):
                     if None not in (R_shoulder_x, R_elbow_x):
                         right_upper_arm_lengths.append(abs(R_shoulder_x - R_elbow_x))
 
+                    j+=1
+
+                self.process_joints_from_body_parts_dict()
+
+                s.zed_camera.set_detection_model_to_medium()
 
                 s.len_left_arm = self.safe_mean(left_arm_lengths, "Left Arm")
                 s.len_right_arm = self.safe_mean(right_arm_lengths, "Right Arm")
@@ -330,11 +327,15 @@ class Camera(threading.Thread):
                 s.len_left_upper_arm = self.safe_mean(left_upper_arm_lengths, "Left Upper Arm")
                 s.len_right_upper_arm = self.safe_mean(right_upper_arm_lengths, "Right Upper Arm")
 
+
                 # Print results
                 print(f"Average Left Arm Length (X-axis): {s.len_left_arm}")
                 print(f"Average Right Arm Length (X-axis): {s.len_right_arm}")
                 print(f"Average Wrist Distance (X-axis): {s.dist_between_wrists}")
                 print(f"Average Shoulder Distance (X-axis): {s.dist_between_shoulders}")
+                print(f"Average Upper Left Arm Length (X-axis): {s.len_left_upper_arm}")
+                print(f"Average Upper Right Arm Length (X-axis): {s.len_right_upper_arm}")
+
 
 
             elif (s.req_exercise != "") or (s.req_exercise == "hello_waving"):
@@ -360,7 +361,9 @@ class Camera(threading.Thread):
                 print("CAMERA: Exercise ", ex, " start")
                 self.joints = {}
                 self.previous_angles = {}
+                self.count_not_good_range = 0
                 getattr(self, ex)()
+                self.count_not_good_range = 0
                 print("CAMERA: Exercise ", ex, " done")
                 s.req_exercise = ""
                 s.camera_done = True
@@ -369,6 +372,62 @@ class Camera(threading.Thread):
             else:
                 time.sleep(1)
         print("Camera Done")
+
+    def process_joints_from_body_parts_dict(self):
+        right_elbow_angle_not_in_range_count = 0
+        right_shoulder_angle_not_in_range_count = 0
+        left_elbow_angle_not_in_range_count = 0
+        left_shoulder_angle_not_in_range_count = 0
+
+        for i in range(len(self.body_parts_dict["R_shoulder"])):  # iterate over time
+
+            # --- RIGHT SIDE ---
+            r_hip_coords = self.body_parts_dict["R_hip"][i]
+            r_shoulder_coords = self.body_parts_dict["R_shoulder"][i]
+            r_elbow_coords = self.body_parts_dict["R_elbow"][i]
+            r_wrist_coords = self.body_parts_dict["R_wrist"][i]
+
+            r_hip = Joint("R_hip", r_hip_coords)
+            r_shoulder = Joint("R_shoulder", r_shoulder_coords)
+            r_elbow = Joint("R_elbow", r_elbow_coords)
+            r_wrist = Joint("R_wrist", r_wrist_coords)
+
+            right_elbow_angle = self.calc_angle_3d(r_shoulder, r_elbow, r_wrist, "R_1")
+            right_shoulder_angle = self.calc_angle_3d(r_hip, r_shoulder, r_elbow, "R_2")
+
+            # --- LEFT SIDE ---
+            l_hip_coords = self.body_parts_dict["L_hip"][i]
+            l_shoulder_coords = self.body_parts_dict["L_shoulder"][i]
+            l_elbow_coords = self.body_parts_dict["L_elbow"][i]
+            l_wrist_coords = self.body_parts_dict["L_wrist"][i]
+
+            l_hip = Joint("L_hip", l_hip_coords)
+            l_shoulder = Joint("L_shoulder", l_shoulder_coords)
+            l_elbow = Joint("L_elbow", l_elbow_coords)
+            l_wrist = Joint("L_wrist", l_wrist_coords)
+
+            left_elbow_angle = self.calc_angle_3d(l_shoulder, l_elbow, l_wrist, "L_1")
+            left_shoulder_angle = self.calc_angle_3d(l_hip, l_shoulder, l_elbow, "L_2")
+
+            if not (70 < right_shoulder_angle < 110):
+                right_shoulder_angle_not_in_range_count +=1
+            if not (70 < left_shoulder_angle < 110):
+                left_shoulder_angle_not_in_range_count +=1
+            if not (140 < right_elbow_angle < 180):
+                right_elbow_angle_not_in_range_count +=1
+            if not (140 < left_elbow_angle < 180):
+                left_elbow_angle_not_in_range_count +=1
+
+
+        if right_shoulder_angle_not_in_range_count >= 2 or left_shoulder_angle_not_in_range_count >= 2:
+            s.shoulder_problem_calibration = True
+            print("shoulder_problem_calibration : True")
+
+        if right_elbow_angle_not_in_range_count >= 2 or left_elbow_angle_not_in_range_count >= 2:
+            s.elbow_problem_calibration = True
+            print("elbow_problem_calibration : True")
+
+
 
     def get_skeleton_data_for_measurements(self):
         bodies = sl.Bodies()
@@ -380,8 +439,8 @@ class Camera(threading.Thread):
                       "R_hip", "R_knee", "R_ankle", "L_hip", "L_knee", "L_ankle", "R_eye", "L_eye", "R_ear",
                       "L_ear"]
 
-        if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
-            self.zed.retrieve_bodies(bodies, body_runtime_param)
+        if s.zed_camera.zed.grab() == sl.ERROR_CODE.SUCCESS:
+            s.zed_camera.zed.retrieve_bodies(bodies, body_runtime_param)
             body_array = bodies.body_list
 
             if body_array:
@@ -408,8 +467,8 @@ class Camera(threading.Thread):
         body_runtime_param.detection_confidence_threshold = 50
         time.sleep(0.001)
 
-        if self.zed.grab() == sl.ERROR_CODE.SUCCESS:
-            self.zed.retrieve_bodies(bodies, body_runtime_param)
+        if s.zed_camera.zed.grab() == sl.ERROR_CODE.SUCCESS:
+            s.zed_camera.zed.retrieve_bodies(bodies, body_runtime_param)
             body_array = bodies.body_list
             if body_array:
                 body = bodies.body_list[0]
@@ -574,14 +633,21 @@ class Camera(threading.Thread):
             flag = True
             counter = 0
             list_joints = []
+            s.time_of_change_position = time.time()
+
 
 
             while s.req_exercise == exercise_name:
                 while s.did_training_paused and not s.stop_requested:
                     time.sleep(0.01)
+                    if self.joints != {}:
+                        self.joints = {}
+
+                    if self.previous_angles != {}:
+                        self.previous_angles = {}
+
 
                 self.sayings_generator(counter)
-                #for i in range (1,200):
                 joints = self.get_skeleton_data()
                 if joints is not None:
                     right_angle = self.calc_angle_3d(joints[str("R_" + joint1)], joints[str("R_" + joint2)],
@@ -624,13 +690,7 @@ class Camera(threading.Thread):
                                      joints[str("L_" + joint4)], joints[str("L_" + joint5)], joints[str("L_" + joint6)],
                                      right_angle, left_angle, right_angle2, left_angle2]
 
-                        #
-                        # # if flag == False:
-                        # s.information = [
-                        #     [str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
-                        #     [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), down_lb, down_ub],
-                        #     [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
-                        #     [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), down_lb2, down_ub2]]
+
 
                         if flag == False:
                             s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), up_lb, up_ub],
@@ -646,8 +706,6 @@ class Camera(threading.Thread):
 
                             elif s.req_exercise in ["ball_open_arms_above_head"]:
                                 s.direction = "in"
-
-
 
 
                         else:
@@ -666,8 +724,6 @@ class Camera(threading.Thread):
                             elif s.req_exercise in ["ball_open_arms_above_head"]:
                                 s.direction = "out"
 
-
-                        # else:
 
 
 
@@ -698,7 +754,6 @@ class Camera(threading.Thread):
 
                     list_joints.append(copy.deepcopy(new_entry))
 
-                    #print(str(i))
                     if right_angle is not None and left_angle is not None and \
                             right_angle2 is not None and left_angle2 is not None:
                         print("first angle mean: ", np.nanmean(list_first_angle))
@@ -708,56 +763,79 @@ class Camera(threading.Thread):
 
 
                         if left_right_differ:
-                            if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
-                                    (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & s.reached_max_limit &(not flag):
-                                flag = True
-                                counter += 1
-                                s.number_of_repetitions_in_training += 1
-                                s.patient_repetitions_counting_in_exercise+=1
-                                #self.change_count_screen(counter)
-                                print("counter:"+ str(counter))
-                                s.all_rules_ok = True
+                            if (up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and \
+                                    (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2) and (not flag):
+
+                                    if s.reached_max_limit:
+                                        flag = True
+                                        counter += 1
+                                        s.number_of_repetitions_in_training += 1
+                                        s.patient_repetitions_counting_in_exercise+=1
+                                        print("counter:"+ str(counter))
+                                        s.all_rules_ok = True
+                                        self.count_not_good_range = 0
+                                        s.time_of_change_position = time.time()
+                                        s.not_reached_max_limit_rest_rules_ok = False
+
+                                    else:
+                                        s.not_reached_max_limit_rest_rules_ok = True
 
 
-                            #  if not s.robot_count:
-                              #   say(str(counter))
-
-
-                            elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
-                                    (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & (flag):
+                            elif (down_lb < right_angle < down_ub) and (up_lb < left_angle < up_ub) and \
+                                    (down_lb2 < right_angle2 < down_ub2) and (up_lb2 < left_angle2 < up_ub2) and (flag):
                                 flag = False
                                 s.all_rules_ok = False
                                 s.was_in_first_condition = True
+                                self.count_not_good_range = 0
+                                s.time_of_change_position = time.time()
+
+                            # elif time.time() - s.time_of_change_position > 3:
+                            #     if not s.reached_max_limit and (up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and \
+                            #         (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2):
+                            #         self.count_not_good_range += 1
+                            #
+                            #         if self.count_not_good_range >= 20:
+                            #             s.try_again_calibration = True
 
                         else:
-                            if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
-                                    (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & s.reached_max_limit & (not flag):
-                                flag = True
-                                counter += 1
-                                s.number_of_repetitions_in_training += 1
-                                s.patient_repetitions_counting_in_exercise+=1
-                                #self.change_count_screen(counter)
-                                print("counter:" + str(counter))
-                                #  if not s.robot_count:
-                                # say(str(counter))
+                            if (up_lb < right_angle < up_ub) and (up_lb < left_angle < up_ub) and \
+                                    (up_lb2 < right_angle2 < up_ub2) and (up_lb2 < left_angle2 < up_ub2) and (not flag):
 
-                                s.all_rules_ok = True
+                                if s.reached_max_limit:
+                                    flag = True
+                                    counter += 1
+                                    s.number_of_repetitions_in_training += 1
+                                    s.patient_repetitions_counting_in_exercise+=1
+                                    print("counter:" + str(counter))
+                                    s.time_of_change_position = time.time()
+                                    self.count_not_good_range = 0
+                                    s.all_rules_ok = True
+                                    s.not_reached_max_limit_rest_rules_ok = False
 
+                                else:
+                                    s.not_reached_max_limit_rest_rules_ok = True
 
-
-                            elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
-                                    (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & (flag):
+                            elif (down_lb < right_angle < down_ub) and (down_lb < left_angle < down_ub) and \
+                                    (down_lb2 < right_angle2 < down_ub2) and (down_lb2 < left_angle2 < down_ub2) and (flag):
                                 flag = False
                                 s.all_rules_ok = False
                                 s.was_in_first_condition = True
+                                self.count_not_good_range = 0
+                                s.time_of_change_position = time.time()
 
+
+                            # elif time.time() - s.time_of_change_position > 3:
+                            #     if not s.reached_max_limit and (up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and \
+                            #         (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2):
+                            #         self.count_not_good_range += 1
+                            #
+                            #         if self.count_not_good_range >= 20:
+                            #             s.try_again_calibration = True
 
                 if counter == s.rep:
                     s.req_exercise = ""
                     s.success_exercise = True
                     break
-            #self.ezer(list_first_angle)
-            #self.end_exercise(counter)
 
             if len(list_joints) == 0:
                 joints = self.fill_null_joint_list()
@@ -775,11 +853,9 @@ class Camera(threading.Thread):
                                  None, None, None, None]
                 list_joints.append(copy.deepcopy(new_entry))
 
-            s.ex_list.update({exercise_name: counter})
-            Excel.wf_joints(exercise_name, list_joints)
-
-
-
+            if not s.try_again_calibration or not s.repeat_explanation:
+                s.ex_list.update({exercise_name: counter})
+                Excel.wf_joints(exercise_name, list_joints)
 
     def exercise_two_angles_3d_one_side(self, exercise_name, joint1, joint2, joint3, up_lb_right, up_ub_right, down_lb_right, down_ub_right, up_lb_left, up_ub_left, down_lb_left, down_ub_left,
                                    joint4, joint5, joint6, up_lb_right2, up_ub_right2, down_lb_right2, down_ub_right2 , up_lb_left2, up_ub_left2, down_lb_left2, down_ub_left2, use_alternate_angles=False):
@@ -789,11 +865,17 @@ class Camera(threading.Thread):
             flag = True
             counter = 0
             list_joints = []
-
+            s.time_of_change_position = time.time()
 
             while s.req_exercise == exercise_name:
                 while s.did_training_paused and not s.stop_requested:
                     time.sleep(0.01)
+
+                    if self.joints != {}:
+                        self.joints = {}
+
+                    if self.previous_angles != {}:
+                        self.previous_angles = {}
 
                 self.sayings_generator(counter)
 
@@ -914,30 +996,48 @@ class Camera(threading.Thread):
 
 
 
-                    if (up_lb_right < right_angle < up_ub_right) & (up_lb_left < left_angle < up_ub_left) & \
-                            (up_lb_right2 < right_angle2 < up_ub_right2) & (up_lb_left2 < left_angle2 < up_ub_left2) & s.reached_max_limit & (not flag):
-                        flag = True
-                        counter += 1
-                        s.number_of_repetitions_in_training += 1
-                        s.patient_repetitions_counting_in_exercise+=1
-                        #self.change_count_screen(counter)
-                        print("counter:" + str(counter))
-                        s.all_rules_ok = True
+                    if (up_lb_right < right_angle < up_ub_right) and (up_lb_left < left_angle < up_ub_left) and \
+                            (up_lb_right2 < right_angle2 < up_ub_right2) and (up_lb_left2 < left_angle2 < up_ub_left2) and (not flag):
+
+                        if s.reached_max_limit:
+                            flag = True
+                            counter += 1
+                            s.number_of_repetitions_in_training += 1
+                            s.patient_repetitions_counting_in_exercise+=1
+                            #self.change_count_screen(counter)
+                            print("counter:" + str(counter))
+                            s.all_rules_ok = True
+                            s.time_of_change_position = time.time()
+                            self.count_not_good_range = 0
+                            s.not_reached_max_limit_rest_rules_ok = False
+
+                        else:
+                            s.not_reached_max_limit_rest_rules_ok = True
 
                         #  if not s.robot_count:
                         # say(str(counter))
-                    elif (down_lb_right < right_angle < down_ub_right) & (down_lb_left < left_angle < down_ub_left) & \
-                            (down_lb_right2 < right_angle2 < down_ub_right2) & (down_lb_left2 < left_angle2 < down_ub_left2) & (flag):
+                    elif (down_lb_right < right_angle < down_ub_right) and (down_lb_left < left_angle < down_ub_left) and \
+                            (down_lb_right2 < right_angle2 < down_ub_right2) and (down_lb_left2 < left_angle2 < down_ub_left2) and (flag):
                         flag = False
                         s.all_rules_ok = False
                         s.was_in_first_condition = True
+                        s.time_of_change_position = time.time()
+                        self.count_not_good_range = 0
+
+
+                    # elif time.time() - s.time_of_change_position > 3:
+                    #     if not s.reached_max_limit and (up_lb_right < right_angle < up_ub_right) and (up_lb_left < left_angle < up_ub_left) and \
+                    #         (up_lb_right2 < right_angle2 < up_ub_right2) and (up_lb_left2 < left_angle2 < up_ub_left2):
+                    #         self.count_not_good_range += 1
+                    #
+                    #         if self.count_not_good_range >= 20:
+                    #             s.try_again_calibration = True
 
                 if counter == s.rep:
                     s.req_exercise = ""
                     s.success_exercise = True
                     break
-            #self.ezer(list_first_angle)
-            #self.end_exercise(counter)
+
             if len(list_joints) == 0:
                 joints = self.fill_null_joint_list()
                 if use_alternate_angles:
@@ -954,15 +1054,13 @@ class Camera(threading.Thread):
                                  None, None, None, None]
                 list_joints.append(copy.deepcopy(new_entry))
 
-            s.ex_list.update({exercise_name: counter})
-            Excel.wf_joints(exercise_name, list_joints)
-
-
-
+            if not s.try_again_calibration or not s.repeat_explanation:
+                s.ex_list.update({exercise_name: counter})
+                Excel.wf_joints(exercise_name, list_joints)
 
     def exercise_two_angles_3d_with_axis_check(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                                joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, use_alternate_angles=False,
-                               left_right_differ=False, differ = 50, wrist_check = False):
+                               left_right_differ=False, wrist_check = False):
 
         list_first_angle = []
         list_second_angle = []
@@ -970,11 +1068,17 @@ class Camera(threading.Thread):
         counter = 0
         list_joints = []
         s.was_in_first_condition = True
-
+        s.time_of_change_position = time.time()
 
         while s.req_exercise == exercise_name:
             while s.did_training_paused and not s.stop_requested:
                 time.sleep(0.01)
+
+                if self.joints != {}:
+                    self.joints = {}
+
+                if self.previous_angles != {}:
+                    self.previous_angles = {}
 
             self.sayings_generator(counter)
 
@@ -1012,10 +1116,8 @@ class Camera(threading.Thread):
 
                             s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
                                              [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
-                                             [str("R_" + joint4), str("R_" + joint5), str("L_" + joint6), down_lb2,
-                                              down_ub2],
-                                             [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), up_lb2,
-                                              up_ub2]]
+                                             [str("R_" + joint4), str("R_" + joint5), str("L_" + joint6), down_lb2, down_ub2],
+                                             [str("L_" + joint4), str("L_" + joint5), str("R_" + joint6), up_lb2, up_ub2]]
 
                             s.direction = "left"
 
@@ -1085,75 +1187,181 @@ class Camera(threading.Thread):
                     if left_right_differ:
 
                         if wrist_check:
-                            if ((down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
-                                    (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & \
-                                    (joints["R_wrist"].x - joints["L_shoulder"].x > 50) & s.reached_max_limit &\
-                                    (not flag)):
-                                flag = True
-                                counter += 1
-                                s.number_of_repetitions_in_training += 1
-                                s.patient_repetitions_counting_in_exercise += 1
-                                #self.change_count_screen(counter)
-                                print("counter:" + str(counter))
-                                #  if not s.robot_count:
-                                # say(str(counter))
-                                s.all_rules_ok = True
+                            if ((down_lb < right_angle < down_ub) and (up_lb < left_angle < up_ub) and \
+                                    (down_lb2 < right_angle2 < down_ub2) and (up_lb2 < left_angle2 < up_ub2) and (not flag)):
 
-                            elif (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
-                                    (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & \
-                                    ( joints["R_shoulder"].x-joints["L_wrist"].x > 50)&  s.reached_max_limit & (flag):
+                                if (joints["R_wrist"].x - joints["L_shoulder"].x > 50):
+                                    s.hand_not_good = False
 
-                                flag = False
-                                s.all_rules_ok = True
+                                    if s.reached_max_limit:
+                                        flag = True
+                                        counter += 1
+                                        s.number_of_repetitions_in_training += 1
+                                        s.patient_repetitions_counting_in_exercise += 1
+                                        print("counter:" + str(counter))
+                                        #  if not s.robot_count:
+                                        # say(str(counter))
+                                        s.all_rules_ok = True
+                                        s.time_of_change_position = time.time()
+                                        self.count_not_good_range = 0
+                                        s.not_reached_max_limit_rest_rules_ok = False
 
+                                    else:
+                                        s.not_reached_max_limit_rest_rules_ok = True
+
+                                else:
+
+                                    s.hand_not_good = True
+
+                                    if s.reached_max_limit:
+                                        s.not_reached_max_limit_rest_rules_ok = False
+
+                                    else:
+                                        s.not_reached_max_limit_rest_rules_ok = True
+
+
+
+
+                            elif (up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and \
+                                    (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2) and (flag):
+
+                                if joints["R_shoulder"].x-joints["L_wrist"].x > 50:
+                                    s.hand_not_good = False
+
+                                    if s.reached_max_limit:
+                                        counter += 1
+                                        s.number_of_repetitions_in_training += 1
+                                        s.patient_repetitions_counting_in_exercise += 1
+                                        print("counter:" + str(counter))
+
+                                        flag = False
+                                        s.all_rules_ok = True
+                                        s.time_of_change_position = time.time()
+                                        self.count_not_good_range = 0
+                                        s.not_reached_max_limit_rest_rules_ok = False
+
+                                    else:
+                                        s.not_reached_max_limit_rest_rules_ok = True
+
+                                else:
+                                    s.hand_not_good = True
+                                    if s.reached_max_limit:
+                                        s.not_reached_max_limit_rest_rules_ok = False
+
+                                    else:
+                                        s.not_reached_max_limit_rest_rules_ok = True
+
+
+                            # elif time.time() - s.time_of_change_position > 1.5:
+                            #     if not s.reached_max_limit and \
+                            #            (((down_lb < right_angle < down_ub) and (up_lb < left_angle < up_ub) and (down_lb2 < right_angle2 < down_ub2) and (up_lb2 < left_angle2 < up_ub2) and (joints["R_wrist"].x - joints["L_shoulder"].x > 50)) or \
+                            #             ((up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2) and (joints["R_shoulder"].x - joints["L_wrist"].x > 50))):
+                            #         self.count_not_good_range += 1
+                            #
+                            #         if self.count_not_good_range >= 20:
+                            #             s.try_again_calibration = True
+                            #             exercise_name = "s"
 
 
                         else:
-                            if (up_lb < right_angle < up_ub) & (down_lb < left_angle < down_ub) & \
-                                    (up_lb2 < right_angle2 < up_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) & s.reached_max_limit &\
-                                    (not flag):
+                            if (up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and \
+                                    (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2) and (not flag):
+
+                                if s.reached_max_limit:
+                                    flag = True
+                                    counter += 1
+                                    s.number_of_repetitions_in_training += 1
+                                    s.patient_repetitions_counting_in_exercise += 1
+                                    print("counter:" + str(counter))
+                                    s.all_rules_ok = True
+                                    s.time_of_change_position = time.time()
+                                    self.count_not_good_range = 0
+
+                                    s.not_reached_max_limit_rest_rules_ok = False
+
+                                else:
+                                    s.not_reached_max_limit_rest_rules_ok = True
+
+
+                            elif (down_lb < right_angle < down_ub) and (up_lb < left_angle < up_ub) and \
+                                    (down_lb2 < right_angle2 < down_ub2) and (up_lb2 < left_angle2 < up_ub2) and (flag):
+
+                                if s.reached_max_limit:
+                                    counter += 1
+                                    s.number_of_repetitions_in_training += 1
+                                    s.patient_repetitions_counting_in_exercise += 1
+                                    print("counter:" + str(counter))
+
+                                    flag = False
+                                    s.all_rules_ok = True
+                                    s.time_of_change_position = time.time()
+                                    self.count_not_good_range = 0
+                                    s.not_reached_max_limit_rest_rules_ok = False
+
+                                else:
+                                    s.not_reached_max_limit_rest_rules_ok = True
+
+                            # elif time.time() - s.time_of_change_position > 1.5:
+                            #     if not s.reached_max_limit and (((up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2)) or
+                            #        ((down_lb < right_angle < down_ub) and (up_lb < left_angle < up_ub) and (down_lb2 < right_angle2 < down_ub2) and (up_lb2 < left_angle2 < up_ub2))) and \
+                            #         abs(joints["L_shoulder"].z - joints["R_shoulder"].z)>100:
+                            #
+                            #         self.count_not_good_range += 1
+                            #         print("count_not_good_range: " + str(self.count_not_good_range))
+                            #
+                            #         if self.count_not_good_range >= 20:
+                            #             s.try_again_calibration = True
+                            #             exercise_name = "s"
+
+
+                    else:
+                        if (up_lb < right_angle < up_ub) and (up_lb < left_angle < up_ub) and \
+                                (up_lb2 < right_angle2 < up_ub2) and (up_lb2 < left_angle2 < up_ub2) and (not flag):
+
+                            if s.reached_max_limit:
                                 flag = True
                                 counter += 1
                                 s.number_of_repetitions_in_training += 1
                                 s.patient_repetitions_counting_in_exercise += 1
-                                #self.change_count_screen(counter)
                                 print("counter:" + str(counter))
-                                #  if not s.robot_count:
-                                # say(str(counter))
+
                                 s.all_rules_ok = True
+                                s.time_of_change_position = time.time()
+                                self.count_not_good_range = 0
+                                s.not_reached_max_limit_rest_rules_ok = False
+
+                            else:
+                                s.not_reached_max_limit_rest_rules_ok = True
 
 
-                            elif (down_lb < right_angle < down_ub) & (up_lb < left_angle < up_ub) & \
-                                    (down_lb2 < right_angle2 < down_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
-                                    (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) &  s.reached_max_limit & (flag):
+                        elif (down_lb < right_angle < down_ub) and (down_lb < left_angle < down_ub) and \
+                                (down_lb2 < right_angle2 < down_ub2) and (down_lb2 < left_angle2 < down_ub2) and (flag):
+
+                            if s.reached_max_limit:
+                                counter += 1
+                                s.number_of_repetitions_in_training += 1
+                                s.patient_repetitions_counting_in_exercise += 1
+                                print("counter:" + str(counter))
+
                                 flag = False
                                 s.all_rules_ok = True
+                                s.time_of_change_position = time.time()
+                                self.count_not_good_range = 0
+                                s.not_reached_max_limit_rest_rules_ok = False
 
+                            else:
+                                s.not_reached_max_limit_rest_rules_ok = True
 
-
-
-                    else:
-                        if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
-                                (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) &  s.reached_max_limit & (not flag):
-                            flag = True
-                            counter += 1
-                            s.number_of_repetitions_in_training += 1
-                            s.patient_repetitions_counting_in_exercise += 1
-                            #self.change_count_screen(counter)
-                            print("counter:" + str(counter))
-                            #  if not s.robot_count:
-                            # say(str(counter))
-                            s.all_rules_ok = True
-
-
-
-                        elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
-                                (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) &  s.reached_max_limit & (flag):
-                            flag = False
-                            s.all_rules_ok = True
+                        # elif time.time() - s.time_of_change_position > 1.5:
+                        #     if not s.reached_max_limit and \
+                        #            (((up_lb < right_angle < up_ub) and (up_lb < left_angle < up_ub) and (up_lb2 < right_angle2 < up_ub2) and (up_lb2 < left_angle2 < up_ub2)) or \
+                        #         ((down_lb < right_angle < down_ub) and (down_lb < left_angle < down_ub) and (down_lb2 < right_angle2 < down_ub2) and (down_lb2 < left_angle2 < down_ub2))):
+                        #
+                        #         self.count_not_good_range += 1
+                        #
+                        #         if self.count_not_good_range >= 20:
+                        #             s.try_again_calibration = True
+                        #             exercise_name = "s"
 
             if counter == s.rep:
                 s.req_exercise = ""
@@ -1176,8 +1384,10 @@ class Camera(threading.Thread):
                              None, None, None, None]
             list_joints.append(copy.deepcopy(new_entry))
 
-        s.ex_list.update({exercise_name: counter})
-        Excel.wf_joints(exercise_name, list_joints)
+        if not s.try_again_calibration or not s.repeat_explanation:
+            s.ex_list.update({exercise_name: counter})
+            Excel.wf_joints(exercise_name, list_joints)
+
 
     def exercise_three_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                                joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2,
@@ -1188,9 +1398,17 @@ class Camera(threading.Thread):
         flag = True
         counter = 0
         list_joints = []
+        s.time_of_change_position = time.time()
+
         while s.req_exercise == exercise_name:
             while s.did_training_paused and not s.stop_requested:
                 time.sleep(0.01)
+
+                if self.joints != {}:
+                    self.joints = {}
+
+                if self.previous_angles != {}:
+                    self.previous_angles = {}
 
             self.sayings_generator(counter)
 
@@ -1309,24 +1527,42 @@ class Camera(threading.Thread):
                         right_angle2 is not None and left_angle2 is not None and \
                         right_angle3 is not None and left_angle3 is not None:
 
-                    if (up_lb < right_angle < up_ub) & (up_lb < left_angle < up_ub) & \
-                            (up_lb2 < right_angle2 < up_ub2) & (up_lb2 < left_angle2 < up_ub2) & \
-                            (up_lb3 < right_angle3 < up_ub3) & (up_lb3 < left_angle3 < up_ub3) & s.reached_max_limit &(not flag):
-                        flag = True
-                        counter += 1
-                        s.number_of_repetitions_in_training += 1
-                        s.patient_repetitions_counting_in_exercise += 1
-                        print("counter:" + str(counter))
-                        s.all_rules_ok = True
-                        #self.change_count_screen(counter)
-                       # if not s.robot_count:
-                       #  say(str(counter))
-                    elif (down_lb < right_angle < down_ub) & (down_lb < left_angle < down_ub) & \
-                            (down_lb2 < right_angle2 < down_ub2) & (down_lb2 < left_angle2 < down_ub2) & \
-                            (down_lb3 < right_angle3 < down_ub3) & (down_lb3 < left_angle3 < down_ub3) & (flag):
+                    if (up_lb < right_angle < up_ub) and (up_lb < left_angle < up_ub) and \
+                            (up_lb2 < right_angle2 < up_ub2) and (up_lb2 < left_angle2 < up_ub2) and \
+                            (up_lb3 < right_angle3 < up_ub3) and (up_lb3 < left_angle3 < up_ub3) and (not flag):
+
+                        if s.reached_max_limit:
+                            flag = True
+                            counter += 1
+                            s.number_of_repetitions_in_training += 1
+                            s.patient_repetitions_counting_in_exercise += 1
+                            print("counter:" + str(counter))
+                            s.all_rules_ok = True
+                            s.time_of_change_position = time.time()
+                            self.count_not_good_range = 0
+                            s.not_reached_max_limit_rest_rules_ok = False
+
+                        else:
+                            s.not_reached_max_limit_rest_rules_ok = True
+
+                    elif (down_lb < right_angle < down_ub) and (down_lb < left_angle < down_ub) and \
+                            (down_lb2 < right_angle2 < down_ub2) and (down_lb2 < left_angle2 < down_ub2) and \
+                            (down_lb3 < right_angle3 < down_ub3) and (down_lb3 < left_angle3 < down_ub3) and (flag):
                         flag = False
                         s.all_rules_ok = False
                         s.was_in_first_condition = True
+                        s.time_of_change_position = time.time()
+                        self.count_not_good_range = 0
+
+
+                    # elif time.time() - s.time_of_change_position > 3:
+                    #     if not s.reached_max_limit and (up_lb < right_angle < up_ub) and (up_lb < left_angle < up_ub) and \
+                    #         (up_lb2 < right_angle2 < up_ub2) and (up_lb2 < left_angle2 < up_ub2) and \
+                    #         (up_lb3 < right_angle3 < up_ub3) and (up_lb3 < left_angle3 < up_ub3):
+                    #         self.count_not_good_range += 1
+                    #
+                    #         if self.count_not_good_range >= 20:
+                    #             s.try_again_calibration = True
 
             if counter == s.rep:
                 s.req_exercise = ""
@@ -1355,17 +1591,27 @@ class Camera(threading.Thread):
 
             list_joints.append(copy.deepcopy(new_entry))
 
-        s.ex_list.update({exercise_name: counter})
-        Excel.wf_joints(exercise_name, list_joints)
+        if not s.try_again_calibration or not s.repeat_explanation:
+            s.ex_list.update({exercise_name: counter})
+            Excel.wf_joints(exercise_name, list_joints)
 
 
-    def hand_up_and_band_angles(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side, differ=70):
+
+    def hand_up_and_band_angles(self, exercise_name, joint1, joint2, joint3, one_lb, one_ub, two_lb, two_ub, side):
         flag = True
         counter = 0
         list_joints = []
+        s.time_of_change_position = time.time()
+
+
         while s.req_exercise == exercise_name:
             while s.did_training_paused and not s.stop_requested:
                 time.sleep(0.01)
+                if self.joints != {}:
+                    self.joints = {}
+
+                if self.previous_angles != {}:
+                    self.previous_angles = {}
 
             self.sayings_generator(counter)
             joints = self.get_skeleton_data()
@@ -1393,7 +1639,7 @@ class Camera(threading.Thread):
                     s.last_entry_angles = [right_angle, right_angle_2]
                     if flag == False:
                         s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), one_lb, one_ub],
-                                         [str("R_wrist"), str("R_elbow"), str("R_shoulder"), 135, 180]]
+                                         [str("R_wrist"), str("R_elbow"), str("R_shoulder"), 120, 180]]
                         s.direction = "left"
 
 
@@ -1407,7 +1653,7 @@ class Camera(threading.Thread):
                     s.last_entry_angles = [left_angle, left_angle_2]
                     if flag == False:
                         s.information = [[str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), one_lb, one_ub],
-                                         [str("L_wrist"), str("L_elbow"), str("L_shoulder"), 135, 180]]
+                                         [str("L_wrist"), str("L_elbow"), str("L_shoulder"), 120, 180]]
                         s.direction = "right"
 
 
@@ -1433,44 +1679,114 @@ class Camera(threading.Thread):
 
                 if side == 'right':
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < right_angle < one_ub) &  (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) &\
-                        (135 < right_angle_2< 180) & s.reached_max_limit &(not flag):
-                            flag = True
-                            counter += 1
-                            s.patient_repetitions_counting_in_exercise += 1
-                            s.number_of_repetitions_in_training += 1
-                            print("counter:" + str(counter))
-                            s.all_rules_ok = True
-                            #self.change_count_screen(counter)
-                            # if not s.robot_count:
-                            # say(str(counter))
-                        elif (two_lb < right_angle < two_ub) & (135 < right_angle_2< 180) & ((abs(joints["L_shoulder"].x - joints["R_shoulder"].x) > s.dist_between_shoulders - 30) or\
-                                (abs(joints["L_shoulder"].y - joints["R_shoulder"].y) < 30) or (joints["L_shoulder"].x - 70 > joints["R_wrist"].x) or\
-                                (joints["R_shoulder"].x + s.dist_between_shoulders > joints["R_wrist"].x)) & (flag):
-                            flag = False
-                            s.all_rules_ok = False
-                            s.was_in_first_condition = True
+                        if (one_lb < right_angle < one_ub) and (120 < right_angle_2< 180) and (not flag):
 
+                            if joints["R_wrist"].x - joints["L_shoulder"].x > 150:
+                                s.hand_not_good = False
+
+                                if s.reached_max_limit:
+                                    flag = True
+                                    counter += 1
+                                    s.patient_repetitions_counting_in_exercise += 1
+                                    s.number_of_repetitions_in_training += 1
+                                    print("counter:" + str(counter))
+                                    s.all_rules_ok = True
+                                    s.time_of_change_position = time.time()
+                                    s.not_reached_max_limit_rest_rules_ok = False
+
+                                else:
+                                    s.not_reached_max_limit_rest_rules_ok = True
+
+                            else:
+                                s.hand_not_good = True
+
+                                if s.reached_max_limit:
+                                    s.not_reached_max_limit_rest_rules_ok = False
+
+                                else:
+                                    s.not_reached_max_limit_rest_rules_ok = True
+
+                        elif (two_lb < right_angle < two_ub) and (135 < right_angle_2< 180) and (flag):
+
+                            if (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) > s.dist_between_shoulders - 30) or\
+                                (abs(joints["L_shoulder"].y - joints["R_shoulder"].y) < 30) or (joints["L_shoulder"].x - 70 > joints["R_wrist"].x) or\
+                                (joints["R_shoulder"].x + s.dist_between_shoulders > joints["R_wrist"].x) or not s.all_rules_ok:
+                                flag = False
+                                s.all_rules_ok = False
+                                s.was_in_first_condition = True
+                                s.time_of_change_position = time.time()
+
+                            else:
+                                s.hand_not_good = True
+
+
+                    # elif time.time() - s.time_of_change_position > 3:
+                    #     if not s.reached_max_limit and (one_lb < right_angle < one_ub) and\
+                    #     (135 < right_angle_2< 180):
+                    #         self.count_not_good_range += 1
+                    #
+                    #         if self.count_not_good_range >= 20:
+                    #             s.try_again_calibration = True
 
                 else:
                     if right_angle is not None and left_angle is not None:
-                        if (one_lb < left_angle < one_ub) &   (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) < s.dist_between_shoulders - differ) &\
-                                (135 < left_angle_2< 180) & s.reached_max_limit & (not flag):
-                            flag = True
-                            counter += 1
-                            s.number_of_repetitions_in_training += 1
-                            s.patient_repetitions_counting_in_exercise += 1
-                            print("counter:" + str(counter))
-                            s.all_rules_ok = True
-                            #self.change_count_screen(counter)
-                            #if not s.robot_count:
-                            # say(str(counter))
-                        elif (two_lb < left_angle < two_ub) & (135 < left_angle_2< 180) & ((abs(joints["L_shoulder"].x - joints["R_shoulder"].x) > s.dist_between_shoulders - 30) or\
+                        if (one_lb < left_angle < one_ub) and  (120 < left_angle_2< 180) and (not flag):
+
+                            if joints["R_shoulder"].x - joints["L_wrist"].x > 100:
+                                s.hand_not_good = False
+
+                                if s.reached_max_limit:
+                                    flag = True
+                                    counter += 1
+                                    s.number_of_repetitions_in_training += 1
+                                    s.patient_repetitions_counting_in_exercise += 1
+                                    print("counter:" + str(counter))
+                                    s.all_rules_ok = True
+                                    s.time_of_change_position = time.time()
+                                    self.count_not_good_range = 0
+                                    s.not_reached_max_limit_rest_rules_ok = False
+
+                                else:
+                                    s.not_reached_max_limit_rest_rules_ok = True
+
+
+                            else:
+                                s.hand_not_good = True
+
+                                if s.reached_max_limit:
+                                    s.not_reached_max_limit_rest_rules_ok = False
+
+                                else:
+                                    s.not_reached_max_limit_rest_rules_ok = True
+
+
+                        elif (two_lb < left_angle < two_ub) and (135 < left_angle_2< 180) and (flag):
+
+                            if (abs(joints["L_shoulder"].x - joints["R_shoulder"].x) > s.dist_between_shoulders - 30) or\
                                 (abs(joints["L_shoulder"].y - joints["R_shoulder"].y) < 30) or (joints["R_shoulder"].x + 70 < joints["L_wrist"].x) or\
-                                (joints["L_shoulder"].x - s.dist_between_shoulders < joints["L_wrist"].x) or (joints["nose"].x<joints["L_wrist"].x)) & (flag):
-                            flag = False
-                            s.all_rules_ok = False
-                            s.was_in_first_condition = True
+                                (joints["L_shoulder"].x - s.dist_between_shoulders < joints["L_wrist"].x) or (joints["nose"].x<joints["L_wrist"].x) or not s.all_rules_ok:
+
+                                s.hand_not_good = False
+                                flag = False
+                                s.all_rules_ok = False
+                                s.was_in_first_condition = True
+                                s.time_of_change_position = time.time()
+                                self.count_not_good_range = 0
+
+                            else:
+                                s.hand_not_good = True
+
+
+
+
+
+                        #
+                        # elif time.time() - s.time_of_change_position > 3:
+                        #     if not s.reached_max_limit and (one_lb < left_angle < one_ub) and (135 < left_angle_2< 180):
+                        #         self.count_not_good_range += 1
+                        #
+                        #         if self.count_not_good_range >= 20:
+                        #             s.try_again_calibration = True
 
             if counter == s.rep:
                 s.req_exercise = ""
@@ -1485,8 +1801,10 @@ class Camera(threading.Thread):
             list_joints.append(copy.deepcopy(new_entry))
 
 
-        s.ex_list.update({exercise_name: counter})
-        Excel.wf_joints(exercise_name, list_joints)
+        if not s.try_again_calibration or not s.repeat_explanation:
+            s.ex_list.update({exercise_name: counter})
+            Excel.wf_joints(exercise_name, list_joints)
+
 
     def hello_waving(self):  # check if the participant waved
         while s.req_exercise == "hello_waving":
@@ -1512,7 +1830,7 @@ class Camera(threading.Thread):
 
     def ball_switch(self):  # EX3
         self.exercise_two_angles_3d_with_axis_check("ball_switch", "shoulder", "elbow","wrist", 0, 180, 135, 180,
-                                    "wrist", "hip", "hip",100,160,40,70, True, True, 70)
+                                    "wrist", "hip", "hip",100,160,40,70, True, True)
                                     #"wrist", "hip", "hip",95 ,135 , 35, 70, True, True)
 
 
@@ -1544,8 +1862,8 @@ class Camera(threading.Thread):
 
 
     def band_up_and_lean(self):  # EX8
-        self.exercise_two_angles_3d_with_axis_check("band_up_and_lean", "shoulder", "elbow", "wrist", 90, 180, 120,180,
-                                   "elbow", "hip", "hip", 120, 170, 50, 100, True, True,50)
+        self.exercise_two_angles_3d_with_axis_check("band_up_and_lean", "shoulder", "elbow", "wrist", 120, 180, 90,180,
+                                   "elbow", "hip", "hip", 120, 170, 50, 110, True, True)
 
     def band_straighten_left_arm_elbows_bend_to_sides(self):  # EX9
         self.exercise_two_angles_3d_one_side("band_straighten_left_arm_elbows_bend_to_sides", "shoulder", "elbow", "wrist", 0, 75, 0,75, 135,180, 0, 75,
@@ -1573,7 +1891,7 @@ class Camera(threading.Thread):
         # self.exercise_two_angles_3d("stick_switch", "shoulder", "elbow", "wrist", 0, 180, 140, 180,
         #                             "wrist", "hip", "hip", 95, 140, 35, 70, True, True)
         self.exercise_two_angles_3d_with_axis_check("stick_switch", "shoulder", "elbow","wrist", 0, 180, 135, 180,
-                                    "wrist", "hip", "hip",85,160,10,70, True, True, 70)
+                                    "wrist", "hip", "hip",85,160,10,70, True, True)
 
 
     # def stick_bending_forward(self):
@@ -1581,10 +1899,8 @@ class Camera(threading.Thread):
     #                                  "shoulder", "hip", "knee",40,90,105,150)....
 
     def stick_up_and_lean(self):  # EX15
-        self.exercise_two_angles_3d_with_axis_check("stick_up_and_lean", "shoulder", "elbow", "wrist", 110, 180, 110, 180,
-                                                    "elbow", "hip", "hip", 110, 170, 50, 105, True, True, 50)
-
-
+        self.exercise_two_angles_3d_with_axis_check("stick_up_and_lean", "shoulder", "elbow", "wrist", 110, 180, 120, 180,
+                                                    "elbow", "hip", "hip", 120, 170, 50, 105, True, True)
 
     ######################################################  Set with a weights
 
@@ -1608,19 +1924,19 @@ class Camera(threading.Thread):
     ################################################# Set of exercises without equipment
     def notool_hands_behind_and_lean(self): # EX20
         self.exercise_two_angles_3d_with_axis_check("notool_hands_behind_and_lean", "shoulder", "elbow", "wrist", 10,70,10,70,
-                                    "elbow", "hip", "hip", 120, 170, 80, 120,True, True, 50)
+                                    "elbow", "hip", "hip", 120, 170, 80, 120,True, True)
                                     # "elbow", "hip", "hip", 30, 100, 125, 170,True, True)
 
     def notool_right_hand_up_and_bend(self):  # EX21
-        self.hand_up_and_band_angles("notool_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 150, 140, 180, "right")
+        self.hand_up_and_band_angles("notool_right_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 150, 155, 180, "right")
 
     def notool_left_hand_up_and_bend(self): #EX22
-        self.hand_up_and_band_angles("notool_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 150, 140, 180, "left")
+        self.hand_up_and_band_angles("notool_left_hand_up_and_bend", "hip", "shoulder", "wrist", 120, 150, 155, 180, "left")
 
     def notool_raising_hands_diagonally(self): # EX23
         self.exercise_two_angles_3d_with_axis_check("notool_raising_hands_diagonally", "wrist", "shoulder", "hip", 80, 135, 105, 150,
                                     #"elbow", "shoulder", "shoulder", 0, 180, 40, 75, True, True)\
-                                    "shoulder", "elbow", "wrist", 0,180, 120, 180, False,  True,70, True)
+                                    "shoulder", "elbow", "wrist", 0,180, 120, 180, False,  True, True)
 
 
     def notool_right_bend_left_up_from_side(self):# EX24

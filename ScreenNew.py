@@ -2,7 +2,6 @@
 import queue
 import subprocess
 import sys
-import threading
 import tkinter as tk
 import webbrowser
 from datetime import datetime
@@ -24,7 +23,7 @@ matplotlib.use('TkAgg')  # Use the TkAgg backend
 import cv2
 import pandas as pd
 import pygame
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageSequence
 from email_validator import validate_email, EmailNotValidError
 import Settings as s
 from Audio import say, get_wav_duration, ContinuousAudio
@@ -41,6 +40,8 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import pandas as pd
 
+
+s.exercise_name_repeated_explanation = None
 
 class Screen(tk.Tk):
     def __init__(self):
@@ -1169,31 +1170,29 @@ class ChooseBallExercisesPage(tk.Frame):
         ex_2_name= "ball_raise_arms_above_head"
         ex_3_name= "ball_switch"
         ex_4_name= "ball_open_arms_and_forward"
-        ex_5_name= "ball_open_arms_above_head"
         formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
         formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
         formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
         formatted_ex_4_name = Excel.get_name_by_exercise(ex_4_name)
-        formatted_ex_5_name = Excel.get_name_by_exercise(ex_5_name)
 
         # Create labels for videos
         self.label1 = tk.Label(self)
-        self.label1.place(x=220, y=125)  # Adjust x and y coordinates for the first video
+        self.label1.place(x=320, y=125)  # Adjust x and y coordinates for the first video
         button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
         button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, ex_1_name),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=310, y=290)
+        button1.place(x=410, y=290)
         self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
                                     justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text1.place(x=230, y=85)
+        self.label_text1.place(x=330, y=85)
         count += 1
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=445, y=125)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=545, y=125)  # Adjust x and y coordinates for the second video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_2_name)}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
         button2 = tk.Button(self, image=button2_photo,
@@ -1201,15 +1200,15 @@ class ChooseBallExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=535, y=290)
+        button2.place(x=635, y=290)
         self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
                                     justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text2.place(x=455, y=85)
+        self.label_text2.place(x=555, y=85)
         count += 1
 
         self.label3 = tk.Label(self)
-        self.label3.place(x=670, y=125)  # Adjust x and y coordinates for the third video
+        self.label3.place(x=320, y=365)  # Adjust x and y coordinates for the third video
         button3_image = Image.open(
             f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
         button3_photo = ImageTk.PhotoImage(button3_image)
@@ -1218,15 +1217,15 @@ class ChooseBallExercisesPage(tk.Frame):
                             width=button3_photo.width(), height=button3_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=760, y=290)
+        button3.place(x=410, y=530)
         self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
                                     justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text3.place(x=680, y=85)
+        self.label_text3.place(x=320, y=325)
         count += 1
 
         self.label4 = tk.Label(self)
-        self.label4.place(x=330, y=365)  # Adjust x and y coordinates for the third video
+        self.label4.place(x=545, y=365)  # Adjust x and y coordinates for the third video
         button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_4_name)}.png')
         button4_photo = ImageTk.PhotoImage(button4_image)
         button4 = tk.Button(self, image=button4_photo,
@@ -1234,30 +1233,16 @@ class ChooseBallExercisesPage(tk.Frame):
                             width=button4_photo.width(), height=button4_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=410, y=530)
+        button4.place(x=635, y=530)
         self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
                                     justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text4.place(x=340, y=325)
+        self.label_text4.place(x=555, y=325)
         count += 1
 
-        self.label5 = tk.Label(self)
-        self.label5.place(x=555, y=365)  # Adjust x and y coordinates for the third video
-        button5_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_5_name)}.png')
-        button5_photo = ImageTk.PhotoImage(button5_image)
-        button5 = tk.Button(self, image=button5_photo,
-                            command=lambda: which_checkbox(button5, ex_5_name),
-                            width=button5_photo.width(), height=button5_photo.height(), bd=0,
-                            highlightthickness=0)  # Set border width to 0 to remove button border
-        button5.image = button5_photo  # Store reference to image to prevent garbage collection
-        button5.place(x=645, y=530)
-        self.label_text5 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_5_name}', font=("Thaoma", 9, 'bold'),
-                                    bg=self.background_color,
-                                    justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text5.place(x=565, y=325)
-        count += 1
 
-        # Video paths
+
+              # Video paths
         video_file1 = f'Videos//{ex_1_name}_2.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
@@ -1274,13 +1259,11 @@ class ChooseBallExercisesPage(tk.Frame):
         video_path4 = os.path.join(os.getcwd(), video_file4)
         self.cap4 = cv2.VideoCapture(video_path4)
 
-        video_file5 = f'Videos//{ex_5_name}_2.mp4'
-        video_path5 = os.path.join(os.getcwd(), video_file5)
-        self.cap5 = cv2.VideoCapture(video_path5)
+
 
         # Check if videos are opened successfully
         if not (
-                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened() and self.cap5.isOpened()):
+                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened()):
             print("Error opening video streams or files")
 
         else:
@@ -1289,7 +1272,6 @@ class ChooseBallExercisesPage(tk.Frame):
             play_video(self.cap2, self.label2, ex_2_name, "ball")
             play_video(self.cap3, self.label3, ex_3_name, "ball")
             play_video(self.cap4, self.label4, ex_4_name, "ball")
-            play_video(self.cap5, self.label5, ex_5_name, "ball")
 
 
     def on_arrow_click(self):
@@ -1760,34 +1742,33 @@ class ChooseWeightsExercisesPage(tk.Frame):
         count= 1 + s.ball_exercises_number + s.band_exercises_number + s.stick_exercises_number
         self.background_color = "#deeaf7"  # Set the background color to light blue
 
-        ex_1_name = "weights_right_hand_up_and_bend"
-        ex_2_name = "weights_left_hand_up_and_bend"
-        ex_3_name = "weights_open_arms_and_forward"
-        ex_4_name = "weights_abduction"
+
+        ex_1_name = "weights_open_arms_and_forward"
+        ex_2_name = "weights_abduction"
         formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
         formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
-        formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
-        formatted_ex_4_name = Excel.get_name_by_exercise(ex_4_name)
 
 
-        # Create labels for videos
+
         self.label1 = tk.Label(self)
-        self.label1.place(x=320, y=125)  # Adjust x and y coordinates for the first video
-        button1_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
+        self.label1.place(x=320, y=220)  # Adjust x and y coordinates for the third video
+        button1_image = Image.open(
+            f'Pictures//{which_image_to_put(row_of_patient, ex_1_name)}.png')
         button1_photo = ImageTk.PhotoImage(button1_image)
-        button1 = tk.Button(self, image=button1_photo, command=lambda: which_checkbox(button1, ex_1_name),
+        button1 = tk.Button(self, image=button1_photo,
+                            command=lambda: which_checkbox(button1, ex_1_name),
                             width=button1_photo.width(), height=button1_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button1.image = button1_photo  # Store reference to image to prevent garbage collection
-        button1.place(x=410, y=290)
+        button1.place(x=410, y=385)
         self.label_text1 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_1_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
-                                    justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text1.place(x=330, y=85)
+                                    justify='center', width=30, wraplength=200, anchor='center')
+        self.label_text1.place(x=310, y=180)
         count += 1
 
         self.label2 = tk.Label(self)
-        self.label2.place(x=545, y=125)  # Adjust x and y coordinates for the second video
+        self.label2.place(x=545, y=220)  # Adjust x and y coordinates for the third video
         button2_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_2_name)}.png')
         button2_photo = ImageTk.PhotoImage(button2_image)
         button2 = tk.Button(self, image=button2_photo,
@@ -1795,48 +1776,15 @@ class ChooseWeightsExercisesPage(tk.Frame):
                             width=button2_photo.width(), height=button2_photo.height(), bd=0,
                             highlightthickness=0)  # Set border width to 0 to remove button border
         button2.image = button2_photo  # Store reference to image to prevent garbage collection
-        button2.place(x=635, y=290)
+        button2.place(x=635, y=385)
         self.label_text2 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_2_name}', font=("Thaoma", 9, 'bold'),
                                     bg=self.background_color,
                                     justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text2.place(x=555, y=85)
-        count += 1
-
-        self.label3 = tk.Label(self)
-        self.label3.place(x=320, y=365)  # Adjust x and y coordinates for the third video
-        button3_image = Image.open(
-            f'Pictures//{which_image_to_put(row_of_patient, ex_3_name)}.png')
-        button3_photo = ImageTk.PhotoImage(button3_image)
-        button3 = tk.Button(self, image=button3_photo,
-                            command=lambda: which_checkbox(button3, ex_3_name),
-                            width=button3_photo.width(), height=button3_photo.height(), bd=0,
-                            highlightthickness=0)  # Set border width to 0 to remove button border
-        button3.image = button3_photo  # Store reference to image to prevent garbage collection
-        button3.place(x=410, y=530)
-        self.label_text3 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_3_name}', font=("Thaoma", 9, 'bold'),
-                                    bg=self.background_color,
-                                    justify='center', width=30, wraplength=200, anchor='center')
-        self.label_text3.place(x=310, y=325)
-        count += 1
-
-        self.label4 = tk.Label(self)
-        self.label4.place(x=545, y=365)  # Adjust x and y coordinates for the third video
-        button4_image = Image.open(f'Pictures//{which_image_to_put(row_of_patient, ex_4_name)}.png')
-        button4_photo = ImageTk.PhotoImage(button4_image)
-        button4 = tk.Button(self, image=button4_photo,
-                            command=lambda: which_checkbox(button4, ex_4_name),
-                            width=button4_photo.width(), height=button4_photo.height(), bd=0,
-                            highlightthickness=0)  # Set border width to 0 to remove button border
-        button4.image = button4_photo  # Store reference to image to prevent garbage collection
-        button4.place(x=635, y=530)
-        self.label_text4 = tk.Label(self, text=f'Exercise {count}\n{formatted_ex_4_name}', font=("Thaoma", 9, 'bold'),
-                                    bg=self.background_color,
-                                    justify='center', width=25, wraplength=170, anchor='center')
-        self.label_text4.place(x=555, y=325)
+        self.label_text2.place(x=555, y=180)
         count += 1
 
 
-        # Video paths
+
         video_file1 = f'Videos//{ex_1_name}_2.mp4'
         video_path1 = os.path.join(os.getcwd(), video_file1)
         self.cap1 = cv2.VideoCapture(video_path1)
@@ -1845,26 +1793,18 @@ class ChooseWeightsExercisesPage(tk.Frame):
         video_path2 = os.path.join(os.getcwd(), video_file2)
         self.cap2 = cv2.VideoCapture(video_path2)
 
-        video_file3 = f'Videos//{ex_3_name}_2.mp4'
-        video_path3 = os.path.join(os.getcwd(), video_file3)
-        self.cap3 = cv2.VideoCapture(video_path3)
-
-        video_file4 = f'Videos//{ex_4_name}_2.mp4'
-        video_path4 = os.path.join(os.getcwd(), video_file4)
-        self.cap4 = cv2.VideoCapture(video_path4)
-
 
         # Check if videos are opened successfully
         if not (
-                self.cap1.isOpened() and self.cap2.isOpened() and self.cap3.isOpened() and self.cap4.isOpened() and self.cap4.isOpened()):
+                self.cap1.isOpened() and self.cap2.isOpened()):
             print("Error opening video streams or files")
 
         else:
             # Play videos
+            # play_video(self.cap1, self.label1, ex_1_name, "weights")
+            # play_video(self.cap2, self.label2, ex_2_name, "weights")
             play_video(self.cap1, self.label1, ex_1_name, "weights")
             play_video(self.cap2, self.label2, ex_2_name, "weights")
-            play_video(self.cap3, self.label3, ex_3_name, "weights")
-            play_video(self.cap4, self.label4, ex_4_name, "weights")
 
     def on_arrow_click_forward(self):
         Excel.find_and_change_values_patients({"number of repetitions in each exercise": self.selected_option_rep.get(),
@@ -2146,7 +2086,13 @@ def convert_white_to_transparent(image_path, tolerance=100):
 class ExercisePage(tk.Frame):
     def __init__(self, master, exercise_type, reverse_color, reverse_bar, min_distance, max_distance, which_side= None, min_distance_x = None, max_distance_x =None):
         super().__init__(master)
-        self.start_of_750_ms = None
+        self.master = master
+        self.start_of_750_ms_bar_len = None
+        self.start_of_750_ms_all_rules_not_limit = None
+        self.start_of_750_ms_hands_not_good = None
+        self.previous_all_rules_ok = False
+
+
         # The subjects from which the algorithm can choose
         subjects = ["garden", "galaxy", "butterflies"]
         random.shuffle(subjects)
@@ -2172,6 +2118,9 @@ class ExercisePage(tk.Frame):
         self.stop_training_button.place(x=15, y=10)
         self.stop = False
 
+
+        # self.stop = False
+
         self.pause_training_button_img = Image.open("Pictures/pause_training_button.jpg")
         self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
         self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
@@ -2179,6 +2128,15 @@ class ExercisePage(tk.Frame):
                                          bd=0, highlightthickness=0)  # Set border width to 0 to remove button border
         self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
         self.pause_training_button.place(x=95, y=10)
+
+        self.another_calibration_button_img = Image.open("Pictures/calibration_button.jpg")
+        self.another_calibration_button_photo = ImageTk.PhotoImage(self.another_calibration_button_img)
+        self.another_calibration_button = tk.Button(self, image=self.another_calibration_button_photo,
+                                              command=self.another_calibration_button_click,
+                                              bd=0,
+                                              highlightthickness=0)  # Set border width to 0 to remove button border
+        self.another_calibration_button.image = self.another_calibration_button_photo  # Prevent garbage collection
+        self.another_calibration_button.place(x=175, y=10)
 
         # Place background image on canvas
         self.canvas.create_image(0, 0, image=self.background_photo, anchor="nw")
@@ -2280,7 +2238,7 @@ class ExercisePage(tk.Frame):
     def center_comment_label(self):
         """Centers the comment label dynamically based on its width."""
         self.update_idletasks()  # Ensure Tkinter updates the label size
-        canvas_width = self.winfo_width()  # Get the current width of the frame
+        canvas_width = self.canvas.winfo_width()
         label_width = self.comment_label.winfo_reqwidth()  # Get the current width of the label
 
         # Set new position to center the label
@@ -2315,138 +2273,248 @@ class ExercisePage(tk.Frame):
         print(f"Updated volume to {s.volume}")
 
 
+        # elif s.repeat_explanation:
+        #     if self.name_of_exercise_repeated_explanation is None:
+        #         s.req_exercise = ""
+        #         self.name_of_exercise_repeated_explanation = s.req_exercise
+        #         say("repeat_explanation")
+        #         time.sleep(get_wav_duration("repeat_explanation"))
+
     def update_exercise(self):
         # Non-blocking exercise loop using after()
 
         if (not s.gymmy_done) or (not s.camera_done):  # While the exercise is still running
-
-            self.repetition_label_robot.config(text=f":רובוט\n{s.robot_counter}/{s.rep}")
-            # Label for repetition count
-            self.repetition_label_patient.config(text=f"{s.patient_repetitions_counting_in_exercise}")
-
-
-            keypoints = s.latest_keypoints
-
-            if keypoints:
-                self.update_bar(keypoints)
-
-            if self.percent_of_bar < 0.2 and self.start_of_750_ms is None and s.all_rules_ok:
-                self.start_of_750_ms = time.time()
-
-            elif self.percent_of_bar < 0.2 and self.start_of_750_ms is not None and s.all_rules_ok:
-                if time.time() - self.start_of_750_ms >= 0.75:  # 50 milliseconds = 0.05 seconds
-                    self.can_comment = True
-
-            elif (self.percent_of_bar > 0.2 and not s.reached_max_limit) or (self.percent_of_bar <= 0.2 and not s.all_rules_ok):
-                self.start_of_750_ms = None
-                self.can_comment = False
+            if s.suggest_repeat_explanation and not s.exercise_name_repeated_explanation == s.req_exercise:
+                s.exercise_name_repeated_explanation = s.req_exercise
+                self.show_repeat_explanation_overlay()
 
             else:
-                if s.reached_max_limit and self.start_of_750_ms is None:
-                    self.start_of_750_ms = time.time()
+                if s.suggest_repeat_explanation and s.exercise_name_repeated_explanation == s.req_exercise:
+                    s.suggest_repeat_explanation = False
+                    s.repeat_explanation = False
 
-                elif s.reached_max_limit and self.start_of_750_ms is not None:
-                    if time.time() - self.start_of_750_ms >= 0.75:  # 50 milliseconds = 0.05 seconds
+
+                if not self.previous_all_rules_ok and s.all_rules_ok:
+                    self.previous_all_rules_ok = True
+                    self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+                    self.comment_label.place_forget()  # Remove from layout
+                    self.comment = None  # No comments, reset
+                    self.time_of_comment = 0
+
+
+                elif self.previous_all_rules_ok and not s.all_rules_ok:
+                    self.previous_all_rules_ok = False
+                    self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+                    self.comment_label.place_forget()  # Remove from layout
+                    self.comment = None  # No comments, reset
+                    self.time_of_comment = 0
+
+                self.repetition_label_robot.config(text=f":רובוט\n{s.robot_counter}/{s.rep}")
+                # Label for repetition count
+                self.repetition_label_patient.config(text=f"{s.patient_repetitions_counting_in_exercise}")
+
+
+                keypoints = s.latest_keypoints
+
+                if keypoints:
+                    self.update_bar(keypoints)
+
+                if self.percent_of_bar < 0.2 and self.start_of_750_ms_bar_len is None and s.all_rules_ok:
+                    self.start_of_750_ms_bar_len = time.time()
+
+                elif self.percent_of_bar < 0.2 and self.start_of_750_ms_bar_len is not None and s.all_rules_ok:
+                    if time.time() - self.start_of_750_ms_bar_len >= 0.75:  # 50 milliseconds = 0.05 seconds
                         self.can_comment = True
 
-                elif not s.reached_max_limit:
-                    self.start_of_750_ms = None
+                elif (self.percent_of_bar > 0.2 and not s.reached_max_limit) or (self.percent_of_bar <= 0.2 and not s.all_rules_ok):
+                    self.start_of_750_ms_bar_len = None
                     self.can_comment = False
 
-            if (s.reached_max_limit and not s.all_rules_ok  and self.can_comment and s.was_in_first_condition) or \
-                ((s.all_rules_ok and self.percent_of_bar < 0.2 and self.can_comment) or (not s.all_rules_ok and self.percent_of_bar < 0.2 and not s.was_in_first_condition) and\
-                 ((s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]) or not self.exercise_type == "shoulders_distance_x")):
-                    self.check_are_there_comments()
+                else:
+                    if s.reached_max_limit and self.start_of_750_ms_bar_len is None:
+                        self.start_of_750_ms_bar_len = time.time()
 
-            else:
-                self.time_of_comment = 0
+                    elif s.reached_max_limit and self.start_of_750_ms_bar_len is not None:
+                        if time.time() - self.start_of_750_ms_bar_len >= 0.75:  # 50 milliseconds = 0.05 seconds
+                            self.can_comment = True
+
+                    elif not s.reached_max_limit:
+                        self.start_of_750_ms_bar_len = None
+                        self.can_comment = False
 
 
-            #
-            # elif not s.all_rules_ok:
-            #     self.start_of_sec = None
+                if s.not_reached_max_limit_rest_rules_ok and self.start_of_750_ms_all_rules_not_limit is None:
+                    self.start_of_750_ms_all_rules_not_limit = time.time()
 
-            # Update direction arrow on the Canvas
-            if s.direction is None:
-                if hasattr(self, "direction_canvas_image"):
-                    self.canvas.delete(self.direction_canvas_image)  # Remove previous image
-                self.image_direction = None
+                elif not s.not_reached_max_limit_rest_rules_ok:
+                    self.start_of_750_ms_all_rules_not_limit = None
 
-            elif s.direction == self.image_direction:
-                pass  # Skip update if the direction hasn't changed
+                if s.hand_not_good and self.start_of_750_ms_hands_not_good is None:
+                    self.start_of_750_ms_hands_not_good = time.time()
 
-            else:
-                image_path = f"Pictures/{self.chosen_subject}/{s.direction}_arrow.png"
-                try:
-                    # Convert white/near-white to transparent if needed
-                    transparent_image = convert_white_to_transparent(image_path, tolerance=2)
+                elif not s.hand_not_good:
+                    self.start_of_750_ms_hands_not_good = None
 
-                    # Convert image for Tkinter
-                    self.direction_image = ImageTk.PhotoImage(transparent_image)
 
-                    # Remove previous arrow if it exists
+                if self.time_of_comment == 0 or abs((time.time() - self.time_of_comment) % 1) < 0.1:
+
+                    if s.req_exercise != "" and\
+                        ((s.reached_max_limit and not s.all_rules_ok  and self.can_comment and s.was_in_first_condition) or \
+                        ((s.all_rules_ok and self.percent_of_bar < 0.2 and self.can_comment) or (not s.all_rules_ok and self.percent_of_bar < 0.2 and not s.was_in_first_condition) and\
+                         ((s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]) or not self.exercise_type == "shoulders_distance_x")) or \
+                          (s.time_of_change_position and time.time() - s.time_of_change_position >= 3) or \
+                            (s.not_reached_max_limit_rest_rules_ok and time.time() - self.start_of_750_ms_all_rules_not_limit >= 0.75) or \
+                            (s.hand_not_good and time.time() - self.start_of_750_ms_hands_not_good >= 1)):
+                            self.check_are_there_comments()
+
+                    else:
+                        self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+                        self.comment_label.place_forget()  # Remove from layout
+                        self.comment = None  # No comments, reset
+                        self.time_of_comment = 0
+
+
+                #
+                # elif not s.all_rules_ok:
+                #     self.start_of_sec = None
+
+                # Update direction arrow on the Canvas
+                if s.direction is None:
                     if hasattr(self, "direction_canvas_image"):
-                        self.canvas.delete(self.direction_canvas_image)
+                        self.canvas.delete(self.direction_canvas_image)  # Remove previous image
+                    self.image_direction = None
 
-                    # Ensure Canvas size updates before centering
-                    self.update_idletasks()
+                elif s.direction == self.image_direction:
+                    pass  # Skip update if the direction hasn't changed
+
+                else:
+                    image_path = f"Pictures/{self.chosen_subject}/{s.direction}_arrow.png"
+                    try:
+                        # Convert white/near-white to transparent if needed
+                        transparent_image = convert_white_to_transparent(image_path, tolerance=2)
+
+                        # Convert image for Tkinter
+                        self.direction_image = ImageTk.PhotoImage(transparent_image)
+
+                        # Remove previous arrow if it exists
+                        if hasattr(self, "direction_canvas_image"):
+                            self.canvas.delete(self.direction_canvas_image)
+
+                        # Ensure Canvas size updates before centering
+                        self.update_idletasks()
 
 
-                    # Calculate correct x position to center at x=400
-                    new_x = 350
+                        # Calculate correct x position to center at x=400
+                        new_x = 350
 
-                    # Add new arrow image to the Canvas (centered at x=400)
-                    self.direction_canvas_image = self.canvas.create_image(
-                        new_x,  # Center X
-                        75,  # Y position (adjust as needed)
-                        image=self.direction_image,
-                        anchor="center"
+                        # Add new arrow image to the Canvas (centered at x=400)
+                        self.direction_canvas_image = self.canvas.create_image(
+                            new_x,  # Center X
+                            75,  # Y position (adjust as needed)
+                            image=self.direction_image,
+                            anchor="center"
+                        )
+
+                        self.image_direction = s.direction  # Store current direction to avoid redundant updates
+
+                    except Exception as e:
+                        print(f"Error loading image {image_path}: {e}")
+
+
+                if self.count == s.patient_repetitions_counting_in_exercise:
+                    # Get the center position
+                    x_center, y_center = self.positions[self.count - 1]  # Adjust index
+
+                    # Path to a random image in the chosen category
+                    image_num = random.randint(1, 27)
+                    image_path = f'Pictures/{self.chosen_subject}/{image_num}.png'
+
+                    # Convert near-white background to transparent (adjust tolerance as needed)
+                    transparent_image = convert_white_to_transparent(image_path, tolerance=30)
+
+                    # Load the image with transparent background into Tkinter
+                    exercise_photo = ImageTk.PhotoImage(transparent_image)
+
+                    # Place the image at the exact center
+                    self.canvas.create_image(
+                        x_center,  # Exact center X
+                        y_center,  # Exact center Y
+                        image=exercise_photo,
+                        anchor="center"  # Center the image properly
                     )
 
-                    self.image_direction = s.direction  # Store current direction to avoid redundant updates
+                    # Append each image reference to prevent garbage collection
+                    self.image_references.append(exercise_photo)
 
-                except Exception as e:
-                    print(f"Error loading image {image_path}: {e}")
+                    # Increment the count to wait for the next successful repetition
+                    self.count += 1
 
+                # Schedule next iteration to keep updating the screen
+                self.after(1, self.update_exercise)  # Call the function every 1ms
 
-            if self.count == s.patient_repetitions_counting_in_exercise:
-                # Get the center position
-                x_center, y_center = self.positions[self.count - 1]  # Adjust index
-
-                # Path to a random image in the chosen category
-                image_num = random.randint(1, 27)
-                image_path = f'Pictures/{self.chosen_subject}/{image_num}.png'
-
-                # Convert near-white background to transparent (adjust tolerance as needed)
-                transparent_image = convert_white_to_transparent(image_path, tolerance=30)
-
-                # Load the image with transparent background into Tkinter
-                exercise_photo = ImageTk.PhotoImage(transparent_image)
-
-                # Place the image at the exact center
-                self.canvas.create_image(
-                    x_center,  # Exact center X
-                    y_center,  # Exact center Y
-                    image=exercise_photo,
-                    anchor="center"  # Center the image properly
-                )
-
-                # Append each image reference to prevent garbage collection
-                self.image_references.append(exercise_photo)
-
-                # Increment the count to wait for the next successful repetition
-                self.count += 1
-
-            # Schedule next iteration to keep updating the screen
-            self.after_id= self.after(1, self.update_exercise)  # Call the function every 1ms
         else:
             print("Exercise complete")
+
+    def hide_overlay(self):
+        if hasattr(self, 'overlay_frame') and self.overlay_frame is not None:
+            self.overlay_frame.destroy()
+            self.overlay_frame = None
+
+    def show_repeat_explanation_overlay(self):
+        s.did_training_paused = True
+
+        # Create an overlay Frame on self (not canvas!)
+        self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="light blue")
+        self.overlay_frame.place(x=0, y=0)
+
+        # Force it to be on top
+        self.overlay_frame.tkraise()
+
+        # Add explanation label
+        label = tk.Label(self.overlay_frame, text="?תרצה לראות שוב את ההסבר על התרגיל",
+                         font=("Arial", 35), bg="light blue")
+        label.place(relx=0.5, rely=0.2, anchor="center")
+
+        # Add YES button
+        yes_button = tk.Button(self.overlay_frame, text="כן", font=("Arial", 25),
+                               command=self.repeat_explanation_yes, bg="white", fg="black", width=15, height=3)
+        yes_button.place(relx=0.35, rely=0.5, anchor="center")
+
+        # Add NO button
+        no_button = tk.Button(self.overlay_frame, text="לא", font=("Arial", 25),
+                              command=self.repeat_explanation_no, bg="white", fg="black", width=15, height=3)
+        no_button.place(relx=0.65, rely=0.5, anchor="center")
+
+
+    def repeat_explanation_yes(self):
+        s.repeat_explanation = True
+        s.did_training_paused = False
+        s.suggest_repeat_explanation = False
+        self.hide_overlay()
+
+
+    def repeat_explanation_no(self):
+        print("User skipped explanation.")
+        self.hide_overlay()
+        s.did_training_paused = False
+        s.suggest_repeat_explanation = False
+        self.after(1, self.update_exercise)
+
 
     def stop_training_button_click(self):
         s.req_exercise = ""
         s.stop_requested=True
         # s.finish_workout= True
         self.after_cancel(self.after_id)  # Cancel any pending after() calls
+
+        print("Stop training button clicked")
+
+    def another_calibration_button_click(self):
+        # s.stop_requested = True
+        # s.finish_workout= True
+        # self.after_cancel(self.after_id)  # Cancel any pending after() calls
+
+        s.try_again_calibration = True
 
         print("Stop training button clicked")
 
@@ -2486,6 +2554,8 @@ class ExercisePage(tk.Frame):
             self.pause_training_button.place(x=95, y=10)
 
             s.did_training_paused = True
+
+
 
 
 
@@ -2665,8 +2735,10 @@ class ExercisePage(tk.Frame):
         # Compute shoulder distance
         distance = abs(right_shoulder.x - left_shoulder.x)
 
+
         if distance >= s.dist_between_shoulders - 30 and abs(right_shoulder.y - left_shoulder.y) <= 10:
             s.all_rules_ok = False
+            s.time_of_change_position = time.time()
 
         # Scale the bar length
         if distance >= self.max_distance:
@@ -2781,14 +2853,11 @@ class ExercisePage(tk.Frame):
         if scaled_length >= max_limited_width:
             s.reached_max_limit = True  # Set condition as True
 
-        if s.all_rules_ok:
-            self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
-            self.comment_label.place_forget()  # Remove from layout
+
 
         if scaled_length < max_limited_width:
             s.reached_max_limit = False
-            self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
-            self.comment_label.place_forget()  # Remove from layout
+
 
         # Update the bar's position on the canvas
         self.canvas.coords(self.bar,
@@ -2806,23 +2875,76 @@ class ExercisePage(tk.Frame):
         # left_right_differ = s.last_entry_angles[-2]
         # side = s.last_entry_angles[-1]
 
-        # Iterate over first_part in steps of 3
-        for i in range(0, len(angles)):
-            angle = angles[i]
-            information_angle = s.information[i]
+        if angles:
+            # Iterate over first_part in steps of 3
+            for i in range(0, len(angles)):
+                angle = angles[i]
+                information_angle = s.information[i]
 
-            # s.information = [[str("R_" + joint1), str("R_" + joint2), str("R_" + joint3), down_lb, down_ub],
-            #                  [str("L_" + joint1), str("L_" + joint2), str("L_" + joint3), up_lb, up_ub],
-            #                  [str("R_" + joint4), str("R_" + joint5), str("R_" + joint6), down_lb2, down_ub2],
-            #                  [str("L_" + joint4), str("L_" + joint5), str("L_" + joint6), up_lb2, up_ub2]
-            if angle:
-                if not information_angle[3] <= angle <= information_angle[4]:
-                    if angle <= information_angle[3]:
-                        self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
-                                                       "smaller", s.direction)
+
+                if angle:
+                    if not information_angle[3] <= angle <= information_angle[4]:
+                        if angle <= information_angle[3]:
+                            self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
+                                                           "smaller", s.direction)
+                        else:
+                            self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
+                                                           "bigger", s.direction)
+
+        if not s.hand_not_good and self.start_of_750_ms_hands_not_good is not None and self.start_of_750_ms_hands_not_good>= 1:
+            if s.req_exercise == "notool_raising_hands_diagonally":
+                if s.direction is not None:
+                    if s.direction == "left":
+                        self.comments.append("מתח את הידיים מעבר לכתף שמאל")
+
                     else:
-                        self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
-                                                       "bigger", s.direction)
+                        self.comments.append("מתח את הידיים מעבר לכתף ימין")
+
+
+            if s.req_exercise == "notool_right_hand_up_and_bend":
+                if not s.all_rules_ok:
+                    if s.direction is not None:
+                        if s.direction == "left":
+                            self.comments.append("מתח את יד ימין יותר באלכסון \n לצד שמאל")
+
+                else:
+                    if s.direction is not None:
+                        if s.direction == "right":
+                            self.comments.append("ישר את יד ימין מעל כתף ימין")
+
+
+
+            if s.req_exercise == "notool_left_hand_up_and_bend":
+                if not s.all_rules_ok:
+                    if s.direction is not None:
+                        if s.direction == "right":
+                            self.comments.append("מתח את יד שמאל יותר באלכסון \n לצד ימין")
+
+                if s.all_rules_ok:
+                    if s.direction is not None:
+                        if s.direction == "left":
+                            self.comments.append("ישר את יד שמאל מעל כתף שמאל")
+
+
+        if s.not_reached_max_limit_rest_rules_ok and self.start_of_750_ms_all_rules_not_limit is not None and self.start_of_750_ms_all_rules_not_limit>= 1:
+            if s.req_exercise in ["ball_switch", "stick_switch", "notool_raising_hands_diagonally"]:
+                    if s.direction is not None:
+                        if s.direction == "left":
+                            self.comments.append("סחוט יותר את הגב לצד שמאל \n כולל הכתפיים")
+
+                        else:
+                            self.comments.append("סחוט יותר את הגב לצד ימין \n כולל הכתפיים")
+
+
+
+
+            if s.req_exercise in  ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and not s.reached_max_limit:
+                if s.direction is not None:
+                    if s.direction == "left":
+                        self.comments.append("הישען יותר לצד שמאל \n כולל הכתפיים")
+
+                    else:
+                        self.comments.append("הישען יותר לצד ימין \n כולל הכתפיים")
 
         if self.comments:
             if self.comment in self.comments:
@@ -2840,12 +2962,34 @@ class ExercisePage(tk.Frame):
                 self.time_of_comment = time.time()
                 self.comment = self.comments[0]  # Pick the first comment if the current one is not in the list
         else:
+            self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+            self.comment_label.place_forget()  # Remove from layout
             self.comment = None  # No comments, reset
+            self.time_of_comment = 0
 
         if self.comment is not None:
             print(self.comment)
-            self.comment_label.config(text=self.comment, fg="red", font=("Arial", 50, "bold"), bg="white")
-            self.center_comment_label()  # Reposition after updating text
+
+            # Step 1: Temporarily hide the label (so it's not visible while being positioned)
+            self.comment_label.place_forget()
+
+            # Step 2: Set the comment text
+            self.comment_label.config(
+                text=self.comment,
+                fg="red",
+                font=("Arial", 50, "bold"),
+                bg="white",
+                justify="center",
+                anchor="center"
+            )
+
+            # Step 3: Update size calculations
+            self.update_idletasks()
+
+            # Step 4: Reposition centered
+            self.center_comment_label()
+
+
 
 
     def what_to_comment(self, joint1, joint2, joint3, biggerORsmaller="smaller", side="left"):
@@ -2917,16 +3061,16 @@ class ExercisePage(tk.Frame):
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט יותר את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט פחות את הגב לצד ימין")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט פחות את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט יותר את הגב לצד ימין")
 
 
         if joint1 == "L_hip" and joint2 == "L_shoulder" and joint3 == "L_wrist":
@@ -2938,9 +3082,9 @@ class ExercisePage(tk.Frame):
 
             elif s.req_exercise == "notool_left_hand_up_and_bend":
                 if biggerORsmaller == "smaller":
-                    self.comments.append("הישען מעט פחות לצד ימין")
+                    self.comments.append("התיישר יותר לצד שמאל והבא \n את יד שמאל מעל כתף שמאל")
                 else:
-                    self.comments.append("הישען יותר ושלח את יד שמאל יותר לכיוון הרצפה")
+                    self.comments.append("הישען יותר ושלח את יד שמאל \n יותר לכיוון הרצפה")
 
         if joint1 == "R_hip" and joint2 == "R_shoulder" and joint3 == "R_wrist":
             if s.req_exercise == "band_open_arms":
@@ -2951,9 +3095,9 @@ class ExercisePage(tk.Frame):
 
             elif s.req_exercise == "notool_right_hand_up_and_bend":
                 if biggerORsmaller == "smaller":
-                    self.comments.append("הישען מעט פחות לצד שמאל")
+                    self.comments.append("הץיישר יותר לצד ימין והבא \n את יד ימין מעל כתף ימין")
                 else:
-                    self.comments.append("הישען יותר ושלח את יד ימין יותר לכיוון הרצפה")
+                    self.comments.append("הישען יותר ושלח את יד ימין \n יותר לכיוון הרצפה")
 
 
 
@@ -2961,23 +3105,23 @@ class ExercisePage(tk.Frame):
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט פחות את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט יותר את הגב לצד ימין")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט קצת יותר את הגב")
+                        self.comments.append("סחוט יותר את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט מעט פחות את הגב")
+                        self.comments.append("סחוט פחות את הגב לצד ימין")
 
 
         if cleaned_joint_1 == "elbow" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
             if biggerORsmaller == "smaller":
                 self.comments.append("פתח יותר את הידיים")
             else:
-                self.comments.append("פתח פחות את הידיים")
+                self.comments.append("סגור מעט את הידיים")
 
 
         if cleaned_joint_1 == "wrist" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
@@ -2991,7 +3135,7 @@ class ExercisePage(tk.Frame):
                 if biggerORsmaller == "smaller":
                     self.comments.append("פתח יותר את הידיים")
                 else:
-                    self.comments.append("פתח פחות את הידיים")
+                    self.comments.append("סגור מעט את הידיים")
 
 
         if joint1 == "L_elbow" and joint2 == "L_hip" and joint3 == "R_hip":
@@ -3007,7 +3151,7 @@ class ExercisePage(tk.Frame):
                     if side == "left":
                         self.comments.append("מתח מעט פחות את יד שמאל")
                     else:
-                        self.comments.append("הבא את יד שמאל מעט יותר לכיוון הרצפה")
+                        self.comments.append("הבא את יד שמאל \n  יותר לכיוון הרצפה")
 
 
         if joint1 == "R_elbow" and joint2 == "R_hip" and joint3 == "L_hip":
@@ -3021,96 +3165,10 @@ class ExercisePage(tk.Frame):
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("הבא את יד ימין מעט יותר לכיוון הרצפה")
+                        self.comments.append("הבא את יד ימין \n יותר לכיוון הרצפה")
 
                     else:
                         self.comments.append("מתח מעט פחות את יד ימין")
-
-
-class ExercisePageNew(tk.Frame):
-    def __init__(self, master, exercise_type, reverse_color, reverse_bar, min_distance, max_distance, side= None , **kwargs):
-
-        super().__init__(master, **kwargs)
-
-
-
-
-    # def update_single_wrist_x(self, keypoints):
-    #
-    #     # Get wrist and shoulder positions
-    #     if self.side == "left":
-    #         wrist = keypoints["L_wrist"]
-    #         shoulder = keypoints["L_shoulder"]
-    #
-    #     else:
-    #         wrist = keypoints["R_wrist"]
-    #         shoulder = keypoints["R_shoulder"]
-    #
-    #     # Ensure both keypoints are detected
-    #     if np.all(wrist == -1) or np.all(shoulder == -1):
-    #         return  # Skip if any keypoint is missing
-    #
-    #     # Compute horizontal distance from shoulder to wrist (X-axis)
-    #     distance = abs(wrist[0] - shoulder[0])  # Distance in pixels
-    #
-    #     # Maximum bar length
-    #     max_bar_length = self.background_pil.width // 2
-    #
-    #     # Scale the bar length
-    #     if distance <= self.min_distance:
-    #         scaled_length = 0  # Smallest bar when wrist is at shoulder level
-    #     elif distance >= self.max_distance:
-    #         scaled_length = max_bar_length  # Largest bar when wrist is at max distance
-    #     else:
-    #         # Interpolate smoothly between min and max distances
-    #         scaled_length = max_bar_length * (distance / self.max_distance)
-    #
-    #     # Set color gradient: Red when wrist is aligned, transitioning to green as it moves away
-    #     self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance, reverse=self.reverse_color)
-    #
-    #     # Update the bar display
-    #     self.update_bar_display(scaled_length)
-
-    #למעל הראש לא reverse_bar אבל כן בצבעים reverse ומינומום -200 מקסימום 200
-    # לכיפוף מרפקים כן reverse בצבעים לא בבר ומינימום 0 מקסימום 200
-    # לידיים מעל הראש כן צבעים לא בבר, מינימום -200 מקסימום 0
-
-
-        # #lean
-        # elif joint1 == "L_wrist" and joint2 == "L_hip" and joint3 == "R_hip":
-        #     if biggerORsmaller == "smaller":
-        #         if side == "left":
-        #             return "הטה את הגוף מעט פחות לצד שמאל"
-        #         else:
-        #             return "נסה להרים יותר את יד שמאל"
-        #
-        #     else:
-        #         if side == "left":
-        #             return "הטה את הגוף יותר לצד שמאל"
-        #         else:
-        #             return "נסה להרים פחות את יד שמאל"
-        #
-        #
-        # # lean
-        # elif joint1 == "R_wrist" and joint2 == "R_hip" and joint3 == "L_hip":
-        #     if biggerORsmaller == "smaller":
-        #         if side == "right":
-        #             return "הטה את הגוף מעט פחות לצד ימין"
-        #
-        #         else:
-        #             return "נסה להרים יותר את יד ימין"
-        #
-        #     else:
-        #         if side == "right":
-        #             return "הטה את הגוף יותר לצד ימין"
-        #         else:
-        #             return "נסה להרים פחות את מרפק ימין"
-
-
-
-
-
-
 
 
 # class GraphPage(tk.Frame):
@@ -3805,21 +3863,17 @@ def add_to_exercise_page(self, page_name):
 def name_label(self, width= None, place_x= None):
     back = Image.open('Pictures//empty.JPG')
     background_img = ImageTk.PhotoImage(back)
-    first_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details",
-                                                                   s.chosen_patient_ID, "first name")
-    last_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details",
-                                                                  s.chosen_patient_ID, "last name")
     self.background_color = "#deeaf7"  # Set the background color to light blue
 
 
     if width is None:
-        self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
+        self.label1 = tk.Label(self, text=f'מספר מזהה של מטופל: {str(s.chosen_patient_ID)}', image=background_img,
                                compound=tk.CENTER,
-                               font=("Ariel", 20, 'bold'), width=350, height=30, bg=self.background_color)
+                               font=("Ariel", 16, 'bold'), width=350, height=30, bg=self.background_color)
     else:
-        self.label1 = tk.Label(self, text=f'{first_name_of_patient} {last_name_of_patient}', image=background_img,
+        self.label1 = tk.Label(self, text=f'מספר מזהה של מטופל: {str(s.chosen_patient_ID)}', image=background_img,
                                compound=tk.CENTER,
-                               font=("Ariel", 20, 'bold'), width=width, height=30, bg=self.background_color)
+                               font=("Ariel", 16, 'bold'), width=width, height=30, bg=self.background_color)
 
     if place_x is None:
         self.label1.place(x=350, y=45)
@@ -3840,6 +3894,7 @@ def page_name_label(self, page_name):
                            font=("Thaoma", 26, 'bold'), width=350, height=30, bg=self.background_color)
     self.label1.place(x=350, y=12)
     self.label1.image = background_img
+
 
 def how_many_repetitions_of_exercises(self):
     # List of options for the dropdown
@@ -4121,9 +4176,14 @@ class ExplanationPage(tk.Frame):
     def end_of_explanation(self):
         if not s.explanation_over:
             s.explanation_over = True
+        s.repeat_explanation = False
+        s.suggest_repeat_explanation = False
 
     def on_click_skip_explanation(self):
         s.explanation_over = True
+        s.repeat_explanation = False
+        s.suggest_repeat_explanation = False
+
 
     def on_click_skip_exercise(self):
         s.skip = True
@@ -4278,13 +4338,12 @@ class StartOfTraining(tk.Frame):
         image = Image.open('Pictures//hello.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        welcome_to_say = Excel.which_welcome_record_to_say()
-        say(welcome_to_say)
-        self.after(get_wav_duration(welcome_to_say)*1000 +1000,lambda: s.screen.switch_frame(StartExplanationPage))
+        say("welcome")
+        self.after(get_wav_duration("welcome")*1000 +1000,lambda: s.screen.switch_frame(StartExplanationPage))
 
 
 
-class CameraScreen(tk.Frame):
+class CalibrationScreen(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master, width=1024, height=576)  # Set frame size
 
@@ -4307,64 +4366,91 @@ class CameraScreen(tk.Frame):
         self.lets_go_image = Image.open(os.path.join(os.getcwd(), "Pictures", "lets_go.png")).convert("RGBA")
 
 
-        welcome_to_say = Excel.which_welcome_record_to_say()
-        say(welcome_to_say)
+        say("start_calibration")
         self.after(10, self.update_camera)
 
         self.count = 0
         self.target_size = (1024, 576)  # Target size for the camera feed
 
+        self.load_gif("giphy.gif")  # Or use the full path if needed
+
+    def load_gif(self, gif_path, size=(200, 200)):
+        self.gif_frames = []
+        gif = Image.open(gif_path)
+        for frame in ImageSequence.Iterator(gif):
+            frame = frame.convert("RGBA").resize(size, Image.LANCZOS)
+            self.gif_frames.append(frame)
+        self.current_gif_frame = 0
+
     def update_camera(self):
-        """Continuously updates the camera feed inside Tkinter."""
-        self.count += 1
-        frame = s.zed_camera.get_latest_frame()  # Retrieve frame from ZED
+        """Continuously updates the camera feed inside Tkinter with countdown and pauses."""
+        current_time = time.time()
+
+        # Only increment count if not in pause period
+        if not hasattr(self, 'pause_until'):
+            self.pause_until = time.time()  # Initialize once
+
+        if current_time >= (self.pause_until + get_wav_duration("start_calibration")):
+            self.count += 1
+
+        frame = s.zed_camera.get_latest_frame()
 
         if frame is not None:
-            img = Image.fromarray(frame)  # Convert frame to PIL format (Assume already in RGB)
-
-            # Resize frame to fit within the Tkinter frame (1024×576)
-            img = img.resize(self.target_size, Image.LANCZOS)
-
-            # Determine which overlay to display based on count
+            img = Image.fromarray(frame).resize(self.target_size, Image.LANCZOS)
             overlay_image = None
-            if 40 <= self.count < 55:
-                if self.count == 40:
-                    say("bip_sound")
-                overlay_image = self.overlay_images[3]  # Show "3.png"
-            elif 55 <= self.count < 70:
-                if self.count == 55:
-                    say("bip_sound")
-                overlay_image = self.overlay_images[2]  # Show "2.png"
-            elif 70 <= self.count < 84:  # Ensure it disappears after 84
-                if self.count == 70:
-                    say("bip_sound")
-                overlay_image = self.overlay_images[1]  # Show "1.png"
 
-            if self.count == 84:
+            if 20 <= self.count < 35:
+                if self.count == 20:
+                    say("bip_sound")
+                overlay_image = self.overlay_images[3]
+            elif 35 <= self.count < 50:
+                if self.count == 35:
+                    say("bip_sound")
+                overlay_image = self.overlay_images[2]
+            elif 50 <= self.count <= 64:
+                if self.count == 50:
+                    say("bip_sound")
+                overlay_image = self.overlay_images[1]
+
+            if self.count == 64:
                 say("end_counting_sound")
-                s.screen_finished_counting = True  # Stop overlays after 84
+                s.screen_finished_counting = True
 
-            # If an overlay is selected and count < 84, center it and paste
-            if overlay_image and self.count < 84:
+            if overlay_image and self.count < 64:
                 x_offset = (1024 - overlay_image.width) // 2
                 y_offset = (576 - overlay_image.height) // 2
                 img.paste(overlay_image, (x_offset, y_offset), overlay_image)
 
-            # Convert final image to Tkinter format
+            # Show GIF animation on top when count > 80
+            if 65 < self.count < 100 and hasattr(self, "gif_frames") and self.gif_frames:
+                gif_frame = self.gif_frames[self.current_gif_frame]
+                self.current_gif_frame = (self.current_gif_frame + 1) % len(self.gif_frames)
+
+                # Calculate vertical center
+                y_offset = (img.height - gif_frame.height) -20
+
+                # Left side (10 pixels from edge)
+                left_x = 10
+                img.paste(gif_frame, (left_x, 20), gif_frame)
+
+                # Right side (10 pixels from right edge)
+                right_x = img.width - gif_frame.width - 10
+                img.paste(gif_frame, (right_x, y_offset), gif_frame)
             imgtk = ImageTk.PhotoImage(image=img)
             self.camera_label.imgtk = imgtk
             self.camera_label.config(image=imgtk)
 
         if s.asked_for_measurement and not s.finished_calibration:
-            if not self.count >=120:
-                self.after(10, self.update_camera)  # Update every 10ms
-
+            if self.count < 110:
+                self.after(10, self.update_camera)
             else:
                 self.check_if_distances_None()
 
     def check_if_distances_None(self):
         """Check if measurements are None, show 'TRY AGAIN' for 2 sec, then restart."""
-        if s.len_left_arm is None or s.len_right_arm is None or s.dist_between_wrists is None or s.dist_between_shoulders is None:
+        if s.len_left_arm is None or s.len_right_arm is None or s.dist_between_wrists is None or s.dist_between_shoulders is None or s.len_left_upper_arm is None or s.len_right_upper_arm is None or\
+                s.elbow_problem_calibration or s.shoulder_problem_calibration:
+
             print("Some distances are None. Displaying 'TRY AGAIN'.")
             s.screen_finished_counting = False
 
@@ -4383,14 +4469,28 @@ class CameraScreen(tk.Frame):
                 self.camera_label.imgtk = imgtk
                 self.camera_label.config(image=imgtk)
 
-            welcome_to_say = Excel.which_welcome_record_to_say()
-            say(welcome_to_say)
+            if s.len_left_arm is None or s.len_right_arm is None or s.dist_between_wrists is None or s.dist_between_shoulders is None or s.len_left_upper_arm is None or s.len_right_upper_arm is None:
+                str_to_say = "didnt_recognize_calibration"
 
-            # Display 'TRY AGAIN' for 2 seconds, then restart countdown
-            self.after(get_wav_duration(welcome_to_say)*1000, self.restart_countdown)
+            elif s.elbow_problem_calibration and not s.shoulder_problem_calibration:
+                str_to_say ="elbows_not_good_calibration"
+
+            elif not s.elbow_problem_calibration and s.shoulder_problem_calibration:
+                str_to_say ="shoulders_not_good_calibration"
+
+            else: # s.elbow_problem_calibration and s.shoulder_problem_calibration
+                str_to_say ="elbows_and_shoulders_not_good_calibration"
+
+            s.elbow_problem_calibration = False
+            s.shoulder_problem_calibration = False
+
+
+
+            say(str_to_say)
+            self.after(get_wav_duration(str_to_say) * 1000 + 1000, self.restart_countdown)
 
         else:
-
+            s.try_again_calibration = False
             s.finished_calibration = True
             # Get latest camera frame
             frame = s.zed_camera.get_latest_frame()
@@ -4408,15 +4508,14 @@ class CameraScreen(tk.Frame):
                 self.camera_label.config(image=imgtk)
 
             s.asked_for_measurement = False
-            welcome_to_say = Excel.which_welcome_record_to_say()
-            say(welcome_to_say)
+            say("end_calibration")
 
 
     def restart_countdown(self):
         """Restart the countdown process from 3 after displaying 'TRY AGAIN'."""
         print("🔄 Restarting countdown...")
         s.screen_finished_counting = False
-        self.count = 20 # Reset count
+        self.count = 0 # Reset count
         self.update_camera()  # Restart the countdown
 
 
@@ -4456,11 +4555,11 @@ class StartExplanationPage(tk.Frame):
     def end_of_explanation(self):
         if not s.explanation_over:
             s.explanation_over = True
-            self.after(500, lambda: s.screen.switch_frame(CameraScreen))
+            self.after(500, lambda: s.screen.switch_frame(CalibrationScreen))
 
     def on_click_skip(self):
         s.explanation_over = True
-        self.after(500, lambda: s.screen.switch_frame(CameraScreen))
+        self.after(500, lambda: s.screen.switch_frame(CalibrationScreen))
 
 
 def wait_until_waving():
@@ -4822,15 +4921,16 @@ if __name__ == "__main__":
     # s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     # s.list_effort_each_exercise= {}
     s.chosen_patient_ID='314808981'
-    s.ball_exercises_number = 5
+    s.ball_exercises_number = 4
     s.band_exercises_number = 5
     s.stick_exercises_number = 5
-    s.weights_exercises_number = 4
+    s.weights_exercises_number = 2
     s.no_tool_exercises_number = 6
     #s.screen.switch_frame(ExplanationPage, exercise="bend_elbows_ball")
     s.gymmy_done=False
     s.camera_done= False
     s.finish_program = False
+    s.last_entry_angles = None
 
     s.rep=10
     s.volume = 0.3
@@ -4855,7 +4955,7 @@ if __name__ == "__main__":
     s.zed_camera.start()
     # Initialize Tkinter-based GUI system
     # s.screen.switch_frame(ExercisePageNew, exercise_type="shoulders_distance_y", real_distance=140)
-    s.screen.switch_frame(CameraScreen)
+    s.screen.switch_frame(ChooseBallExercisesPage)
 
     # When needed, switch to the ExercisePage with the camera
     # s.screen.switch_frame(ExercisePage, camera_thread=s.camera)

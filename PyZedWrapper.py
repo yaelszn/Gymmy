@@ -60,6 +60,7 @@ class PyZedWrapper(threading.Thread):
     def set_detection_model_to_medium(self):
         self.set_detection_model(sl.BODY_TRACKING_MODEL.HUMAN_BODY_MEDIUM)
 
+
     def run(self):
         """Main thread function to capture frames and detect keypoints."""
         print("MP START")
