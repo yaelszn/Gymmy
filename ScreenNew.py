@@ -2284,7 +2284,7 @@ class ExercisePage(tk.Frame):
         # Non-blocking exercise loop using after()
 
         if (not s.gymmy_done) or (not s.camera_done):  # While the exercise is still running
-            if s.suggest_repeat_explanation and not s.exercise_name_repeated_explanation == s.req_exercise:
+            if s.suggest_repeat_explanation and (s.exercise_name_repeated_explanation is None or not s.exercise_name_repeated_explanation == s.req_exercise):
                 s.exercise_name_repeated_explanation = s.req_exercise
                 self.show_repeat_explanation_overlay()
 
@@ -2557,9 +2557,6 @@ class ExercisePage(tk.Frame):
 
 
 
-
-
-
     #########################################
     def update_wrist_height_y(self, keypoints):
 
@@ -2681,9 +2678,12 @@ class ExercisePage(tk.Frame):
 
             if s.direction == "out" and wrist_distance >= s.dist_between_wrists / 2:
                 s.direction = "up"
+                s.time_of_change_position = time.time()
 
             elif s.direction == "down" and abs(wrist_heights - shoulder_heights) < 50:
                 s.direction = "in"
+                s.time_of_change_position = time.time()
+
 
         # Update the bar display
         self.update_bar_display(scaled_length)
@@ -2895,56 +2895,93 @@ class ExercisePage(tk.Frame):
             if s.req_exercise == "notool_raising_hands_diagonally":
                 if s.direction is not None:
                     if s.direction == "left":
-                        self.comments.append("מתח את הידיים מעבר לכתף שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("מתח את הידיים מעבר לכתף שמאל")
+                        else:
+                            self.comments.append("מתחי את הידיים מעבר לכתף שמאל")
+
 
                     else:
-                        self.comments.append("מתח את הידיים מעבר לכתף ימין")
+                        if s.gender == "Male":
+                            self.comments.append("מתח את הידיים מעבר לכתף ימין")
+
+                        else:
+                            self.comments.append("מתחי את הידיים מעבר לכתף ימין")
+
 
 
             if s.req_exercise == "notool_right_hand_up_and_bend":
                 if not s.all_rules_ok:
                     if s.direction is not None:
                         if s.direction == "left":
-                            self.comments.append("מתח את יד ימין יותר באלכסון \n לצד שמאל")
+                            if s.gender == "Male":
+                                self.comments.append("מתח את יד ימין יותר באלכסון \n לצד שמאל")
+
+                            else:
+                                self.comments.append("מתחי את יד ימין יותר באלכסון \n לצד שמאל")
 
                 else:
                     if s.direction is not None:
                         if s.direction == "right":
-                            self.comments.append("ישר את יד ימין מעל כתף ימין")
+                            if s.gender == "Male":
+                                self.comments.append("ישר את יד ימין מעל כתף ימין")
 
-
+                            else:
+                                self.comments.append("ישרי את יד ימין מעל כתף ימין")
 
             if s.req_exercise == "notool_left_hand_up_and_bend":
                 if not s.all_rules_ok:
                     if s.direction is not None:
                         if s.direction == "right":
-                            self.comments.append("מתח את יד שמאל יותר באלכסון \n לצד ימין")
+                            if s.gender == "Male":
+                                self.comments.append("מתח את יד שמאל יותר באלכסון \n לצד ימין")
+
+                            else:
+                                self.comments.append("מתחי את יד שמאל יותר באלכסון \n לצד ימין")
 
                 if s.all_rules_ok:
                     if s.direction is not None:
                         if s.direction == "left":
-                            self.comments.append("ישר את יד שמאל מעל כתף שמאל")
+                            if s.gender == "Male":
+                                self.comments.append("ישר את יד שמאל מעל כתף שמאל")
 
+                            else:
+                                self.comments.append("ישרי את יד שמאל מעל כתף שמאל")
 
         if s.not_reached_max_limit_rest_rules_ok and self.start_of_750_ms_all_rules_not_limit is not None and self.start_of_750_ms_all_rules_not_limit>= 1:
             if s.req_exercise in ["ball_switch", "stick_switch", "notool_raising_hands_diagonally"]:
                     if s.direction is not None:
                         if s.direction == "left":
-                            self.comments.append("סחוט יותר את הגב לצד שמאל \n כולל הכתפיים")
+                            if s.gender == "Male":
+                                self.comments.append("סחוט יותר את הגב לצד שמאל \n כולל הכתפיים")
+
+                            else:
+                                self.comments.append("סחטי יותר את הגב לצד שמאל \n כולל הכתפיים")
 
                         else:
-                            self.comments.append("סחוט יותר את הגב לצד ימין \n כולל הכתפיים")
+                            if s.gender == "Male":
+                                self.comments.append("סחוט יותר את הגב לצד ימין \n כולל הכתפיים")
 
-
+                            else:
+                                self.comments.append("סחטי יותר את הגב לצד ימין \n כולל הכתפיים")
 
 
             if s.req_exercise in  ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and not s.reached_max_limit:
                 if s.direction is not None:
                     if s.direction == "left":
-                        self.comments.append("הישען יותר לצד שמאל \n כולל הכתפיים")
+                        if s.gender == "Male":
+                            self.comments.append("הישען יותר לצד שמאל \n כולל הכתפיים")
+
+                        else:
+                            self.comments.append("הישעני יותר לצד שמאל \n כולל הכתפיים")
 
                     else:
-                        self.comments.append("הישען יותר לצד ימין \n כולל הכתפיים")
+                        if s.gender == "Male":
+                            self.comments.append("הישען יותר לצד ימין \n כולל הכתפיים")
+
+                        else:
+                            self.comments.append("הישעני יותר לצד ימין \n כולל הכתפיים")
+
 
         if self.comments:
             if self.comment in self.comments:
@@ -2998,106 +3035,299 @@ class ExercisePage(tk.Frame):
         cleaned_joint_3 = (joint3.split("_"))[-1]
 
 
-        if not s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]:
+        if not s.req_exercise in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend", "notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side"]:
             if cleaned_joint_2 == "elbow":
                 if biggerORsmaller == "smaller":
-                    self.comments.append("ישר יותר את המרפקים")
+                    if s.gender == "Male":
+                        self.comments.append("ישר יותר את המרפקים")
+
+                    else:
+                        self.comments.append("ישרי יותר את המרפקים")
                 else:
-                    self.comments.append("כופף יותר את המרפקים")
+                    if s.gender == "Male":
+                        self.comments.append("כופף יותר את המרפקים")
+
+                    else:
+                        self.comments.append("כופפי יותר את המרפקים")
 
         elif s.req_exercise == "notool_right_hand_up_and_bend":
             if cleaned_joint_2 == "elbow":
                 if biggerORsmaller == "smaller":
-                    self.comments.append("ישר יותר את יד ימין")
+                    if s.gender == "Male":
+                        self.comments.append("ישר יותר את יד ימין")
+
+                    else:
+                        self.comments.append("ישרי יותר את יד ימין")
                 else:
-                    self.comments.append("כופף מעט את יד ימין")
+                    if s.gender == "Male":
+                        self.comments.append("כופף מעט את יד ימין")
+
+                    else:
+                        self.comments.append("כופפי מעט את יד ימין")
 
         elif s.req_exercise == "notool_left_hand_up_and_bend":
             if cleaned_joint_2 == "elbow":
                 if biggerORsmaller == "smaller":
-                    self.comments.append("ישר יותר את יד שמאל")
+                    if s.gender == "Male":
+                        self.comments.append("ישר יותר את יד שמאל")
+
+                    else:
+                        self.comments.append("ישרי יותר את יד שמאל")
+
                 else:
-                    self.comments.append("כופף מעט את יד שמאל")
+                    if s.gender == "Male":
+                        self.comments.append("כופף מעט את יד שמאל")
 
+                    else:
+                        self.comments.append("כופפי מעט את יד שמאל")
 
-        else:
-            if s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
+        elif s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
                 if joint2 == "L_elbow":
                     if biggerORsmaller == "smaller":
-                        self.comments.append("ישר יותר את יד שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("ישר יותר את יד שמאל")
+
+                        else:
+                            self.comments.append("ישרי יותר את יד שמאל")
                     else:
-                       self.comments.append("כופף מעט את יד שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("כופף יותר את יד שמאל")
+
+                        else:
+                            self.comments.append("כופפי יותר את יד שמאל")
 
                 elif joint2 == "R_elbow":
                     if biggerORsmaller == "smaller":
-                        self.comments.append("כופף מעט פחות את יד ימין")
+                        if s.gender == "Male":
+                            self.comments.append("כופף מעט פחות את יד ימין")
+
+                        else:
+                            self.comments.append("כופפי מעט פחות את יד ימין")
+
                     else:
+                        if s.gender == "Male":
+                            self.comments.append("כופף יותר את יד ימין")
+
+                        else:
+                            self.comments.append("כופפי יותר את יד ימין")
+
+
+        elif s.req_exercise == "band_straighten_right_arm_elbows_bend_to_sides":
+                if joint2 == "L_elbow":
+                    if biggerORsmaller == "smaller":
+                        if s.gender == "Male":
+                            self.comments.append("כופף מעט פחות את יד שמאל")
+
+                        else:
+                            self.comments.append("כופפי מעט פחות את יד שמאל")
+                    else:
+                        if s.gender == "Male":
+                            self.comments.append("כופף יותר את יד שמאל")
+
+                        else:
+                            self.comments.append("כופפי יותר את יד שמאל")
+
+                elif joint2 == "R_elbow":
+                    if biggerORsmaller == "smaller":
+                        if s.gender == "Male":
+                            self.comments.append("ישר יותר את יד ימין")
+
+                        else:
+                            self.comments.append("ישרי יותר את יד ימין")
+                    else:
+                        if s.gender == "Male":
+                            self.comments.append("כופף יותר את יד ימין")
+
+                        else:
+                            self.comments.append("כופפי יותר את יד ימין")
+
+
+
+        elif s.req_exercise == "notool_right_bend_left_up_from_side":
+            if joint2 == "L_elbow":
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("ישר יותר את יד שמאל")
+
+                    else:
+                        self.comments.append("ישרי יותר את יד שמאל")
+
+
+            if joint2 == "R_elbow":
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("ישר יותר את יד ימין")
+
+                    else:
+                        self.comments.append("ישרי יותר את יד ימין")
+                else:
+                    if s.gender == "Male":
                         self.comments.append("כופף יותר את יד ימין")
 
-
-            elif s.req_exercise == "band_straighten_right_arm_elbows_bend_to_sides":
-                if joint2 == "L_elbow":
-                    if biggerORsmaller == "smaller":
-                        self.comments.append("כופף מעט פחות את יד שמאל")
                     else:
-                       self.comments.append("כופף יותר את יד שמאל")
+                        self.comments.append("כופפי יותר את יד ימין")
 
-                elif joint2 == "R_elbow":
-                    if biggerORsmaller == "smaller":
+            if joint2 == "L_shoulder":
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("הרם יותר את יד שמאל")
+
+                    else:
+                        self.comments.append("הרימי יותר את יד שמאל")
+                else:
+                    if s.gender == "Male":
+                        self.comments.append("הורד יותר את יד שמאל")
+
+                    else:
+                        self.comments.append("הורידי יותר את יד שמאל")
+
+            if joint2 == "R_shoulder":
+                if biggerORsmaller == "bigger":
+                    if s.gender == "Male":
+                        self.comments.append("הצמד יותר את זרוע ימין לגוף")
+
+                    else:
+                        self.comments.append("הצמידי יותר את זרוע ימין לגוף")
+
+
+        elif s.req_exercise == "notool_left_bend_right_up_from_side":
+            if joint2 == "R_elbow":
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
                         self.comments.append("ישר יותר את יד ימין")
+
                     else:
-                        self.comments.append("כופף מעט את יד ימין")
+                        self.comments.append("ישרי יותר את יד ימין")
+
+
+            if joint2 == "L_elbow":
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("ישר יותר את יד שמאל")
+
+                    else:
+                        self.comments.append("ישרי יותר את יד שמאל")
+                else:
+                    if s.gender == "Male":
+                        self.comments.append("כופף יותר את יד שמאל")
+
+                    else:
+                        self.comments.append("כופפי יותר את יד שמאל")
+
+            if joint2 == "R_shoulder":
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("הרם יותר את יד ימין")
+
+                    else:
+                        self.comments.append("הרימי יותר את יד ימין")
+                else:
+                    if s.gender == "Male":
+                        self.comments.append("הורד יותר את יד ימין")
+
+                    else:
+                        self.comments.append("הורידי יותר את יד ימין")
+
+            if joint2 == "L_shoulder":
+                if biggerORsmaller == "bigger":
+                    if s.gender == "Male":
+                        self.comments.append("הצמד יותר את זרוע שמאל לגוף")
+
+                    else:
+                        self.comments.append("הצמידי יותר את זרוע שמאל לגוף")
+
 
 
         if ((cleaned_joint_1 == "hip" and cleaned_joint_3 == "elbow") or (
                 cleaned_joint_3 == "hip" and cleaned_joint_1 == "elbow")) and cleaned_joint_2 == "shoulder":
             if biggerORsmaller == "smaller":
-                self.comments.append("הרם יותר גבוה את הידיים")
-            else:
-                self.comments.append("הורד מעט את הידיים")
+                if s.gender == "Male":
+                    self.comments.append("הרם את הידיים יותר גבוה")
 
+                else:
+                    self.comments.append("הרימי את הידיים יותר גבוה")
+            else:
+                if s.gender == "Male":
+                    self.comments.append("הורד יותר את הידיים")
+
+                else:
+                    self.comments.append("הורידי יותר את הידיים")
 
         if joint1 == "L_wrist" and joint2 == "L_hip" and joint3 == "R_hip":
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט יותר את הגב לצד שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט יותר את הגב לצד שמאל")
+
+                        else:
+                            self.comments.append("סחטי יותר את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט פחות את הגב לצד ימין")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט פחות את הגב לצד ימין")
+
+                        else:
+                            self.comments.append("סחטי פחות את הגב לצד ימין")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט פחות את הגב לצד שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט פחות את הגב לצד שמאל")
+
+                        else:
+                            self.comments.append("סחטי פחות את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט יותר את הגב לצד ימין")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט יותר את הגב לצד ימין")
+
+                        else:
+                            self.comments.append("סחטי יותר את הגב לצד ימין")
 
 
-        if joint1 == "L_hip" and joint2 == "L_shoulder" and joint3 == "L_wrist":
-            if s.req_exercise == "band_open_arms":
+        if joint1 == "L_hip" and joint2 == "L_shoulder" and joint3 == "L_wrist" and s.req_exercise == "notool_left_hand_up_and_bend":
                 if biggerORsmaller == "smaller":
-                    self.comments.append("הרם יותר גבוה את הידיים")
-                else:
-                    self.comments.append("הורד מעט את הידיים")
+                    if s.gender == "Male":
+                        self.comments.append("התיישר יותר לצד שמאל והבא \n את יד שמאל מעל כתף שמאל")
 
-            elif s.req_exercise == "notool_left_hand_up_and_bend":
-                if biggerORsmaller == "smaller":
-                    self.comments.append("התיישר יותר לצד שמאל והבא \n את יד שמאל מעל כתף שמאל")
+                    else:
+                        self.comments.append("התיישרי יותר לצד שמאל והביאי \n את יד שמאל מעל כתף שמאל")
                 else:
-                    self.comments.append("הישען יותר ושלח את יד שמאל \n יותר לכיוון הרצפה")
+                    if s.gender == "Male":
+                        self.comments.append("הישען יותר ושלח את יד שמאל \n יותר לכיוון הרצפה")
 
-        if joint1 == "R_hip" and joint2 == "R_shoulder" and joint3 == "R_wrist":
-            if s.req_exercise == "band_open_arms":
-                if biggerORsmaller == "smaller":
-                    self.comments.append("הרם יותר גבוה את הידיים")
-                else:
-                    self.comments.append("הורד מעט את הידיים")
+                    else:
+                        self.comments.append("הישעני יותר ושלחי את יד שמאל \n יותר לכיוון הרצפה")
 
-            elif s.req_exercise == "notool_right_hand_up_and_bend":
+
+        if joint1 == "R_hip" and joint2 == "R_shoulder" and joint3 == "R_wrist" and s.req_exercise == "notool_right_hand_up_and_bend":
                 if biggerORsmaller == "smaller":
-                    self.comments.append("הץיישר יותר לצד ימין והבא \n את יד ימין מעל כתף ימין")
+                    if s.gender == "Male":
+                        self.comments.append("התיישר יותר לצד ימין והבא \n את יד ימין מעל כתף ימין")
+
+                    else:
+                        self.comments.append("התיישרי יותר לצד ימין והביאי \n את יד ימין מעל כתף ימין")
                 else:
-                    self.comments.append("הישען יותר ושלח את יד ימין \n יותר לכיוון הרצפה")
+                    if s.gender == "Male":
+                        self.comments.append("הישען יותר ושלח את יד ימין \n יותר לכיוון הרצפה")
+
+                    else:
+                        self.comments.append("הישעני יותר ושלחי את יד ימין \n יותר לכיוון הרצפה")
+
+
+        if cleaned_joint_1 == "hip" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "wrist" and s.req_exercise in ["band_open_arms", "notool_raising_hands_diagonally"]:
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("הרם את הידיים יותר גבוה")
+
+                    else:
+                        self.comments.append("הרימי את הידיים יותר גבוה")
+                else:
+                    if s.gender == "Male":
+                        self.comments.append("הורד יותר את הידיים")
+
+                    else:
+                        self.comments.append("הורידי יותר את הידיים")
 
 
 
@@ -3105,70 +3335,149 @@ class ExercisePage(tk.Frame):
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט פחות את הגב לצד שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט פחות את הגב לצד שמאל")
+
+                        else:
+                            self.comments.append("סחטי פחות את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט יותר את הגב לצד ימין")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט יותר את הגב לצד ימין")
+
+                        else:
+                            self.comments.append("סחטי יותר את הגב לצד ימין")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("סחוט יותר את הגב לצד שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט יותר את הגב לצד שמאל")
+
+                        else:
+                            self.comments.append("סחטי יותר את הגב לצד שמאל")
                     else:
-                        self.comments.append("סחוט פחות את הגב לצד ימין")
+                        if s.gender == "Male":
+                            self.comments.append("סחוט פחות את הגב לצד ימין")
+
+                        else:
+                            self.comments.append("סחטי פחות את הגב לצד ימין")
 
 
         if cleaned_joint_1 == "elbow" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
             if biggerORsmaller == "smaller":
-                self.comments.append("פתח יותר את הידיים")
+                if s.gender == "Male":
+                    self.comments.append("פתח יותר את הידיים")
+
+                else:
+                    self.comments.append("פתחי יותר את הידיים")
+
             else:
-                self.comments.append("סגור מעט את הידיים")
+                if s.gender == "Male":
+                    self.comments.append("סגור מעט את הידיים")
+
+                else:
+                    self.comments.append("סגרי מעט את הידיים")
 
 
         if cleaned_joint_1 == "wrist" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
             if s.req_exercise in ["band_open_arms", "band_open_arms_and_up"]:
                 if biggerORsmaller == "smaller":
-                    self.comments.append("מתח יותר את הגומייה")
+                    if s.gender == "Male":
+                        self.comments.append("מתח יותר את הגומייה")
+
+                    else:
+                        self.comments.append("מתחי יותר את הגומייה")
+
                 else:
-                    self.comments.append("מתח פחות את הגומייה")
+                    if s.gender == "Male":
+                        self.comments.append("שחרר יותר את הגומייה")
+
+                    else:
+                        self.comments.append("שחררי יותר את הגומייה")
 
             else:
                 if biggerORsmaller == "smaller":
-                    self.comments.append("פתח יותר את הידיים")
+                    if s.gender == "Male":
+                        self.comments.append("פתח יותר את הידיים")
+
+                    else:
+                        self.comments.append("פתחי יותר את הידיים")
+
                 else:
-                    self.comments.append("סגור מעט את הידיים")
+                    if s.gender == "Male":
+                        self.comments.append("סגור יותר את הידיים")
+
+                    else:
+                        self.comments.append("סגרי יותר את הידיים")
 
 
         if joint1 == "L_elbow" and joint2 == "L_hip" and joint3 == "R_hip":
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("מתח את יד שמאל עוד למטה")
+                        if s.gender == "Male":
+                            self.comments.append("מתח את יד שמאל עוד למטה")
+
+                        else:
+                            self.comments.append("מתחי את יד שמאל עוד למטה")
                     else:
-                        self.comments.append("מתח את יד שמאל עוד קצת למעלה")
+                        if s.gender == "Male":
+                            self.comments.append("מתח את יד שמאל עוד למעלה")
+
+                        else:
+                            self.comments.append("מתחי את יד שמאל עוד למעלה")
+
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("מתח מעט פחות את יד שמאל")
+                        if s.gender == "Male":
+                            self.comments.append("מתח פחות את יד שמאל")
+
+                        else:
+                            self.comments.append("מתחי פחות את יד שמאל")
+
                     else:
-                        self.comments.append("הבא את יד שמאל \n  יותר לכיוון הרצפה")
+                        if s.gender == "Male":
+                            self.comments.append("הבא את יד שמאל \n  יותר לכיוון הרצפה")
+
+                        else:
+                            self.comments.append("הביאי את יד שמאל \n  יותר לכיוון הרצפה")
 
 
         if joint1 == "R_elbow" and joint2 == "R_hip" and joint3 == "L_hip":
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("מתח את יד ימין עוד קצת למעלה")
+                        if s.gender == "Male":
+                            self.comments.append("מתח את יד ימין עוד למעלה")
+
+                        else:
+                            self.comments.append("מתחי את יד ימין עוד למעלה")
+
                     else:
-                        self.comments.append("מתח את יד ימין עוד למטה")
+                        if s.gender == "Male":
+                            self.comments.append("מתח את יד ימין עוד למטה")
+
+                        else:
+                            self.comments.append("מתחי את יד ימין עוד למטה")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
-                        self.comments.append("הבא את יד ימין \n יותר לכיוון הרצפה")
+                        if s.gender == "Male":
+                            self.comments.append("הבא את יד ימין \n יותר לכיוון הרצפה")
+
+                        else:
+                            self.comments.append("הביאי את יד ימין \n יותר לכיוון הרצפה")
 
                     else:
-                        self.comments.append("מתח מעט פחות את יד ימין")
+                        if s.gender == "Male":
+                            self.comments.append("מתח פחות את יד ימין")
+
+                        else:
+                            self.comments.append("מתחי פחות את יד ימין")
+
 
 
 # class GraphPage(tk.Frame):
@@ -4448,8 +4757,7 @@ class CalibrationScreen(tk.Frame):
 
     def check_if_distances_None(self):
         """Check if measurements are None, show 'TRY AGAIN' for 2 sec, then restart."""
-        if s.len_left_arm is None or s.len_right_arm is None or s.dist_between_wrists is None or s.dist_between_shoulders is None or s.len_left_upper_arm is None or s.len_right_upper_arm is None or\
-                s.elbow_problem_calibration or s.shoulder_problem_calibration:
+        if s.len_left_arm is None or s.len_right_arm is None or s.dist_between_wrists is None or s.dist_between_shoulders is None or s.len_left_upper_arm is None or s.len_right_upper_arm is None or s.shoulder_problem_calibration:
 
             print("Some distances are None. Displaying 'TRY AGAIN'.")
             s.screen_finished_counting = False
@@ -4472,19 +4780,10 @@ class CalibrationScreen(tk.Frame):
             if s.len_left_arm is None or s.len_right_arm is None or s.dist_between_wrists is None or s.dist_between_shoulders is None or s.len_left_upper_arm is None or s.len_right_upper_arm is None:
                 str_to_say = "didnt_recognize_calibration"
 
-            elif s.elbow_problem_calibration and not s.shoulder_problem_calibration:
-                str_to_say ="elbows_not_good_calibration"
-
-            elif not s.elbow_problem_calibration and s.shoulder_problem_calibration:
+            elif s.shoulder_problem_calibration:
                 str_to_say ="shoulders_not_good_calibration"
 
-            else: # s.elbow_problem_calibration and s.shoulder_problem_calibration
-                str_to_say ="elbows_and_shoulders_not_good_calibration"
-
-            s.elbow_problem_calibration = False
             s.shoulder_problem_calibration = False
-
-
 
             say(str_to_say)
             self.after(get_wav_duration(str_to_say) * 1000 + 1000, self.restart_countdown)

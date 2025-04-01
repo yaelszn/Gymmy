@@ -79,7 +79,6 @@ if __name__ == '__main__':
     s.repeat_explanation = False
     s.name_of_exercise_repeated_explanation = None
     s.shoulder_problem_calibration = False
-    s.elbow_problem_calibration = False
     s.all_rules_ok = False
 
 
