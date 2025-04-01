@@ -30,6 +30,7 @@ if __name__ == '__main__':
     s.dist_between_wrists = None
     s.dist_between_shoulders = None
 
+    s.skipped_exercise = False
     s.time_of_change_position = None
     s.asked_for_measurement = False
     s.average_dist = None
@@ -79,7 +80,6 @@ if __name__ == '__main__':
     s.repeat_explanation = False
     s.name_of_exercise_repeated_explanation = None
     s.shoulder_problem_calibration = False
-    s.elbow_problem_calibration = False
     s.all_rules_ok = False
 
 
