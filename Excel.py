@@ -207,6 +207,27 @@ def get_repetitions_per_count(exercise_value):
     result = data.loc[data['exercise'] == exercise_value, 'counts after one or two repetitions']
     return result.iloc[0] if not result.empty else None
 
+
+def get_files_names_by_start_word(word):
+    """
+    Retrieves all file names in the directory that start with 'dont_recognize'.
+    Returns:
+    - List[str]: A list of matching file names without extensions.
+    """
+    matching_file_names = []
+
+    if not os.path.exists(s.audio_path):
+        print(f"Directory does not exist: {s.audio_path}")
+        return matching_file_names
+
+    for file_name in os.listdir(s.audio_path):
+        if not file_name.startswith(word):
+            continue
+        name_without_extension, _ = os.path.splitext(file_name)
+        matching_file_names.append(name_without_extension)
+
+    return matching_file_names
+
 def one_angle_graph_and_table(exercise_name, list_joints):
     if (list_joints!=[]):
         last_two_values = [entry[-2:] for entry in list_joints] #extract from each record the last 2 values (the angles)

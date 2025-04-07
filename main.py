@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 import pygame
 import Settings as s
@@ -30,9 +31,11 @@ if __name__ == '__main__':
     s.dist_between_wrists = None
     s.dist_between_shoulders = None
 
+    s.screen_finished_counting = False
+    s.finished_calibration = False
     s.skipped_exercise = False
     s.time_of_change_position = None
-    s.asked_for_measurement = False
+    s.asked_for_measurement = True
     s.average_dist = None
     s.rep = 5
     s.req_exercise = ""
@@ -40,6 +43,7 @@ if __name__ == '__main__':
     s.finish_workout = False
     s.waved = False
     s.success_exercise = False
+    s.shoulders_not_good = False
     s.gymmy_done = False
     s.camera_done = False
     # s.robot_count = False
@@ -70,9 +74,9 @@ if __name__ == '__main__':
     s.suggest_repeat_explanation = False
     s.last_entry_angles = None
 
-    s.last_saying_time = datetime.now()
+    s.last_saying_time = time.time()
     s.robot_counter = 0
-    s.general_sayings = ["","",""]
+    s.general_sayings = []
     s.dist_between_shoulders = 0
     s.number_of_pauses = 0
     s.not_reached_max_limit_rest_rules_ok = False
@@ -109,4 +113,3 @@ if __name__ == '__main__':
     s.screen.switch_frame(EntrancePage)
     app = FullScreenApp(s.screen)
     s.screen.mainloop()
-

@@ -185,7 +185,6 @@ class Camera(threading.Thread):
         self.previous_angles = {}
         self.max_angle_jump = 10
 
-        s.general_sayings = ["", "", ""]
         self.first_coordination_ex = True
         # Define the keys
         keys = ["nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
@@ -376,7 +375,6 @@ class Camera(threading.Thread):
                 print("CAMERA: Exercise ", ex, " done")
                 s.req_exercise = ""
                 s.camera_done = True
-
 
             else:
                 time.sleep(1)
@@ -576,11 +574,11 @@ class Camera(threading.Thread):
 
 
     def sayings_generator(self, counter):
-        if s.robot_counter < s.rep - 1 and s.robot_counter >= 2:
+        if s.robot_counter < s.rep - 1 and s.robot_counter >= 2 and counter < s.rep - 1:
             random_number_for_general_saying = random.randint(1, s.rep*30)  # Random frame condition
 
             if (random_number_for_general_saying in range (1,5)) and \
-                    datetime.now() - s.last_saying_time >= timedelta(seconds=10):
+                    time.time() - s.last_saying_time >= 7:
                 if s.general_sayings:  # Ensure the list is not empty
                     # Filter sayings based on the counter condition
                     num = random.randint(2, 5)
@@ -595,19 +593,31 @@ class Camera(threading.Thread):
                             if s.rep - counter > 4:#אם לקראת הסוף ולא הצלחתי הרבה
                                 filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith(("_end_good"))]
 
-                        if counter <= 3: #אם לא עשיתי הרבה חזרות
+                        if counter <= 3 or (s.rep - s.robot_counter) >= 4: #אם לא עשיתי הרבה חזרות
                             filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith("_middle")]
 
                         if s.robot_counter - num < counter: #אם הספירה של הרובוט קרובה לספירה של האדם
                             filtered_sayings = [saying for saying in filtered_sayings if not saying.startswith("faster")]
 
+                        if abs(s.robot_counter - counter) > 1 or counter <= 3:
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith("_small_gap")]
+
+                        if counter < 3:
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith("_not_start")]
+
+                        if abs(s.robot_counter - counter) <= 3 or counter < 4:
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith("_gap_and_many_rep")]
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.endswith("_large_gap")]
+
+                        if abs(s.robot_counter - counter) <= 4:
+                            filtered_sayings = [saying for saying in filtered_sayings if not saying.startswith("comment_dont_recognize")]
 
 
                     if filtered_sayings:  # Ensure the filtered list is not empty
                         random_saying_name = random.choice(filtered_sayings)
                         s.general_sayings.remove(random_saying_name)  # Remove the selected saying
                         say(random_saying_name)  # Call the function to say it
-                        s.last_saying_time = datetime.now()
+                        s.last_saying_time = time.time()
 
     def fill_null_joint_list(self):
         arr_organs = ["nose", "neck", "R_shoulder", "R_elbow", "R_wrist", "L_shoulder", "L_elbow", "L_wrist",
@@ -1200,31 +1210,25 @@ class Camera(threading.Thread):
                             if ((down_lb < right_angle < down_ub) and (up_lb < left_angle < up_ub) and \
                                     (down_lb2 < right_angle2 < down_ub2) and (up_lb2 < left_angle2 < up_ub2) and (not flag)):
 
-                                if (joints["R_wrist"].x - joints["L_shoulder"].x > 50):
-                                    s.hand_not_good = False
-
-                                    if s.reached_max_limit:
-                                        flag = True
-                                        counter += 1
-                                        s.number_of_repetitions_in_training += 1
-                                        s.patient_repetitions_counting_in_exercise += 1
-                                        print("counter:" + str(counter))
-                                        #  if not s.robot_count:
-                                        # say(str(counter))
-                                        s.all_rules_ok = True
-                                        s.time_of_change_position = time.time()
-                                        self.count_not_good_range = 0
-                                        s.not_reached_max_limit_rest_rules_ok = False
-
-                                    else:
-                                        s.not_reached_max_limit_rest_rules_ok = True
-
-                                else:
-
-                                    s.hand_not_good = True
 
                                     if s.reached_max_limit:
                                         s.not_reached_max_limit_rest_rules_ok = False
+
+                                        if (joints["R_wrist"].x - joints["L_shoulder"].x > 50):
+                                            s.hand_not_good = False
+                                            flag = True
+                                            counter += 1
+                                            s.number_of_repetitions_in_training += 1
+                                            s.patient_repetitions_counting_in_exercise += 1
+                                            print("counter:" + str(counter))
+                                            #  if not s.robot_count:
+                                            # say(str(counter))
+                                            s.all_rules_ok = True
+                                            s.time_of_change_position = time.time()
+                                            self.count_not_good_range = 0
+
+                                        else:
+                                            s.hand_not_good = True
 
                                     else:
                                         s.not_reached_max_limit_rest_rules_ok = True
@@ -1235,28 +1239,23 @@ class Camera(threading.Thread):
                             elif (up_lb < right_angle < up_ub) and (down_lb < left_angle < down_ub) and \
                                     (up_lb2 < right_angle2 < up_ub2) and (down_lb2 < left_angle2 < down_ub2) and (flag):
 
-                                if joints["R_shoulder"].x-joints["L_wrist"].x > 50:
-                                    s.hand_not_good = False
-
                                     if s.reached_max_limit:
-                                        counter += 1
-                                        s.number_of_repetitions_in_training += 1
-                                        s.patient_repetitions_counting_in_exercise += 1
-                                        print("counter:" + str(counter))
+                                        if joints["R_shoulder"].x - joints["L_wrist"].x > 50:
+                                            s.hand_not_good = False
 
-                                        flag = False
-                                        s.all_rules_ok = True
-                                        s.time_of_change_position = time.time()
-                                        self.count_not_good_range = 0
-                                        s.not_reached_max_limit_rest_rules_ok = False
+                                            counter += 1
+                                            s.number_of_repetitions_in_training += 1
+                                            s.patient_repetitions_counting_in_exercise += 1
+                                            print("counter:" + str(counter))
 
-                                    else:
-                                        s.not_reached_max_limit_rest_rules_ok = True
+                                            flag = False
+                                            s.all_rules_ok = True
+                                            s.time_of_change_position = time.time()
+                                            self.count_not_good_range = 0
+                                            s.not_reached_max_limit_rest_rules_ok = False
 
-                                else:
-                                    s.hand_not_good = True
-                                    if s.reached_max_limit:
-                                        s.not_reached_max_limit_rest_rules_ok = False
+                                        else:
+                                            s.hand_not_good = True
 
                                     else:
                                         s.not_reached_max_limit_rest_rules_ok = True

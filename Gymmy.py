@@ -62,7 +62,7 @@ class Gymmy(threading.Thread):
                     break
 
                 else:
-                    time.sleep(2)  # Prevents the MP to stuck
+                    time.sleep(0.01)  # Prevents the MP to stuck
 
         print("Robot Done")
 
@@ -124,10 +124,10 @@ class Gymmy(threading.Thread):
                             self.i += 1
 
 
-                    if self.i - s.patient_repetitions_counting_in_exercise >=3 and not self.i+1 == s.rep:
+                    if self.i - s.patient_repetitions_counting_in_exercise >=3 and not self.i + 1 >= s.rep:
                         if s.exercise_name_repeated_explanation is None or not s.exercise_name_repeated_explanation == s.req_exercise:
                             s.suggest_repeat_explanation = True
-                            time.sleep(0.5)
+                            time.sleep(0.1)
 
                     s.needs_first_position = False
 
@@ -500,7 +500,7 @@ class Gymmy(threading.Thread):
                         time.sleep(1)
 
 
-            if self.i >= (s.rep - 1) or s.did_training_paused or s.stop_requested:
+            if self.i >= s.rep or s.did_training_paused or s.stop_requested:
                 # init
                 self.gymmy.abs_z.goto_position(0, 2, wait=False)
                 self.gymmy.l_shoulder_x.goto_position(10, 2, wait=False)
@@ -1083,7 +1083,7 @@ class Gymmy(threading.Thread):
                         s.robot_counter = self.i
                         time.sleep(1)
 
-            if self.i >= (s.rep - 1) or s.did_training_paused or s.stop_requested:
+            if self.i >= s.rep or s.did_training_paused or s.stop_requested:
                 # init
                 self.gymmy.bust_x.goto_position(0, 1.5, wait=True)
                 self.gymmy.l_shoulder_y.goto_position(-90, 1.5, wait=False)
@@ -1644,7 +1644,7 @@ class Gymmy(threading.Thread):
                         time.sleep(1)
 
 
-            if self.i >= (s.rep - 1) or s.did_training_paused or s.stop_requested:
+            if self.i >= s.rep or s.did_training_paused or s.stop_requested:
                 # init
                 self.gymmy.abs_z.goto_position(0, 1.5, wait=False)
                 self.gymmy.l_arm_z.goto_position(0, 1.5, wait=False)
@@ -1780,7 +1780,7 @@ class Gymmy(threading.Thread):
                         time.sleep(1)
 
 
-            if self.i >= (s.rep - 1) or s.did_training_paused or s.stop_requested:
+            if self.i >= s.rep or s.did_training_paused or s.stop_requested:
                 # init
                 self.gymmy.bust_x.goto_position(0, 1.5, wait=True)
                 self.gymmy.l_shoulder_y.goto_position(-90, 1.5, wait=False)
@@ -2311,7 +2311,7 @@ class Gymmy(threading.Thread):
                         time.sleep(1)
 
 
-            if self.i >= (s.rep - 1) or s.did_training_paused or s.stop_requested:
+            if self.i >= s.rep or s.did_training_paused or s.stop_requested:
                 # init
                 self.gymmy.bust_x.goto_position(0, 1.5, wait=True)
                 self.gymmy.l_elbow_y.goto_position(0, 1.5, wait=False)
@@ -2749,7 +2749,7 @@ class Gymmy(threading.Thread):
                         self.gymmy.abs_z.goto_position(25, 1.75, wait=True)
                         time.sleep(0.5)
 
-            if self.i >= (s.rep - 1) or s.did_training_paused or s.stop_requested:
+            if self.i >= s.rep or s.did_training_paused or s.stop_requested:
                 self.gymmy.abs_z.goto_position(0, 2, wait=True)
                 self.gymmy.r_arm_z.goto_position(0, 0.75, wait=False)
                 self.gymmy.l_arm_z.goto_position(0, 0.75, wait=True)

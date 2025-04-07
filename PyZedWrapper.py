@@ -99,9 +99,9 @@ class PyZedWrapper(threading.Thread):
         self.zed.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, -1)
         self.zed.set_camera_settings(sl.VIDEO_SETTINGS.GAIN, -1)
 
-        bodies = sl.Bodies()
-        runtime = sl.RuntimeParameters()
-        selected_keypoints = list(range(18))
+        # bodies = sl.Bodies()
+        # runtime = sl.RuntimeParameters()
+        # selected_keypoints = list(range(18))
 
         runtime = sl.RuntimeParameters()
         runtime.enable_depth = True  # Ensure depth sensing is enabled

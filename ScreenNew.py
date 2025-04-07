@@ -19,6 +19,7 @@ from matplotlib import pyplot as plt
 
 from PyZedWrapper import PyZedWrapper
 
+
 matplotlib.use('TkAgg')  # Use the TkAgg backend
 import cv2
 import pandas as pd
@@ -246,14 +247,14 @@ class ID_patient_fill_page(tk.Frame):
                 else:
                     patient_workbook_path= "Patients.xlsx"
                     s.chosen_patient_ID=user_id
-                    s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "email")
+                    # s.email_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "email")
                     # s.current_level_of_patient= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "level")
                     # s.points_in_current_level_before_training= Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "points in current level")
                     s.rep= int(Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "number of repetitions in each exercise"))
                     s.gender = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "gender")
                     s.rate = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "rate")
-                    s.dist_between_shoulders = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "dist between shoulders")
-                    s.full_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "first name") + " " + Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "last name")
+                    # s.dist_between_shoulders = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "dist between shoulders")
+                    # s.full_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "first name") + " " + Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", user_id, "last name")
                     s.audio_path = 'audio files/Hebrew/' + s.gender + '/'
 
                     df1 = pd.read_excel(excel_file_path, sheet_name="patients_exercises")
@@ -2092,6 +2093,9 @@ class ExercisePage(tk.Frame):
         self.start_of_time_count_hands_not_good = None
         self.previous_all_rules_ok = False
         self.time_of_exercise_start = time.time()
+        self.end_of_comment_recording = None
+        self.comments_audio = {}
+        self.last_loop_time = time.time()
 
 
         # The subjects from which the algorithm can choose
@@ -2369,22 +2373,29 @@ class ExercisePage(tk.Frame):
                     time_limit_change_position = 3
                     time_limit_all_rules_not_limit = 0.75
 
-                if self.time_of_comment == 0 or abs(time.time() - self.time_of_comment) >= 1.5 and not s.did_training_paused:
 
-                    if s.req_exercise != "" and time.time() - self.time_of_exercise_start >= 3 and \
+                if s.req_exercise == "notool_raising_hands_diagonally":
+                    time_limit_hands_not_good = 7
+
+                else:
+                    time_limit_hands_not_good = 1
+
+                if not s.did_training_paused:
+
+                    if s.req_exercise != "" and time.time() - self.time_of_exercise_start >= 4 and\
                         ((s.reached_max_limit and not s.all_rules_ok  and self.can_comment and s.was_in_first_condition) or \
                          ((s.all_rules_ok and self.percent_of_bar < 0.2 and self.can_comment) or (not s.all_rules_ok and self.percent_of_bar < 0.2 and not s.was_in_first_condition) and\
                          ((s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]) or not self.exercise_type == "shoulders_distance_x")) or \
                          (s.time_of_change_position and time.time() - s.time_of_change_position >= time_limit_change_position) or \
                          (s.not_reached_max_limit_rest_rules_ok and time.time() - self.start_of_time_count_all_rules_not_limit >= time_limit_all_rules_not_limit) or \
-                         (s.hand_not_good and time.time() - self.start_of_time_count_hands_not_good >= 1)):
+                         (s.hand_not_good and time.time() - self.start_of_time_count_hands_not_good >= time_limit_hands_not_good)):
                             self.check_are_there_comments()
 
                     else:
                         self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
                         self.comment_label.place_forget()  # Remove from layout
                         self.comment = None  # No comments, reset
-                        self.time_of_comment = 0
+                        # self.time_of_comment = 0
 
 
                 #
@@ -2474,6 +2485,7 @@ class ExercisePage(tk.Frame):
             self.overlay_frame = None
 
     def show_repeat_explanation_overlay(self):
+        say("ask_if_repeat_explanation")
         s.did_training_paused = True
 
         # Create overlay
@@ -2489,7 +2501,7 @@ class ExercisePage(tk.Frame):
         # YES Button
         yes_button = tk.Button(self.overlay_frame, text="כן", font=("Arial", 25),
                                command=self.repeat_explanation_yes, bg="white", fg="black", width=15, height=3)
-        yes_button.place(relx=0.2, rely=0.5, anchor="center")
+        yes_button.place(relx=0.8, rely=0.5, anchor="center")
 
         # NO Button
         no_button = tk.Button(self.overlay_frame, text="לא", font=("Arial", 25),
@@ -2499,7 +2511,7 @@ class ExercisePage(tk.Frame):
         # Skip Button
         skip_button = tk.Button(self.overlay_frame, text="דלג על התרגיל", font=("Arial", 25),
                                 command=self.skip_exercise, bg="white", fg="black", width=15, height=3)
-        skip_button.place(relx=0.8, rely=0.5, anchor="center")
+        skip_button.place(relx=0.2, rely=0.5, anchor="center")
 
         self.timer_canvas = tk.Canvas(self.overlay_frame, width=150, height=150, bg="light blue", highlightthickness=0)
         self.timer_canvas.place_forget()  # Hide initially
@@ -2510,13 +2522,18 @@ class ExercisePage(tk.Frame):
         self.timer_text = self.timer_canvas.create_text(75, 75, text="", fill="black", font=("Arial", 60, "bold"))
 
         # Start countdown after 10 seconds
-        self.after(10000, self.start_circle_countdown)
+        self.after(get_wav_duration("ask_if_repeat_explanation") * 1000 + 100 , self.start_circle_countdown)
 
     def start_circle_countdown(self):
+        if not hasattr(self, 'timer_canvas') or not self.timer_canvas.winfo_exists():
+            print("❗ Timer canvas doesn't exist — skipping countdown.")
+            return
+
         self.timer_canvas.place(relx=0.5, rely=0.8, anchor="center")
         self.countdown_total_time = 5
         self.countdown_current = self.countdown_total_time
         self.circle_countdown_step()
+
 
     def circle_countdown_step(self):
         if self.countdown_current >= 0:
@@ -2555,10 +2572,17 @@ class ExercisePage(tk.Frame):
         self.after(1, self.update_exercise)
 
     def cancel_repeat_overlay_timers(self):
+        if hasattr(self, 'start_circle_countdown_timer'):
+            self.after_cancel(self.start_circle_countdown_timer)
+            del self.start_circle_countdown_timer
+
         if hasattr(self, 'countdown_timer'):
             self.after_cancel(self.countdown_timer)
+            del self.countdown_timer
+
         if hasattr(self, 'overlay_frame'):
             self.overlay_frame.destroy()
+            del self.overlay_frame
 
     def stop_training_button_click(self):
         s.req_exercise = ""
@@ -2699,30 +2723,31 @@ class ExercisePage(tk.Frame):
         max_bar_length = self.background_image.width // 2
         half_bar_length = max_bar_length / 2  # First 50% comes from x-distance
 
-        # Normalize x-distance to the first half of the bar
-        if wrist_distance_x <= self.min_distance_x:
-            scaled_length_x = 0
-        elif wrist_distance_x >= self.max_distance_x:
-            scaled_length_x = half_bar_length
-        else:
-            scaled_length_x = ((wrist_distance_x - self.min_distance_x) / (
-                        self.max_distance_x - self.min_distance_x)) * half_bar_length
-
-        if scaled_length_x < half_bar_length:
-            # If x-distance hasn't filled the first half, only use x-distance
-            scaled_length = scaled_length_x
-        else:
-            # Normalize y-distance to the second half of the bar
-            if wrist_height_y <= self.min_distance:
-                scaled_length_y = half_bar_length
-            elif wrist_height_y >= self.max_distance:
-                scaled_length_y = 0
+        if s.req_exercise == "band_open_arms_and_up":
+            # Normalize x-distance to the first half of the bar
+            if wrist_distance_x <= self.min_distance_x:
+                scaled_length_x = 0
+            elif wrist_distance_x >= self.max_distance_x:
+                scaled_length_x = half_bar_length
             else:
-                scaled_length_y = ((self.max_distance - wrist_height_y) / (
-                            self.max_distance - self.min_distance)) * half_bar_length
+                scaled_length_x = ((wrist_distance_x - self.min_distance_x) / (
+                            self.max_distance_x - self.min_distance_x)) * half_bar_length
 
-            # Final bar length: X contribution + Y contribution
-            scaled_length = half_bar_length + max(0, scaled_length_y)
+            if scaled_length_x < half_bar_length:
+                # If x-distance hasn't filled the first half, only use x-distance
+                scaled_length = scaled_length_x
+            else:
+                # Normalize y-distance to the second half of the bar
+                if wrist_height_y <= self.min_distance:
+                    scaled_length_y = half_bar_length
+                elif wrist_height_y >= self.max_distance:
+                    scaled_length_y = 0
+                else:
+                    scaled_length_y = ((self.max_distance - wrist_height_y) / (
+                                self.max_distance - self.min_distance)) * half_bar_length
+
+                # Final bar length: X contribution + Y contribution
+                scaled_length = half_bar_length + max(0, scaled_length_y)
 
         # If reversed, flip the scaling effect
         if self.reverse_bar:
@@ -2875,7 +2900,6 @@ class ExercisePage(tk.Frame):
         # If all_rules_ok is False, prevent step beyond 8
         if not s.all_rules_ok:
             step = min(step, 8)  # Limit to step 8 (not fully green)
-            self.comment = None
 
         max_green = 150  # Maximum green value (Never full 255)
 
@@ -2926,6 +2950,8 @@ class ExercisePage(tk.Frame):
         self.canvas.itemconfig(self.bar, fill=self.bar_color)
 
 
+
+
     def check_are_there_comments(self):
 
         angles = s.last_entry_angles
@@ -2951,23 +2977,26 @@ class ExercisePage(tk.Frame):
                             self.what_to_comment(information_angle[0], information_angle[1], information_angle[2],
                                                            "bigger", s.direction)
 
-        if not s.hand_not_good and self.start_of_time_count_hands_not_good is not None and self.start_of_time_count_hands_not_good>= 1:
-            if s.req_exercise == "notool_raising_hands_diagonally":
+        # if s.req_exercise == "notool_raising_hands_diagonally":
+
+
+        if s.hand_not_good and self.start_of_time_count_hands_not_good is not None and time.time()- self.start_of_time_count_hands_not_good >= 1:
+            if s.req_exercise == "notool_raising_hands_diagonally" and time.time()- self.start_of_time_count_hands_not_good >= 7:
                 if s.direction is not None:
-                    if s.direction == "left":
+                    if s.direction == "left_diagonal":
                         if s.gender == "Male":
-                            self.comments.append("מתח את הידיים מעבר לכתף שמאל")
+
+                            self.comments.append("מתח את הידיים מעבר \n לכתף שמאל")
                         else:
-                            self.comments.append("מתחי את הידיים מעבר לכתף שמאל")
+                            self.comments.append("מתחי את הידיים מעבר \n לכתף שמאל")
 
 
                     else:
                         if s.gender == "Male":
-                            self.comments.append("מתח את הידיים מעבר לכתף ימין")
+                            self.comments.append("מתח את הידיים מעבר \n לכתף ימין")
 
                         else:
-                            self.comments.append("מתחי את הידיים מעבר לכתף ימין")
-
+                            self.comments.append("מתחי את הידיים מעבר \n לכתף ימין")
 
 
             if s.req_exercise == "notool_right_hand_up_and_bend":
@@ -2975,116 +3004,199 @@ class ExercisePage(tk.Frame):
                     if s.direction is not None:
                         if s.direction == "left":
                             if s.gender == "Male":
-                                self.comments.append("מתח את יד ימין יותר באלכסון \n לצד שמאל")
+                                self.comments.append("הישען יותר ושלח את יד ימין \n יותר לכיוון הרצפה")
 
                             else:
-                                self.comments.append("מתחי את יד ימין יותר באלכסון \n לצד שמאל")
+                                self.comments.append("הישעני יותר ושלחי את יד ימין \n יותר לכיוון הרצפה")
 
                 else:
                     if s.direction is not None:
                         if s.direction == "right":
                             if s.gender == "Male":
-                                self.comments.append("ישר את יד ימין מעל כתף ימין")
+                                self.comments.append("התיישר יותר לצד ימין והבא \n את יד ימין מעל כתף ימין")
 
                             else:
-                                self.comments.append("ישרי את יד ימין מעל כתף ימין")
+                                self.comments.append("התיישרי יותר לצד ימין והביאי \n את יד ימין מעל כתף ימין")
+
 
             if s.req_exercise == "notool_left_hand_up_and_bend":
                 if not s.all_rules_ok:
                     if s.direction is not None:
                         if s.direction == "right":
                             if s.gender == "Male":
-                                self.comments.append("מתח את יד שמאל יותר באלכסון \n לצד ימין")
+                                self.comments.append("הישען יותר ושלח את יד שמאל \n יותר לכיוון הרצפה")
 
                             else:
-                                self.comments.append("מתחי את יד שמאל יותר באלכסון \n לצד ימין")
+                                self.comments.append("הישעני יותר ושלחי את יד שמאל \n יותר לכיוון הרצפה")
 
                 if s.all_rules_ok:
                     if s.direction is not None:
                         if s.direction == "left":
                             if s.gender == "Male":
-                                self.comments.append("ישר את יד שמאל מעל כתף שמאל")
+                                self.comments.append("התיישר יותר לצד שמאל והבא \n את יד שמאל מעל כתף שמאל")
 
                             else:
-                                self.comments.append("ישרי את יד שמאל מעל כתף שמאל")
+                                self.comments.append("התיישרי יותר לצד שמאל והביאי \n את יד שמאל מעל כתף שמאל")
 
-        if s.not_reached_max_limit_rest_rules_ok and self.start_of_time_count_all_rules_not_limit is not None and self.start_of_time_count_all_rules_not_limit>= 1:
-            if s.req_exercise in ["ball_switch", "stick_switch", "notool_raising_hands_diagonally"]:
+
+        if s.not_reached_max_limit_rest_rules_ok and self.start_of_time_count_all_rules_not_limit is not None and time.time() - self.start_of_time_count_all_rules_not_limit>= 1:
+            if s.req_exercise in ["ball_switch", "stick_switch"]:
                     if s.direction is not None:
                         if s.direction == "left":
                             if s.gender == "Male":
-                                self.comments.append("סחוט יותר את הגב לצד שמאל \n כולל הכתפיים")
+                                self.comments.append("סובב יותר את הגב לצד שמאל \n יחד עם הכתפיים")
 
                             else:
-                                self.comments.append("סחטי יותר את הגב לצד שמאל \n כולל הכתפיים")
+                                self.comments.append("סובבי יותר את הגב לצד שמאל \n יחד עם הכתפיים")
 
                         else:
                             if s.gender == "Male":
-                                self.comments.append("סחוט יותר את הגב לצד ימין \n כולל הכתפיים")
+                                self.comments.append("סובב יותר את הגב לצד ימין \n יחד עם הכתפיים")
 
                             else:
-                                self.comments.append("סחטי יותר את הגב לצד ימין \n כולל הכתפיים")
+                                self.comments.append("סובבי יותר את הגב לצד ימין \n יחד עם הכתפיים")
 
 
             if s.req_exercise in  ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and not s.reached_max_limit:
                 if s.direction is not None:
-                    if s.direction == "left":
+                    if s.direction == "left" and s.req_exercise != "notool_left_hand_up_and_bend":
+                            if s.gender == "Male":
+                                self.comments.append("הישען יותר לצד שמאל \n יחד עם הכתפיים")
+
+                            else:
+                                self.comments.append("הישעני יותר לצד שמאל \n יחד עם הכתפיים")
+
+                    elif s.direction == "right" and s.req_exercise != "notool_right_hand_up_and_bend":
                         if s.gender == "Male":
-                            self.comments.append("הישען יותר לצד שמאל \n כולל הכתפיים")
+                            self.comments.append("הישען יותר לצד ימין \n יחד עם הכתפיים")
 
                         else:
-                            self.comments.append("הישעני יותר לצד שמאל \n כולל הכתפיים")
+                            self.comments.append("הישעני יותר לצד ימין \n יחד עם הכתפיים")
+
+        if s.shoulders_not_good and s.req_exercise == "notool_raising_hands_diagonally":
+            if s.direction is not None:
+                if s.direction == "left":
+                    if s.gender == "Male":
+                        self.comments.append("סובב יותר את הגב לצד שמאל \n יחד עם הכתפיים")
 
                     else:
-                        if s.gender == "Male":
-                            self.comments.append("הישען יותר לצד ימין \n כולל הכתפיים")
+                        self.comments.append("סובבי יותר את הגב לצד שמאל \n יחד עם הכתפיים")
 
-                        else:
-                            self.comments.append("הישעני יותר לצד ימין \n כולל הכתפיים")
+                else:
+                    if s.gender == "Male":
+                        self.comments.append("סובב יותר את הגב לצד ימין \n יחד עם הכתפיים")
+
+                    else:
+                        self.comments.append("סובבי יותר את הגב לצד ימין \n יחד עם הכתפיים")
 
 
-        if self.comments:
-            if self.comment in self.comments:
-                if time.time() - self.time_of_comment >= 3:
-                    # Choose a different comment if there are more options
-                    new_comments = [c for c in self.comments if c != self.comment]
-                    if new_comments:
-                        self.comment = random.choice(new_comments)
-                        self.time_of_comment = time.time()
+
+        if (self.end_of_comment_recording is None or self.end_of_comment_recording < time.time()) and (self.time_of_comment == 0 or (time.time() - self.last_loop_time) >= 1) and s.robot_counter < s.rep -1:
+            self.last_loop_time = time.time()
+            if self.comments:
+                print("comments: ", self.comments)
+
+                if self.comment:
+                    print("comment: " + self.comment)
+
+                if self.comment in self.comments:
+                    # if time.time() - self.time_of_comment >= 2:
+                    if time.time() - self.time_of_comment >= 7:
+                        # Choose a different comment if there are more options
+                        new_comments = [c for c in self.comments if c != self.comment]
+                        if new_comments:
+                            self.comment = random.choice(new_comments)
+                            self.time_of_comment = time.time()
                     else:
                         pass
+
+                    comment_no_signs = self.comment.replace(' \n', '')
+
+                    if comment_no_signs in self.comments_audio:
+                        if time.time() - self.comments_audio[comment_no_signs] >= 15:
+                            can_say_audio = True
+
+                        else:
+                            can_say_audio = False
+
+                    else:
+                        can_say_audio = True
+
+                    # if len(self.comments_audio) >= 1:
+                    #     if self.comments_audio[-1] == comment_no_signs and self.end_of_comment_recording and time.time() - self.end_of_comment_recording < 10:
+                    #         can_say_audio = False
+                    #
+                    #     elif self.end_of_comment_recording and (self.comments_audio[-1] == comment_no_signs and time.time() - self.end_of_comment_recording >= 10) or self.comments_audio[-1] != comment_no_signs:
+                    #         can_say_audio = True
+                    #
+                    #     else:
+                    #         can_say_audio = False
+
+                    # random_num = random.randint(1,2)
+                    random_num = 1
+                    audio_path = f"{s.audio_path}{comment_no_signs}.wav"  # adjust the path and extension as needed
+
+                    if (time.time() - s.last_saying_time > 2) and not self.end_of_comment_recording and can_say_audio and self.time_of_comment and (
+                            time.time() - self.time_of_comment >= 2) and s.robot_counter < s.rep - 1 and s.patient_repetitions_counting_in_exercise < s.rep - 1:
+
+                        if os.path.exists(audio_path):
+                            if random_num == 1: #Add something about recognition issues
+                                dont_recognize_files= Excel.get_files_names_by_start_word("dont_recognize_")
+                                chosen_dont_recognize = random.choice(dont_recognize_files)
+                                self.end_of_comment_recording = time.time() + get_wav_duration(comment_no_signs)
+
+
+                                if chosen_dont_recognize:
+                                    say(chosen_dont_recognize)
+                                    self.end_of_comment_recording += get_wav_duration(chosen_dont_recognize)
+
+                                s.last_saying_time = time.time()
+                                self.comments_audio[comment_no_signs] = time.time()
+
+                            else:
+                                say(comment_no_signs)
+                                self.end_of_comment_recording = time.time() + get_wav_duration(comment_no_signs)
+                                s.last_saying_time = time.time()
+                                self.comments_audio[comment_no_signs] = time.time()
+                        else:
+                            print(f"Audio file not found: {audio_path}")
+
+                    else:
+                        pass  # Keep the same comment
+
                 else:
-                    pass  # Keep the same comment
+                    self.end_of_comment_recording = None
+                    self.time_of_comment = time.time()
+                    self.comment = self.comments[0]  # Pick the first comment if the current one is not in the list
+
             else:
-                self.time_of_comment = time.time()
-                self.comment = self.comments[0]  # Pick the first comment if the current one is not in the list
-        else:
-            self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
-            self.comment_label.place_forget()  # Remove from layout
-            self.comment = None  # No comments, reset
-            self.time_of_comment = 0
+                self.end_of_comment_recording = None
+                self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+                self.comment_label.place_forget()  # Remove from layout
+                self.comment = None  # No comments, reset
+                # self.time_of_comment = 0
 
-        if self.comment is not None:
-            print(self.comment)
+            if self.comment is not None:
+                print(self.comment)
 
-            # Step 1: Temporarily hide the label (so it's not visible while being positioned)
-            self.comment_label.place_forget()
+                # Step 1: Temporarily hide the label (so it's not visible while being positioned)
+                self.comment_label.place_forget()
 
-            # Step 2: Set the comment text
-            self.comment_label.config(
-                text=self.comment,
-                fg="red",
-                font=("Arial", 50, "bold"),
-                bg="white",
-                justify="center",
-                anchor="center"
-            )
+                # Step 2: Set the comment text
+                self.comment_label.config(
+                    text=self.comment,
+                    fg="red",
+                    font=("Arial", 50, "bold"),
+                    bg="white",
+                    justify="center",
+                    anchor="center"
+                )
 
-            # Step 3: Update size calculations
-            self.update_idletasks()
+                # Step 3: Update size calculations
+                self.update_idletasks()
 
-            # Step 4: Reposition centered
-            self.center_comment_label()
+                # Step 4: Reposition centered
+                self.center_comment_label()
 
 
 
@@ -3118,12 +3230,8 @@ class ExercisePage(tk.Frame):
 
                     else:
                         self.comments.append("ישרי יותר את יד ימין")
-                else:
-                    if s.gender == "Male":
-                        self.comments.append("כופף מעט את יד ימין")
 
-                    else:
-                        self.comments.append("כופפי מעט את יד ימין")
+
 
         elif s.req_exercise == "notool_left_hand_up_and_bend":
             if cleaned_joint_2 == "elbow":
@@ -3134,12 +3242,6 @@ class ExercisePage(tk.Frame):
                     else:
                         self.comments.append("ישרי יותר את יד שמאל")
 
-                else:
-                    if s.gender == "Male":
-                        self.comments.append("כופף מעט את יד שמאל")
-
-                    else:
-                        self.comments.append("כופפי מעט את יד שמאל")
 
         elif s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
                 if joint2 == "L_elbow":
@@ -3300,59 +3402,126 @@ class ExercisePage(tk.Frame):
 
         if ((cleaned_joint_1 == "hip" and cleaned_joint_3 == "elbow") or (
                 cleaned_joint_3 == "hip" and cleaned_joint_1 == "elbow")) and cleaned_joint_2 == "shoulder":
-            if biggerORsmaller == "smaller":
-                if s.gender == "Male":
-                    self.comments.append("הרם את הידיים יותר גבוה")
+            if s.req_exercise in ["ball_bend_elbows", "stick_bend_elbows"]:
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("הרם מעט את המרפקים")
+
+                    else:
+                        self.comments.append("הרימי מעט את המרפקים")
+                else:
+                    if s.gender == "Male":
+                        self.comments.append("הצמד את המרפקים לגוף")
+
+                    else:
+                        self.comments.append("הצמידי את המרפקים לגוף")
+
+            if s.req_exercise in ["ball_raise_arms_above_head", "ball_open_arms_and_forward", "band_open_arms_and_up",\
+                                  "band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides",\
+                                  "stick_raise_arms_above_head", "weights_open_arms_and_forward", "weights_abduction"]:
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("הרם את הידיים יותר למעלה")
+
+                    else:
+                        self.comments.append("הרימי את הידיים יותר למעלה")
 
                 else:
-                    self.comments.append("הרימי את הידיים יותר גבוה")
-            else:
-                if s.gender == "Male":
-                    self.comments.append("הורד יותר את הידיים")
+                    if s.gender == "Male":
+                        self.comments.append("הורד יותר את הידיים")
 
+                    else:
+                        self.comments.append("הורידי יותר את הידיים")
+
+
+            if s.req_exercise == "stick_bend_elbows_and_up":
+                if biggerORsmaller == "smaller":
+                    if s.gender == "Male":
+                        self.comments.append("הרם את הידיים יותר למעלה")
+
+                    else:
+                        self.comments.append("הרימי את הידיים יותר למעלה")
                 else:
-                    self.comments.append("הורידי יותר את הידיים")
+                    if s.gender == "Male":
+                        self.comments.append("הצמד את המרפקים לגוף")
+
+                    else:
+                        self.comments.append("הצמידי את המרפקים לגוף")
+
 
         if joint1 == "L_wrist" and joint2 == "L_hip" and joint3 == "R_hip":
             if biggerORsmaller == "smaller":
                 if side is not None:
                     if side == "left":
                         if s.gender == "Male":
-                            self.comments.append("סחוט יותר את הגב לצד שמאל")
+                            self.comments.append("סובב יותר את הגב לצד שמאל \n יחד עם הכתפיים")
 
                         else:
-                            self.comments.append("סחטי יותר את הגב לצד שמאל")
+                            self.comments.append("סובבי יותר את הגב לצד שמאל \n יחד עם הכתפיים")
                     else:
                         if s.gender == "Male":
-                            self.comments.append("סחוט פחות את הגב לצד ימין")
+                            self.comments.append("סובב פחות את הגב לצד ימין")
 
                         else:
-                            self.comments.append("סחטי פחות את הגב לצד ימין")
+                            self.comments.append("סובבי פחות את הגב לצד ימין")
 
             if biggerORsmaller == "bigger":
                 if side is not None:
                     if side == "left":
                         if s.gender == "Male":
-                            self.comments.append("סחוט פחות את הגב לצד שמאל")
+                            self.comments.append("סובב פחות את הגב לצד שמאל")
 
                         else:
-                            self.comments.append("סחטי פחות את הגב לצד שמאל")
+                            self.comments.append("סובבי פחות את הגב לצד שמאל")
                     else:
                         if s.gender == "Male":
-                            self.comments.append("סחוט יותר את הגב לצד ימין")
+                            self.comments.append("סובב יותר את הגב לצד ימין \n יחד עם הכתפיים")
 
                         else:
-                            self.comments.append("סחטי יותר את הגב לצד ימין")
+                            self.comments.append("סובבי יותר את הגב לצד ימין \n יחד עם הכתפיים")
+
+
+        if joint1 == "R_wrist" and joint2 == "R_hip" and joint3 == "L_hip":
+            if biggerORsmaller == "smaller":
+                if side is not None:
+                    if side == "left":
+                        if s.gender == "Male":
+                            self.comments.append("סובב פחות את הגב לצד שמאל")
+
+                        else:
+                            self.comments.append("סובב פחות את הגב לצד שמאל")
+                    else:
+                        if s.gender == "Male":
+                            self.comments.append("סובב יותר את הגב לצד ימין \n יחד עם הכתפיים")
+
+                        else:
+                            self.comments.append("סובבי יותר את הגב לצד ימין \n יחד עם הכתפיים")
+
+            if biggerORsmaller == "bigger":
+                if side is not None:
+                    if side == "left":
+                        if s.gender == "Male":
+                            self.comments.append("סובב יותר את הגב לצד שמאל \n יחד עם הכתפיים")
+
+                        else:
+                            self.comments.append("סובבי יותר את הגב לצד שמאל \n יחד עם הכתפיים")
+                    else:
+                        if s.gender == "Male":
+                            self.comments.append("סובב פחות את הגב לצד ימין")
+
+                        else:
+                            self.comments.append("סובבי פחות את הגב לצד ימין")
+
 
 
         if joint1 == "L_hip" and joint2 == "L_shoulder" and joint3 == "L_wrist" and s.req_exercise == "notool_left_hand_up_and_bend":
-                if biggerORsmaller == "smaller" and s.direction == "left":
+                if biggerORsmaller == "smaller":
                     if s.gender == "Male":
                         self.comments.append("התיישר יותר לצד שמאל והבא \n את יד שמאל מעל כתף שמאל")
 
                     else:
                         self.comments.append("התיישרי יותר לצד שמאל והביאי \n את יד שמאל מעל כתף שמאל")
-                elif biggerORsmaller == "bigger" and s.direction == "right":
+                else:
                     if s.gender == "Male":
                         self.comments.append("הישען יותר ושלח את יד שמאל \n יותר לכיוון הרצפה")
 
@@ -3361,13 +3530,13 @@ class ExercisePage(tk.Frame):
 
 
         if joint1 == "R_hip" and joint2 == "R_shoulder" and joint3 == "R_wrist" and s.req_exercise == "notool_right_hand_up_and_bend":
-                if biggerORsmaller == "smaller" and s.direction == "right":
+                if biggerORsmaller == "smaller":
                     if s.gender == "Male":
                         self.comments.append("התיישר יותר לצד ימין והבא \n את יד ימין מעל כתף ימין")
 
                     else:
                         self.comments.append("התיישרי יותר לצד ימין והביאי \n את יד ימין מעל כתף ימין")
-                elif biggerORsmaller == "bigger" and s.direction == "left":
+                else:
                     if s.gender == "Male":
                         self.comments.append("הישען יותר ושלח את יד ימין \n יותר לכיוון הרצפה")
 
@@ -3375,13 +3544,13 @@ class ExercisePage(tk.Frame):
                         self.comments.append("הישעני יותר ושלחי את יד ימין \n יותר לכיוון הרצפה")
 
 
-        if cleaned_joint_1 == "hip" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "wrist" and s.req_exercise in ["band_open_arms", "notool_raising_hands_diagonally"]:
+        if cleaned_joint_1 == "hip" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "wrist" and s.req_exercise in ["band_open_arms" ,"notool_raising_hands_diagonally"]:
                 if biggerORsmaller == "smaller":
                     if s.gender == "Male":
-                        self.comments.append("הרם את הידיים יותר גבוה")
+                        self.comments.append("הרם את הידיים יותר למעלה")
 
                     else:
-                        self.comments.append("הרימי את הידיים יותר גבוה")
+                        self.comments.append("הרימי את הידיים יותר למעלה")
                 else:
                     if s.gender == "Male":
                         self.comments.append("הורד יותר את הידיים")
@@ -3391,55 +3560,7 @@ class ExercisePage(tk.Frame):
 
 
 
-        if joint1 == "R_wrist" and joint2 == "R_hip" and joint3 == "L_hip":
-            if biggerORsmaller == "smaller":
-                if side is not None:
-                    if side == "left":
-                        if s.gender == "Male":
-                            self.comments.append("סחוט פחות את הגב לצד שמאל")
-
-                        else:
-                            self.comments.append("סחטי פחות את הגב לצד שמאל")
-                    else:
-                        if s.gender == "Male":
-                            self.comments.append("סחוט יותר את הגב לצד ימין")
-
-                        else:
-                            self.comments.append("סחטי יותר את הגב לצד ימין")
-
-            if biggerORsmaller == "bigger":
-                if side is not None:
-                    if side == "left":
-                        if s.gender == "Male":
-                            self.comments.append("סחוט יותר את הגב לצד שמאל")
-
-                        else:
-                            self.comments.append("סחטי יותר את הגב לצד שמאל")
-                    else:
-                        if s.gender == "Male":
-                            self.comments.append("סחוט פחות את הגב לצד ימין")
-
-                        else:
-                            self.comments.append("סחטי פחות את הגב לצד ימין")
-
-
-        if cleaned_joint_1 == "elbow" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
-            if biggerORsmaller == "smaller":
-                if s.gender == "Male":
-                    self.comments.append("פתח יותר את הידיים")
-
-                else:
-                    self.comments.append("פתחי יותר את הידיים")
-
-            else:
-                if s.gender == "Male":
-                    self.comments.append("סגור מעט את הידיים")
-
-                else:
-                    self.comments.append("סגרי מעט את הידיים")
-
-
-        if cleaned_joint_1 == "wrist" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
+        if (cleaned_joint_1 == "wrist" or cleaned_joint_1 == "elbow") and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
             if s.req_exercise in ["band_open_arms", "band_open_arms_and_up"]:
                 if biggerORsmaller == "smaller":
                     if s.gender == "Male":
@@ -4598,9 +4719,6 @@ class Number_of_good_repetitions_page(tk.Frame):
         else:
             self.canvas.create_text(520, 510, text=f' נותרו עוד {exercises_left} תרגילים לסיום האימון ',
                                 font=("Arial", 40, "bold"), fill="white", anchor="center")
-
-        say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
-
 
 
 

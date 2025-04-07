@@ -2,11 +2,10 @@ import os
 import threading
 import time
 import re
-from random import randint
-
+import random
+import copy
 import cv2
 import pygame
-
 from Camera import Camera
 from Gymmy import Gymmy
 from ScreenNew import Screen, FullScreenApp, Ball, Rubber_Band, Stick, NoTool, StartOfTraining, GoodbyePage, \
@@ -17,7 +16,6 @@ import Excel
 import random
 from Audio import say, get_wav_duration, ContinuousAudio, AdditionalAudio
 from datetime import datetime
-import Email
 
 
 
@@ -38,71 +36,123 @@ class Training(threading.Thread):
 
         print("Training Done")
 
+    def select_exercises(self, options_for_ex_in_training, exercise_pairs, max_exercises=10, max_per_category=4):
 
-    def select_exercises(self, ex_in_training, exercise_pairs, max_exercises=10, max_per_category=4):
-        """
-        Selects up to `max_exercises` exercises while ensuring:
-        - If there are 10 or fewer exercises, all are included.
-        - Exercises are categorized (ball, band, stick, weights, notool).
-        - If an exercise is in a pair and there's room, it has a 50% chance to include its pair.
-        - Maximum of 4 exercises per category unless only full categories remain.
-        - If only exercise pairs remain and exactly one more is needed, one is chosen randomly.
-        - The selected list is shuffled, but a specific pair remains together.
-        """
-
-        if len(ex_in_training) <= max_exercises:
-            return ex_in_training  # If 10 or fewer exercises exist, use all
+        if len(options_for_ex_in_training) <= max_exercises:
+            return options_for_ex_in_training  # If 10 or fewer exercises exist, use all
 
         selected_exercises = []
-        exercise_counts = {category: 0 for category in ["ball", "band", "stick", "weights", "notool"]}
-        used_pairs = set()
+        exercise_counts_in_training = {category: 0 for category in ["ball", "band", "stick", "weights", "notool"]}
+        pairs_list = {"ball": [], "band": [], "stick": [], "weights": [], "notool": []}
+        count_pairs = 0
+        not_pairs_list = {"ball": [], "band": [], "stick": [], "weights": [], "notool": []}
+        count_not_pairs = 0
+
+        exercise_counts_in_list_before_training = {category: 0 for category in
+                                                   ["ball", "band", "stick", "weights", "notool"]}
+        ex_in_training_copy = copy.deepcopy(options_for_ex_in_training)
+
+        for ex in options_for_ex_in_training:
+            was_in_pair = False
+            if ex in ex_in_training_copy:  # If it was not removed because it was in a couple
+                for pair in exercise_pairs:
+                    if ex in pair:
+                        was_in_pair = True
+
+                        other_exercise = pair[1] if pair[0] == ex else pair[0]
+
+                        if other_exercise in options_for_ex_in_training:
+                            ex_in_training_copy.remove(ex)
+                            ex_in_training_copy.remove(other_exercise)
+                            count_pairs += 1
+
+                            category = ex.split("_")[0]
+                            exercise_counts_in_list_before_training[category] += 2
+                            pairs_list[category].append((ex, other_exercise))
+
+
+                        else:
+                            ex_in_training_copy.remove(ex)
+                            category = ex.split("_")[0]
+                            exercise_counts_in_list_before_training[category] += 1
+                            not_pairs_list[category].append(ex)
+                            count_not_pairs += 1
+
+                if not was_in_pair:
+                    ex_in_training_copy.remove(ex)
+                    category = ex.split("_")[0]
+                    not_pairs_list[category].append(ex)
+                    exercise_counts_in_list_before_training[category] += 1
+                    count_not_pairs += 1
 
         while len(selected_exercises) < max_exercises:
-            remaining_exercises = [ex for ex in ex_in_training if ex not in selected_exercises]
-            if not remaining_exercises:
-                break  # Stop if no exercises remain
+            rnd_num = random.randint(1, (count_not_pairs + count_pairs))
 
-            # Identify remaining pairs
-            remaining_pairs = [pair for pair in exercise_pairs if pair[0] in remaining_exercises and pair[1] in remaining_exercises]
-            only_pairs_left = len(remaining_pairs) > 0 and all(ex in sum(remaining_pairs, ()) for ex in remaining_exercises)
+            if rnd_num <= count_not_pairs:  # We will randomly choose from the exercises not in pairs
+                all_not_pairs = [not_pair for not_pairs in not_pairs_list.values() for not_pair in not_pairs]
+                exercise = random.choice(all_not_pairs)
+                category = exercise.split("_")[0]
 
-            # Select a random exercise
-            exercise = random.choice(remaining_exercises)
-
-            # Determine its category
-            category = next((key for key in exercise_counts.keys() if exercise.startswith(key)), None)
-
-            if category:
-                pair_found = False
-                for pair in exercise_pairs:
-                    if exercise in pair:
-                        partner = pair[0] if exercise == pair[1] else pair[1]
-
-                        if partner in remaining_exercises and pair not in used_pairs:
-                            # Randomly decide whether to include both or none if there's room
-                            if len(selected_exercises) + 2 <= max_exercises and random.choice([True, False]):
-                                selected_exercises.extend(pair)
-                                exercise_counts[category] += 2
-                                used_pairs.add(pair)
-                            pair_found = True
-                        break
-
-                # If no pair was added and the category is not full, add a single exercise
-                if not pair_found and exercise_counts[category] < max_per_category:
+                if exercise_counts_in_training[category] < max_per_category:
                     selected_exercises.append(exercise)
-                    exercise_counts[category] += 1
+                    not_pairs_list[category].remove(exercise)
+                    exercise_counts_in_list_before_training[category] -= 1
+                    exercise_counts_in_training[category] += 1
+                    count_not_pairs -= 1
 
-            # If all available exercises belong to full categories, allow adding extra ones
-            if len(selected_exercises) < max_exercises:
-                remaining_exercises_no_limits = [ex for ex in ex_in_training if ex not in selected_exercises]
-                if remaining_exercises_no_limits:
-                    selected_exercises.append(random.choice(remaining_exercises_no_limits))
+                else:
+                    total_exercises_other_categories = sum(
+                        count for cat, count in exercise_counts_in_list_before_training.items()
+                        if cat != category)
 
-        # If only pairs remain and exactly one more exercise is needed, add one from a pair
-        if len(selected_exercises) == max_exercises - 1 and only_pairs_left:
-            random_pair = random.choice(remaining_pairs)
-            selected_exercises.append(random.choice(random_pair))
+                    if total_exercises_other_categories == 0:
+                        selected_exercises.append(exercise)
+                        not_pairs_list[category].remove(exercise)
+                        exercise_counts_in_list_before_training[category] -= 1
+                        exercise_counts_in_training[category] += 1
+                        count_not_pairs -= 1
 
+
+            else:
+                all_pairs = [pair for pairs in pairs_list.values() for pair in pairs]
+                pair = random.choice(all_pairs)
+                category = pair[0].split("_")[0]
+
+                all_not_pairs = [not_pair for not_pairs in not_pairs_list.values() for not_pair in not_pairs]
+                total_exercises_other_categories = sum(
+                    count for cat, count in exercise_counts_in_list_before_training.items() if cat != category)
+
+                if len(selected_exercises) + 2 <= max_exercises:
+                    if exercise_counts_in_training[category] + 1 < max_per_category:
+                        selected_exercises.append(pair[0])
+                        selected_exercises.append(pair[1])
+                        pairs_list[category].remove(pair)
+                        exercise_counts_in_list_before_training[category] -= 2
+                        exercise_counts_in_training[category] += 2
+                        count_pairs -= 1
+
+                    else:
+                        if total_exercises_other_categories == 0:
+                            selected_exercises.append(pair[0])
+                            selected_exercises.append(pair[1])
+                            pairs_list[category].remove(pair)
+                            exercise_counts_in_list_before_training[category] -= 2
+                            exercise_counts_in_training[category] += 2
+                            count_pairs -= 1
+
+
+                elif len(
+                        all_not_pairs) == 0 and total_exercises_other_categories == 0:  # אם לא נשארו לא זוגות וגם אין מקטגוריות אחרות
+                    selected_exercises.append(pair[0])
+                    selected_exercises.append(pair[1])
+                    pairs_list[category].remove(pair)
+                    exercise_counts_in_list_before_training[category] -= 2
+                    exercise_counts_in_training[category] += 2
+                    count_pairs -= 1
+
+        return selected_exercises
+
+    def shuffle_exercises(self, selected_exercises):
         # **Shuffle but keep special pair together**
         special_pair = ("notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side")
 
@@ -118,12 +168,13 @@ class Training(threading.Thread):
             # If the special pair is not both present, just shuffle normally
             random.shuffle(selected_exercises)
 
+        for ex in selected_exercises:
+            print(ex)
+
         return selected_exercises
 
 
     def training_session(self):
-
-
         while s.ex_in_training==[]:
             time.sleep(0.1)
 
@@ -141,7 +192,6 @@ class Training(threading.Thread):
             # הגדרת זוגות התרגילים
             exercise_pairs = [
                 ("band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"),
-                ("weights_right_hand_up_and_bend", "weights_left_hand_up_and_bend"),
                 ("notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"),
                 ("notool_right_bend_left_up_from_side", "notool_left_bend_right_up_from_side"),
             ]
@@ -149,7 +199,8 @@ class Training(threading.Thread):
 
             if not s.is_second_repetition_or_more and not s.finish_program:
 
-                selected_exercises= self.select_exercises(s.ex_in_training, exercise_pairs)
+                selected_exercises_before_shuffle = self.select_exercises(s.ex_in_training, exercise_pairs)
+                selected_exercises = self.shuffle_exercises(selected_exercises_before_shuffle)
 
                     # שמירת התרגילים שנבחרו
                 s.ex_in_training = selected_exercises
@@ -183,6 +234,7 @@ class Training(threading.Thread):
             s.req_exercise = ""
             time.sleep(get_wav_duration("end_calibration"))
 
+            s.general_sayings = Training.get_motivation_file_names(Training)
 
             for i in categories:
                 if s.stop_requested or s.finish_program:
@@ -231,7 +283,6 @@ class Training(threading.Thread):
 
                         s.direction = None
                         s.skip = False
-                        s.general_sayings = self.get_motivation_file_names()
                         s.exercises_by_order.append(e)
                         s.gymmy_done= False
                         s.camera_done= False
@@ -283,8 +334,7 @@ class Training(threading.Thread):
                         while not s.gymmy_done or not s.camera_done:
                             time.sleep(0.001)
 
-
-
+                        print("TRAINING: Exercise ", exercise, " done")
 
                 if s.stop_requested or s.finish_program:
                     break
@@ -301,8 +351,6 @@ class Training(threading.Thread):
         else:
             s.screen.switch_frame(NoTool)
 
-
-
     def get_motivation_file_names(self):
         """
         Retrieves all file names in a directory that:
@@ -313,7 +361,7 @@ class Training(threading.Thread):
         - List[str]: A list of matching file names without extensions.
         """
         # Updated regex pattern
-        pattern = r'^(faster_\d+|motivation_\d+_(start|middle|end|end_good))\.\w+$'
+        pattern = r'^(faster_\d+|motivation_\d+_(start|middle|end|end_good|not_start|small_gap|large_gap|gap_and_many_rep)|dont_recognize_comment_\d+)\.\w+$'
 
         # Initialize a list to store matching file names
         matching_file_names = []
@@ -332,6 +380,7 @@ class Training(threading.Thread):
                 matching_file_names.append(name_without_extension)
 
         return matching_file_names
+
 
     def finish_training(self):
         #time.sleep(3)
@@ -360,8 +409,8 @@ class Training(threading.Thread):
         if s.another_training_requested:
             Excel.find_and_add_training_to_patient()
             Excel.close_workbook()
-            Email.email_to_patient()
-            Email.email_to_physical_therapist()
+            # Email.email_to_patient()
+            # Email.email_to_physical_therapist()
 
             s.req_exercise = ""
             s.waved = False
@@ -387,7 +436,7 @@ class Training(threading.Thread):
             s.number_of_repetitions_in_training=0
             s.did_training_paused= False
             s.starts_and_ends_of_stops= []
-            s.general_sayings = ["", "", ""]
+            s.general_sayings = []
             s.num_exercises_started = 0
             s.number_of_pauses = 0
             s.needs_first_position = False
@@ -397,10 +446,10 @@ class Training(threading.Thread):
             s.volume = 0.3
             s.play_song = False
             s.asked_for_measurement = False
-            s.screen_finished_counting = True
+            s.screen_finished_counting = False
             s.explanation_over = False
             s.gymmy_finished_demo = False
-            s.last_saying_time = datetime.now()
+            s.last_saying_time = time.time()
             s.robot_counter= 0
             s.was_in_first_condition = False
             s.time_of_change_position = None
@@ -414,14 +463,14 @@ class Training(threading.Thread):
             s.suggest_repeat_explanation = False
             s.last_entry_angles = None
             s.skipped_exercise = False
-
+            s.shoulders_not_good = False
 
         else:
             Excel.find_and_add_training_to_patient()
             Excel.close_workbook()
-            Email.email_to_patient()
+            # Email.email_to_patient()
             # self.check_points_and_send_email()
-            Email.email_to_physical_therapist()
+            # Email.email_to_physical_therapist()
             print("TRAINING DONE")
             time.sleep(1)
             self.reset()
@@ -429,9 +478,14 @@ class Training(threading.Thread):
 
     def end_exercise(self):
         s.screen.switch_frame(Number_of_good_repetitions_page)
-        time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep")+1)
+        time.sleep(0.5)
+        say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
+        time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep")+0.5)
 
-
+        continue_files = Excel.get_files_names_by_start_word("continue")
+        chosen_continue = random.choice(continue_files)
+        say(chosen_continue)
+        time.sleep(get_wav_duration(chosen_continue))
 
 
     def run_exercise(self, name):
@@ -477,9 +531,6 @@ class Training(threading.Thread):
         if s.skipped_exercise:
             s.req_exercise = ""
 
-
-
-        print("TRAINING: Exercise ", name, " done")
         s.gymmy_finished_demo = False
         # time.sleep(1)
 
@@ -524,7 +575,7 @@ class Training(threading.Thread):
         s.did_training_paused= False
         s.starts_and_ends_of_stops= []
         time.sleep(2)
-        s.general_sayings = ["", "", ""]
+        s.general_sayings = []
         s.num_exercises_started = 0
         s.dist_between_shoulders = 0
         s.number_of_pauses = 0
@@ -536,7 +587,7 @@ class Training(threading.Thread):
         s.volume = 0.3
         s.play_song = False
         s.asked_for_measurement = True
-        s.screen_finished_counting = True
+        s.screen_finished_counting = False
         s.finished_calibration = False
         s.len_left_arm = None
         s.len_right_arm = None
@@ -549,7 +600,7 @@ class Training(threading.Thread):
         s.rate = "moderate"
         s.explanation_over = False
         s.gymmy_finished_demo = False
-        s.last_saying_time = datetime.now()
+        s.last_saying_time = time.time()
         s.robot_counter = 0
         s.try_again_calibration = False
         s.not_reached_max_limit_rest_rules_ok = False
@@ -561,6 +612,7 @@ class Training(threading.Thread):
         s.suggest_repeat_explanation = False
         s.last_entry_angles = None
         s.skipped_exercise = False
+        s.shoulders_not_good = False
 
     def which_exercise_page(self):
 
@@ -595,41 +647,10 @@ class Training(threading.Thread):
         elif s.req_exercise in ["notool_raising_hands_diagonally"]:
             s.screen.switch_frame(ExercisePage, exercise_type="wrist_height_y", reverse_color=True, reverse_bar=False, min_distance=-(average_len_arms - 250), max_distance=0, which_side="both")
 
-    #A function that checks how many points did the patient get in the current level, and if he is progressing to the next level
-    def check_points_and_send_email(self):
-        time.sleep(1)
-        level_up = False  #has the patient progressed to another level
-
-        points_in_this_training = s.number_of_repetitions_in_training - 0.5 * (
-                    s.max_repetitions_in_training - s.number_of_repetitions_in_training) #how many points the patient got on this training
-
-        points_into_excel = 0 #varaible for points to put in excel
-
-        if (s.points_in_current_level_before_training + points_in_this_training) < 100: #checks whether the sum of the points before the training and in it are less than 100
-            points_into_excel = s.points_in_current_level_before_training + points_in_this_training #if less than 100, the points will stay as the sum
-
-        elif 100 <= (s.points_in_current_level_before_training + points_in_this_training) < 200: #if the points are between 100 and 200
-            s.current_level_of_patient += 1 #the level will increase in 1
-            points_into_excel = s.points_in_current_level_before_training + points_in_this_training - 100 #if between 100 and 200, we will deduct 100 points (because the patient progressed in one level)
-            level_up = True
-
-        elif (s.number_of_repetitions_in_training + s.number_of_repetitions_in_current_level_before_training) >= 200: #if the points are more than 200
-            s.current_level_of_patient += 2 #the level will increase in 2
-            points_into_excel = s.points_in_current_level_before_training + points_in_this_training - 200 #if more than 200, we will deduct 200 points (because the patient progressed in two levels)
-            level_up = True
-
-        dict_new_values={"level": s.current_level_of_patient, "points in current level": points_into_excel}
-        Excel.find_and_change_values_patients(dict_new_values)
-
-        if level_up is True:
-            Email.email_sending_level_up()
-        else:
-            Email.email_sending_not_level_up()
 
 if __name__ == "__main__":
     s.gender= "Female"
     s.audio_path = f'audio files/Hebrew/{s.gender}/'
-    general_sayings = Training.get_motivation_file_names(Training)
 
     current_time = datetime.now()
     s.participant_code = str(current_time.day) + "." + str(current_time.month) + " " + str(current_time.hour) + "." + \
@@ -641,7 +662,7 @@ if __name__ == "__main__":
     s.rep = 10
     s.time_of_change_position = None
 
-    s.ex_in_training = ["notool_left_hand_up_and_bend", "notool_right_hand_up_and_bend"]
+    s.ex_in_training = ["notool_raising_hands_diagonally"]
     s.skipped_exercise = False
 
         #,"ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"] "ball_bend_elbows" ,
@@ -688,8 +709,9 @@ if __name__ == "__main__":
     s.volume = 0
     s.additional_audio_playing = False
     s.gymmy_finished_demo = False
+    s.shoulders_not_good = False
     s.robot_counter = 0
-    s.last_saying_time = datetime.now()
+    s.last_saying_time = time.time()
     s.rate= "slow"
     s.num_exercises_started = 0
     s.asked_for_measurement = True
