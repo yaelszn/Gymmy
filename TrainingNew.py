@@ -36,7 +36,7 @@ class Training(threading.Thread):
 
         print("Training Done")
 
-    def select_exercises(self, options_for_ex_in_training, exercise_pairs, max_exercises=10, max_per_category=4):
+    def select_exercises(self, options_for_ex_in_training, exercise_pairs, max_exercises=5, max_per_category=4):
 
         if len(options_for_ex_in_training) <= max_exercises:
             return options_for_ex_in_training  # If 10 or fewer exercises exist, use all
@@ -234,7 +234,7 @@ class Training(threading.Thread):
             s.req_exercise = ""
             time.sleep(get_wav_duration("end_calibration"))
 
-            s.general_sayings = Training.get_motivation_file_names(Training)
+            s.general_sayings = self.get_motivation_file_names()
 
             for i in categories:
                 if s.stop_requested or s.finish_program:
@@ -334,7 +334,8 @@ class Training(threading.Thread):
                         while not s.gymmy_done or not s.camera_done:
                             time.sleep(0.001)
 
-                        print("TRAINING: Exercise ", exercise, " done")
+
+
 
                 if s.stop_requested or s.finish_program:
                     break
@@ -478,7 +479,6 @@ class Training(threading.Thread):
 
     def end_exercise(self):
         s.screen.switch_frame(Number_of_good_repetitions_page)
-        time.sleep(0.5)
         say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
         time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep")+0.5)
 
@@ -531,6 +531,9 @@ class Training(threading.Thread):
         if s.skipped_exercise:
             s.req_exercise = ""
 
+
+
+        print("TRAINING: Exercise ", name, " done")
         s.gymmy_finished_demo = False
         # time.sleep(1)
 

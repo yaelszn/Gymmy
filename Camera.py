@@ -373,7 +373,7 @@ class Camera(threading.Thread):
                 getattr(self, ex)()
                 self.count_not_good_range = 0
                 print("CAMERA: Exercise ", ex, " done")
-                s.req_exercise = ""
+                # s.req_exercise = ""
                 s.camera_done = True
 
             else:
