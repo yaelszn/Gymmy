@@ -58,13 +58,7 @@ from scipy.signal import butter, filtfilt
 
 class ButterworthFilter:
     def __init__(self, order=2, cutoff=5, min_samples=5):
-        if s.req_exercise not in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
-            fs = 35
-
-        else:
-            fs = 30
-
-        self.b, self.a = butter(order, cutoff / (0.5 * fs), btype='low', analog=False)
+        self.b, self.a = butter(order, cutoff / (0.5 * s.fps), btype='low', analog=False)
         self.history = []  # Stores previous positions for filtering
         self.min_samples = min_samples  # Avoid filtfilt errors
 
@@ -274,7 +268,7 @@ class Camera(threading.Thread):
             if s.asked_for_measurement and not s.finished_calibration and not s.screen_finished_counting:
                 time.sleep(1)
                 s.zed_camera.set_detection_model_to_accurate()
-                while not s.screen_finished_counting:
+                while not s.screen_finished_counting and not s.finish_program:
                     time.sleep(0.001)
 
                 # Initialize lists for each measurement
@@ -378,6 +372,7 @@ class Camera(threading.Thread):
 
             else:
                 time.sleep(1)
+
         print("Camera Done")
 
     def process_joints_from_body_parts_dict(self):
@@ -408,9 +403,9 @@ class Camera(threading.Thread):
 
             left_shoulder_angle = self.calc_angle_3d(l_hip, l_shoulder, l_elbow, "L_2")
 
-            if not (70 < right_shoulder_angle < 110):
+            if not (50 < right_shoulder_angle < 130):
                 right_shoulder_angle_not_in_range_count +=1
-            if not (70 < left_shoulder_angle < 110):
+            if not (50 < left_shoulder_angle < 130):
                 left_shoulder_angle_not_in_range_count +=1
 
 
@@ -628,6 +623,7 @@ class Camera(threading.Thread):
             self.joints[organ] = joint
 
         return self.joints
+
 
     def exercise_two_angles_3d(self, exercise_name, joint1, joint2, joint3, up_lb, up_ub, down_lb, down_ub,
                                    joint4, joint5, joint6, up_lb2, up_ub2, down_lb2, down_ub2, use_alternate_angles=False, left_right_differ=False):
@@ -1802,9 +1798,6 @@ class Camera(threading.Thread):
                                 s.hand_not_good = True
 
 
-
-
-
                         #
                         # elif time.time() - s.time_of_change_position > 3:
                         #     if not s.reached_max_limit and (one_lb < left_angle < one_ub) and (135 < left_angle_2< 180):
@@ -1822,7 +1815,9 @@ class Camera(threading.Thread):
             joints = self.fill_null_joint_list()
             new_entry = [joints[str("R_" + joint1)], joints[str("R_" + joint2)], joints[str("R_" + joint3)],
                          joints[str("L_" + joint1)], joints[str("L_" + joint2)], joints[str("L_" + joint3)],
-                         None, None]
+                         joints[str("R_wrist")], joints[str("R_elbow")], joints[str("R_shoulder")],
+                         joints[str("L_wrist")], joints[str("L_elbow")], joints[str("L_shoulder")],
+                         None, None, None, None]
             list_joints.append(copy.deepcopy(new_entry))
 
 
@@ -2018,7 +2013,7 @@ if __name__ == '__main__':
     s.number_of_repetitions_in_training=0
     s.patient_repetitions_counting_in_exercise=0
     s.starts_and_ends_of_stops=[]
-    s.starts_and_ends_of_stops.append(datetime.now())
+    s.starts_and_ends_of_stops.append(time.time())
     s.dist_between_shoulders =280
     pygame.mixer.init()
     # Start all threads

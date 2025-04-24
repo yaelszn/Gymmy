@@ -17,6 +17,7 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QVBoxLayout, QLabel
 from matplotlib import pyplot as plt
 
+
 from PyZedWrapper import PyZedWrapper
 
 
@@ -156,6 +157,8 @@ class EntrancePage(tk.Frame):
         s.camera.join()
         s.training.join()
         s.robot.join()
+        s.continuous_audio.join()
+        # s.zed_camera.join()
         print("All threads have stopped.")
         self.quit()
 
@@ -586,65 +589,69 @@ class Choose_Action_Physio(tk.Frame):
 
 class PatientDisplaying(tk.Frame):
     def __init__(self, master):
-        tk.Frame.__init__(self, master)
+        super().__init__(master)
         excel_file_path = "Patients.xlsx"
-        df = pd.read_excel(excel_file_path, sheet_name="patients_details" ,usecols=['ID', 'first name', 'last name'])
-        new_headers = {'ID': 'תעודת זהות', 'first name': 'שם פרטי', 'last name': 'שם משפחה'}
+        df = pd.read_excel(excel_file_path, sheet_name="patients_details", usecols=['ID'])
+
+        # Rename column
+        new_headers = {'ID': 'מספרים מזהים'}
         df.rename(columns=new_headers, inplace=True)
-        s.chosen_patient_ID=None
-        s.excel_file_path_Patient=None
 
-        for col in df.columns[1:3]:
-            df[col] = df[col].apply(lambda x: x)
+        # Shared variables (you can set them elsewhere too)
+        s.chosen_patient_ID = None
+        s.excel_file_path_Patient = None
 
-        # Load the background image
+        # Load background image
         image = Image.open('Pictures//Patient_list.jpg')
         self.photo_image = ImageTk.PhotoImage(image)
-        # Create a label to display the background image
         self.background_label = tk.Label(self, image=self.photo_image)
         self.background_label.pack(fill="both", expand=True)
 
-        # Display the DataFrame in a Treeview widget
+        # Treeview setup
         self.treeview = ttk.Treeview(self, style="Treeview", show="headings")
         self.treeview["columns"] = tuple(df.columns)
 
-        # Set up a custom style for the Treeview
+        # Style
         style = ttk.Style(self)
-        style.configure("Treeview", font=("Thaoma", 14, 'bold'), rowheight=30)  # Adjust the font size (16 in this case)
+        style.configure("Treeview", font=("Thaoma", 14), rowheight=30)
+        style.configure("Treeview.Heading", font=("Thaoma", 16, 'bold'), rowheight=30)
 
-        # Add columns to the Treeview
+        # Column settings
+        col_width = 150
         for col in df.columns:
-            self.treeview.column(col, anchor="e", width=150)  # Set the anchor to "e" (east, or right-aligned)
+            self.treeview.column(col, anchor="e", width=col_width)
             self.treeview.heading(col, text=col, anchor="e")
 
-        # Insert data into the Treeview
+        # Insert data
         for index, row in df.iterrows():
             values = tuple(row)
             self.treeview.insert("", index, values=values, tags=(index,))
 
-        # Set up event handling for row selection
         self.treeview.tag_configure("selected", background="lightblue")
         self.treeview.bind("<ButtonRelease-1>", self.on_treeview_click)
         self.treeview.config(height=10)
 
-        # Pack the Treeview widget
-        self.treeview.place(x=270, y=180)
+        # Dynamic placement
+        tree_width = len(df.columns) * col_width
+        tree_height = 310
+        screen_width = self.winfo_screenwidth()
+        tree_x = (1024 // 2) - (tree_width // 2)
+        tree_y = 180
 
-        # Set up a vertical scrollbar
-        scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
+        # Place treeview and scrollbar
+        self.treeview.place(x=tree_x, y=tree_y)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
         self.treeview.configure(yscrollcommand=scrollbar.set)
-        scrollbar.place(x=725, y=180, height=310)
+        scrollbar.place(x=tree_x + tree_width + 10, y=tree_y, height=tree_height + 15)
 
-
-        back_button_img = Image.open("Pictures//back_to_menu.jpg")  # Change path to your image file
+        # Back button
+        back_button_img = Image.open("Pictures//back_to_menu.jpg")
         back_button_photo = ImageTk.PhotoImage(back_button_img)
-        back_button = tk.Button(self, image=back_button_photo, command=lambda: self.on_click_to_physio_menu(),
+        back_button = tk.Button(self, image=back_button_photo, command=self.on_click_to_physio_menu,
                                 width=back_button_img.width, height=back_button_img.height, bd=0,
-                                highlightthickness=0)  # Set border width to 0 to remove button border
-        back_button.image = back_button_photo  # Store reference to image to prevent garbage collection
+                                highlightthickness=0)
+        back_button.image = back_button_photo
         back_button.place(x=30, y=30)
-
-
 
     def on_click_to_physio_menu(self): #go back to the physio menu page
         s.screen.switch_frame(Choose_Action_Physio)
@@ -668,6 +675,7 @@ class PatientDisplaying(tk.Frame):
             s.chosen_patient_ID=selected_row[0]
             #s.screen.switch_frame(ChooseBallExercisesPage)
             s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
+
 
 
 
@@ -1323,7 +1331,6 @@ class ChooseStickExercisesPage(tk.Frame):
         ex_3_name = "stick_raise_arms_above_head"
         ex_4_name =  "stick_switch"
         ex_5_name =  "stick_up_and_lean"
-
         formatted_ex_1_name = Excel.get_name_by_exercise(ex_1_name)
         formatted_ex_2_name = Excel.get_name_by_exercise(ex_2_name)
         formatted_ex_3_name = Excel.get_name_by_exercise(ex_3_name)
@@ -1908,14 +1915,14 @@ class ExercisePage(tk.Frame):
         self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
         self.pause_training_button.place(x=95, y=10)
 
-        self.another_calibration_button_img = Image.open("Pictures/calibration_button.jpg")
-        self.another_calibration_button_photo = ImageTk.PhotoImage(self.another_calibration_button_img)
-        self.another_calibration_button = tk.Button(self, image=self.another_calibration_button_photo,
-                                              command=self.another_calibration_button_click,
-                                              bd=0,
-                                              highlightthickness=0)  # Set border width to 0 to remove button border
-        self.another_calibration_button.image = self.another_calibration_button_photo  # Prevent garbage collection
-        self.another_calibration_button.place(x=175, y=10)
+        # self.another_calibration_button_img = Image.open("Pictures/calibration_button.jpg")
+        # self.another_calibration_button_photo = ImageTk.PhotoImage(self.another_calibration_button_img)
+        # self.another_calibration_button = tk.Button(self, image=self.another_calibration_button_photo,
+        #                                       command=self.another_calibration_button_click,
+        #                                       bd=0,
+        #                                       highlightthickness=0)  # Set border width to 0 to remove button border
+        # self.another_calibration_button.image = self.another_calibration_button_photo  # Prevent garbage collection
+        # self.another_calibration_button.place(x=175, y=10)
 
         # Place background image on canvas
         self.canvas.create_image(0, 0, image=self.background_photo, anchor="nw")
@@ -2068,7 +2075,7 @@ class ExercisePage(tk.Frame):
                 self.show_repeat_explanation_overlay()
 
             else:
-                if s.suggest_repeat_explanation and s.exercise_name_repeated_explanation == s.req_exercise:
+                if s.suggest_repeat_explanation and s.exercise_name_repeated_explanation and s.exercise_name_repeated_explanation == s.req_exercise:
                     s.suggest_repeat_explanation = False
                     s.repeat_explanation = False
 
@@ -2156,20 +2163,21 @@ class ExercisePage(tk.Frame):
 
                 if not s.did_training_paused:
 
-                    if s.req_exercise != "" and time.time() - self.time_of_exercise_start >= 4 and\
+                    if s.req_exercise != "" and s.can_comment_robot and\
                         ((s.reached_max_limit and not s.all_rules_ok  and self.can_comment and s.was_in_first_condition) or \
                          ((s.all_rules_ok and self.percent_of_bar < 0.2 and self.can_comment) or (not s.all_rules_ok and self.percent_of_bar < 0.2 and not s.was_in_first_condition) and\
                          ((s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]) or not self.exercise_type == "shoulders_distance_x")) or \
                          (s.time_of_change_position and time.time() - s.time_of_change_position >= time_limit_change_position) or \
                          (s.not_reached_max_limit_rest_rules_ok and time.time() - self.start_of_time_count_all_rules_not_limit >= time_limit_all_rules_not_limit) or \
-                         (s.hand_not_good and time.time() - self.start_of_time_count_hands_not_good >= time_limit_hands_not_good)):
+                         (s.hand_not_good and time.time() - self.start_of_time_count_hands_not_good >= time_limit_hands_not_good) or \
+                            not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4)):
                             self.check_are_there_comments()
 
                     else:
                         self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
                         self.comment_label.place_forget()  # Remove from layout
                         self.comment = None  # No comments, reset
-                        # self.time_of_comment = 0
+                        self.time_of_comment = 0
 
 
                 #
@@ -2259,44 +2267,96 @@ class ExercisePage(tk.Frame):
             self.overlay_frame = None
 
     def show_repeat_explanation_overlay(self):
-        say("ask_if_repeat_explanation")
-        s.did_training_paused = True
+        button_style = {
+            "font": ("Arial", 25, "bold"),
+            "bg": "#3996da",
+            "fg": "white",  # a calm deep blue
+            "activebackground": "#e1f5fe",
+            "activeforeground": "#0d47a1",
+            "width": 15,
+            "height": 3,
+            "relief": "raised",
+            "bd": 3,
+            "cursor": "hand2"
+        }
 
-        # Create overlay
-        self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="light blue")
-        self.overlay_frame.place(x=0, y=0)
-        self.overlay_frame.tkraise()
 
-        # Label
-        label = tk.Label(self.overlay_frame, text="?תרצה לראות שוב את ההסבר על התרגיל",
-                         font=("Arial", 35), bg="light blue")
-        label.place(relx=0.5, rely=0.2, anchor="center")
+        self.end_of_comment_recording = None
+        self.comment_label.config(text="", fg="red", bg=self.cget("bg"))  # Hide it completely
+        self.comment_label.place_forget()  # Remove from layout
+        self.comment = None  # No comments, reset
+        self.time_of_comment = 0
 
-        # YES Button
-        yes_button = tk.Button(self.overlay_frame, text="כן", font=("Arial", 25),
-                               command=self.repeat_explanation_yes, bg="white", fg="black", width=15, height=3)
-        yes_button.place(relx=0.8, rely=0.5, anchor="center")
+        if s.suggest_repeat_explanation:
+            say("ask_if_repeat_explanation",is_popping_screen = True)
+            s.did_training_paused = True
 
-        # NO Button
-        no_button = tk.Button(self.overlay_frame, text="לא", font=("Arial", 25),
-                              command=self.repeat_explanation_no, bg="white", fg="black", width=15, height=3)
-        no_button.place(relx=0.5, rely=0.5, anchor="center")
+            # Create overlay
+            self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="#d3f1f1")
+            self.overlay_frame.place(x=0, y=0)
+            self.overlay_frame.tkraise()
 
-        # Skip Button
-        skip_button = tk.Button(self.overlay_frame, text="דלג על התרגיל", font=("Arial", 25),
-                                command=self.skip_exercise, bg="white", fg="black", width=15, height=3)
-        skip_button.place(relx=0.2, rely=0.5, anchor="center")
+            # Label
+            label = tk.Label(self.overlay_frame, text="?תרצה לראות שוב את ההסבר על התרגיל",
+                             font=("Arial", 35), bg="#d3f1f1")
+            label.place(relx=0.5, rely=0.2, anchor="center")
 
-        self.timer_canvas = tk.Canvas(self.overlay_frame, width=150, height=150, bg="light blue", highlightthickness=0)
-        self.timer_canvas.place_forget()  # Hide initially
+            # YES Button
+            yes_button = tk.Button(self.overlay_frame, text="כן",
+                                   command=self.repeat_explanation_yes, **button_style)
+            yes_button.place(relx=0.8, rely=0.5, anchor="center")
 
-        self.timer_canvas.create_oval(10, 10, 140, 140, outline="gray", width=6)  # Static full circle
-        self.timer_arc = self.timer_canvas.create_arc(10, 10, 140, 140, start=90, extent=360,
-                                                      style="arc", outline="lime green", width=10)  # Thicker arc
-        self.timer_text = self.timer_canvas.create_text(75, 75, text="", fill="black", font=("Arial", 60, "bold"))
+            # NO Button
+            no_button = tk.Button(self.overlay_frame, text="לא",
+                                  command=self.repeat_explanation_no, **button_style)
+            no_button.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Start countdown after 10 seconds
-        self.after(get_wav_duration("ask_if_repeat_explanation") * 1000 + 100 , self.start_circle_countdown)
+            # Skip Button
+            skip_button = tk.Button(self.overlay_frame, text="דלג על התרגיל",
+                                    command=self.skip_exercise, **button_style)
+            skip_button.place(relx=0.2, rely=0.5, anchor="center")
+
+            self.timer_canvas = tk.Canvas(self.overlay_frame, width=150, height=150, bg="#d3f1f1", highlightthickness=0)
+            self.timer_canvas.place_forget()  # Hide initially
+
+            self.timer_canvas.create_oval(10, 10, 140, 140, outline="gray", width=6)  # Static full circle
+            self.timer_arc = self.timer_canvas.create_arc(10, 10, 140, 140, start=90, extent=360,
+                                                          style="arc", outline="lime green", width=10)  # Thicker arc
+            self.timer_text = self.timer_canvas.create_text(75, 75, text="", fill="black", font=("Arial", 60, "bold"))
+
+            # Start countdown after 10 seconds
+            self.after(int(get_wav_duration("ask_if_repeat_explanation") * 1000 + 100) , self.start_circle_countdown)
+
+
+        else:
+
+            # Create overlay
+            self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="#d3f1f1")
+            self.overlay_frame.place(x=0, y=0)
+            self.overlay_frame.tkraise()
+
+
+            yes_button = tk.Button(self.overlay_frame, text="חזור על ההסבר",
+                                   command=self.repeat_explanation_yes, **button_style)
+            yes_button.place(relx=0.7, rely=0.2, anchor="center")
+
+            no_button = tk.Button(self.overlay_frame, text="המשך באימון",
+                                  command=self.repeat_explanation_no, **button_style)
+            no_button.place(relx=0.3, rely=0.2, anchor="center")
+
+            skip_button = tk.Button(self.overlay_frame, text="דלג על התרגיל",
+                                    command=self.skip_exercise, **button_style)
+            skip_button.place(relx=0.7, rely=0.5, anchor="center")
+
+            calibration_button = tk.Button(self.overlay_frame, text="בצע כיול חוזר",
+                                           command=self.another_calibration_button_click, **button_style)
+            calibration_button.place(relx=0.3, rely=0.5, anchor="center")
+
+
+            label = tk.Label(self.overlay_frame, text="אי לחיצה על אף כפתור תמשיך את השהיית האימון *",
+                             font=("Arial", 30, "bold"), bg="#d3f1f1", fg= "red")
+            label.place(relx=0.5, rely=0.8, anchor="center")
+
 
     def start_circle_countdown(self):
         if not hasattr(self, 'timer_canvas') or not self.timer_canvas.winfo_exists():
@@ -2328,6 +2388,7 @@ class ExercisePage(tk.Frame):
         self.cancel_repeat_overlay_timers()
         s.skipped_exercise = True
         s.did_training_paused = False
+        s.suggest_repeat_explanation = False
         self.hide_overlay()
 
     def repeat_explanation_yes(self):
@@ -2376,41 +2437,44 @@ class ExercisePage(tk.Frame):
         print("Stop training button clicked")
 
     def pause_training_button_click(self):
-        s.starts_and_ends_of_stops.append(datetime.now())
+        s.starts_and_ends_of_stops.append(time.time())
 
-        if s.did_training_paused:
-            # Define what happens when the button is clicked
-            print("Pause training button clicked")
-            s.did_training_paused= False
+        self.show_repeat_explanation_overlay()
+        s.did_training_paused = True
 
-            if hasattr(self, 'pause_training_button'):
-                self.pause_training_button.destroy()
-
-                # Create a new button
-            self.pause_training_button_img = Image.open("Pictures//pause_training_button.jpg")
-            self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
-            self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
-                                                   command=self.pause_training_button_click,
-                                                   bd=0, highlightthickness=0)
-            self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
-            self.pause_training_button.place(x=95, y=10)
-            s.number_of_pauses += 1 # when continuing the training after pause, we add the pause (if we add it before there is a chance that we stopped it after the pause).
-
-
-        else:
-            if hasattr(self, 'pause_training_button'):
-                self.pause_training_button.destroy()
-
-                # Create a new button
-            self.pause_training_button_img = Image.open("Pictures//continue_training_button.jpg")
-            self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
-            self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
-                                                   command=self.pause_training_button_click,
-                                                   bd=0, highlightthickness=0)
-            self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
-            self.pause_training_button.place(x=95, y=10)
-
-            s.did_training_paused = True
+        # if s.did_training_paused:
+        #     # Define what happens when the button is clicked
+        #     print("Pause training button clicked")
+        #     s.did_training_paused= False
+        #
+        #     if hasattr(self, 'pause_training_button'):
+        #         self.pause_training_button.destroy()
+        #
+        #         # Create a new button
+        #     self.pause_training_button_img = Image.open("Pictures//pause_training_button.jpg")
+        #     self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
+        #     self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
+        #                                            command=self.pause_training_button_click,
+        #                                            bd=0, highlightthickness=0)
+        #     self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
+        #     self.pause_training_button.place(x=95, y=10)
+        #     s.number_of_pauses += 1 # when continuing the training after pause, we add the pause (if we add it before there is a chance that we stopped it after the pause).
+        #
+        #
+        # else:
+        #     if hasattr(self, 'pause_training_button'):
+        #         self.pause_training_button.destroy()
+        #
+        #         # Create a new button
+        #     self.pause_training_button_img = Image.open("Pictures//continue_training_button.jpg")
+        #     self.pause_training_button_photo = ImageTk.PhotoImage(self.pause_training_button_img)
+        #     self.pause_training_button = tk.Button(self, image=self.pause_training_button_photo,
+        #                                            command=self.pause_training_button_click,
+        #                                            bd=0, highlightthickness=0)
+        #     self.pause_training_button.image = self.pause_training_button_photo  # Prevent garbage collection
+        #     self.pause_training_button.place(x=95, y=10)
+        #
+        #     s.did_training_paused = True
 
 
 
@@ -2595,7 +2659,7 @@ class ExercisePage(tk.Frame):
 
 
         if distance >= s.dist_between_shoulders - 30 and abs(right_shoulder.y - left_shoulder.y) <= 10 and\
-                s.req_exercise not in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]:
+                s.req_exercise not in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and s.all_rules_ok:
             s.all_rules_ok = False
             s.time_of_change_position = time.time()
 
@@ -2724,8 +2788,6 @@ class ExercisePage(tk.Frame):
         self.canvas.itemconfig(self.bar, fill=self.bar_color)
 
 
-
-
     def check_are_there_comments(self):
 
         angles = s.last_entry_angles
@@ -2754,8 +2816,10 @@ class ExercisePage(tk.Frame):
         # if s.req_exercise == "notool_raising_hands_diagonally":
 
 
-        if s.hand_not_good and self.start_of_time_count_hands_not_good is not None and time.time()- self.start_of_time_count_hands_not_good >= 1:
-            if s.req_exercise == "notool_raising_hands_diagonally" and time.time()- self.start_of_time_count_hands_not_good >= 7:
+        if s.hand_not_good and self.start_of_time_count_hands_not_good is not None and time.time()- self.start_of_time_count_hands_not_good >= 1 or\
+            not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4):
+
+            if s.req_exercise == "notool_raising_hands_diagonally" and self.start_of_time_count_hands_not_good and time.time()- self.start_of_time_count_hands_not_good >= 7:
                 if s.direction is not None:
                     if s.direction == "left_diagonal":
                         if s.gender == "Male":
@@ -2813,7 +2877,8 @@ class ExercisePage(tk.Frame):
                                 self.comments.append("התיישרי יותר לצד שמאל והביאי \n את יד שמאל מעל כתף שמאל")
 
 
-        if s.not_reached_max_limit_rest_rules_ok and self.start_of_time_count_all_rules_not_limit is not None and time.time() - self.start_of_time_count_all_rules_not_limit>= 1:
+        if s.not_reached_max_limit_rest_rules_ok and self.start_of_time_count_all_rules_not_limit is not None and time.time() - self.start_of_time_count_all_rules_not_limit>= 1 or\
+            not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4):
             if s.req_exercise in ["ball_switch", "stick_switch"]:
                     if s.direction is not None:
                         if s.direction == "left":
@@ -2831,7 +2896,9 @@ class ExercisePage(tk.Frame):
                                 self.comments.append("סובבי יותר את הגב לצד ימין \n יחד עם הכתפיים")
 
 
-            if s.req_exercise in  ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and not s.reached_max_limit:
+            if s.req_exercise in  ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and (not s.reached_max_limit or \
+                    not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4)):
+
                 if s.direction is not None:
                     if s.direction == "left" and s.req_exercise != "notool_left_hand_up_and_bend":
                             if s.gender == "Male":
@@ -2846,22 +2913,6 @@ class ExercisePage(tk.Frame):
 
                         else:
                             self.comments.append("הישעני יותר לצד ימין \n יחד עם הכתפיים")
-
-        if s.shoulders_not_good and s.req_exercise == "notool_raising_hands_diagonally":
-            if s.direction is not None:
-                if s.direction == "left":
-                    if s.gender == "Male":
-                        self.comments.append("סובב יותר את הגב לצד שמאל \n יחד עם הכתפיים")
-
-                    else:
-                        self.comments.append("סובבי יותר את הגב לצד שמאל \n יחד עם הכתפיים")
-
-                else:
-                    if s.gender == "Male":
-                        self.comments.append("סובב יותר את הגב לצד ימין \n יחד עם הכתפיים")
-
-                    else:
-                        self.comments.append("סובבי יותר את הגב לצד ימין \n יחד עם הכתפיים")
 
 
 
@@ -2906,9 +2957,12 @@ class ExercisePage(tk.Frame):
                     #     else:
                     #         can_say_audio = False
 
-                    # random_num = random.randint(1,2)
-                    random_num = 1
+                    random_num = random.randint(1,5)
                     audio_path = f"{s.audio_path}{comment_no_signs}.wav"  # adjust the path and extension as needed
+
+                    if self.end_of_comment_recording and time.time() > self.end_of_comment_recording:
+                        self.end_of_comment_recording= None
+
 
                     if (time.time() - s.last_saying_time > 2) and not self.end_of_comment_recording and can_say_audio and self.time_of_comment and (
                             time.time() - self.time_of_comment >= 2) and s.robot_counter < s.rep - 1 and s.patient_repetitions_counting_in_exercise < s.rep - 1:
@@ -2922,7 +2976,13 @@ class ExercisePage(tk.Frame):
 
                                 if chosen_dont_recognize:
                                     say(chosen_dont_recognize)
+                                    self.after(int(get_wav_duration(chosen_dont_recognize)*1000), lambda: say(comment_no_signs))
+
                                     self.end_of_comment_recording += get_wav_duration(chosen_dont_recognize)
+
+                                else:
+                                    say(comment_no_signs)
+
 
                                 s.last_saying_time = time.time()
                                 self.comments_audio[comment_no_signs] = time.time()
@@ -2939,7 +2999,6 @@ class ExercisePage(tk.Frame):
                         pass  # Keep the same comment
 
                 else:
-                    self.end_of_comment_recording = None
                     self.time_of_comment = time.time()
                     self.comment = self.comments[0]  # Pick the first comment if the current one is not in the list
 
@@ -3862,14 +3921,12 @@ class TablesPage(tk.Frame):
 
         # Fetch success numbers
 
-        first_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details", s.chosen_patient_ID, "first name")
-        last_name_of_patient = Excel.find_value_by_colName_and_userID("Patients.xlsx", "patients_details", s.chosen_patient_ID, "last name")
 
-        if first_name_of_patient is not None and last_name_of_patient is not None:
-            self.label1 = tk.Label(self, text=f'{last_name_of_patient} {first_name_of_patient}', image=background_img, compound=tk.CENTER,
-                                   font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
-            self.label1.place(x=160, y=5)
-            self.label1.image = background_img
+
+        self.label1 = tk.Label(self, text=f'{str(s.chosen_patient_ID)}', image=background_img, compound=tk.CENTER,
+                               font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
+        self.label1.place(x=160, y=5)
+        self.label1.image = background_img
 
         success_number = Excel.get_success_number(directory, exercise)
 
@@ -4118,7 +4175,7 @@ class TablesPage(tk.Frame):
             print(f"Error: The path 'Patients/{s.chosen_patient_ID}/Tables/{exercise}' does not exist.")
 
 def add_to_exercise_page(self, page_name):
-    name_label(self)
+    name_label(self, 350, 350)
     how_many_repetitions_of_exercises(self)
     rate_of_exercises(self)
     page_name_label(self,page_name)
@@ -4140,7 +4197,7 @@ def name_label(self, width= None, place_x= None):
                                font=("Ariel", 16, 'bold'), width=width, height=30, bg=self.background_color)
 
     if place_x is None:
-        self.label1.place(x=350, y=45)
+        self.label1.place(x=150, y=45)
 
     else:
         self.label1.place(x=place_x, y=45)
@@ -4272,19 +4329,23 @@ class InformationAboutTrainingPage(tk.Frame):
         self.photo_image = ImageTk.PhotoImage(image)
         self.background_label = tk.Label(self, image=self.photo_image)
         self.background_label.pack(fill="both", expand=True)
-        name_label(self, 250, 250)
+        name_label(self, 350, 175)
 
         # Treeview setup
         self.treeview = ttk.Treeview(self, style="Treeview", show="headings")
         self.treeview["columns"] = tuple(df.columns)
 
         style = ttk.Style(self)
-        style.configure("Treeview", font=("Thaoma", 14, 'bold'), rowheight=30)
+        style.configure("Treeview", font=("Thaoma", 14), rowheight=30)
+        style.configure("Treeview.Heading", font=("Thaoma", 14, 'bold'), rowheight=30)
 
+
+        col_width = 200
         for col in df.columns:
-            self.treeview.column(col, anchor="e", width=150)
+            self.treeview.column(col, anchor="e", width=col_width)
             self.treeview.heading(col, text=col, anchor="e")
 
+        self.treeview.column("דירוג מאמץ על ידי המטופל", anchor="e", width=225)
         self.treeview.column("תאריך ושעה", anchor="e", width=200)
 
         for index, row in df.iterrows():
@@ -4293,13 +4354,21 @@ class InformationAboutTrainingPage(tk.Frame):
 
         # Enable row selection
         self.treeview.bind("<Double-1>", self.on_row_double_click)
-
+        treeview_x_place = (1024- 4 * col_width - 25) /2
         self.treeview.config(height=10)
-        self.treeview.place(x=150, y=180)
+        self.treeview.place(x=treeview_x_place, y=180)
 
-        scrollbar = tk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
+        # Dynamic placement
+        tree_width = len(df.columns) * col_width + 25
+        tree_height = 310
+        screen_width = self.winfo_screenwidth()
+        tree_x = (1024 // 2) - (tree_width // 2)
+        tree_y = 180
+
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
         self.treeview.configure(yscrollcommand=scrollbar.set)
-        scrollbar.place(x=800, y=180, height=310)
+        scrollbar.place(x=tree_x + tree_width + 10, y=tree_y, height=tree_height + 20)
+
 
         back_button_img = Image.open("Pictures//previous.jpg")
         back_button_photo = ImageTk.PhotoImage(back_button_img)
@@ -4435,7 +4504,7 @@ class ExplanationPage(tk.Frame):
                 say(exercise, True) #True so the system will know that it is an explanation
                 x = get_wav_duration(exercise)
 
-            self.after(x*1000+2000, lambda: self.end_of_explanation())
+            self.after(int(x*1000+2000), lambda: self.end_of_explanation())
 
     def end_of_explanation(self):
         if not s.explanation_over:
@@ -4503,7 +4572,7 @@ class ChooseTrainingOrExerciseInformation(tk.Frame):
         image = Image.open('Pictures//background.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
-        name_label(self, 250, 250)
+        name_label(self, 350, 175)
 
         to_previous_button_img = Image.open("Pictures//previous.jpg")
         to_previous_button_photo = ImageTk.PhotoImage(to_previous_button_img)
@@ -4555,8 +4624,9 @@ class StartOfTraining(tk.Frame):
         image = Image.open('Pictures//hello.jpg')
         self.photo_image = ImageTk.PhotoImage(image) #self. - for keeping the photo in memory so it will be shown
         tk.Label(self, image = self.photo_image).pack()
+        s.asked_for_measurement = True
         say("welcome")
-        self.after(get_wav_duration("welcome")*1000 +1000,lambda: s.screen.switch_frame(StartExplanationPage))
+        self.after(int(get_wav_duration("welcome")*1000 +1000),lambda: s.screen.switch_frame(StartExplanationPage))
 
 
 
@@ -4694,9 +4764,15 @@ class CalibrationScreen(tk.Frame):
             s.shoulder_problem_calibration = False
 
             say(str_to_say)
-            self.after(get_wav_duration(str_to_say) * 1000 + 1000, self.restart_countdown)
+            self.after(int(get_wav_duration(str_to_say) * 1000 + 1000), self.restart_countdown)
 
         else:
+            if s.try_again_calibration:
+                say("end_not_first_time_calibration")
+
+            else:
+                say("end_calibration")
+
             s.try_again_calibration = False
             s.finished_calibration = True
             # Get latest camera frame
@@ -4715,7 +4791,6 @@ class CalibrationScreen(tk.Frame):
                 self.camera_label.config(image=imgtk)
 
             s.asked_for_measurement = False
-            say("end_calibration")
 
 
     def restart_countdown(self):
@@ -4757,7 +4832,7 @@ class StartExplanationPage(tk.Frame):
             play_video_explanation(self.cap, self.label, video_path, 0.8, 0.8, 1.2)
             say("start_explanation", True)  # True so the system will know that it is an explanation
             x = get_wav_duration("start_explanation")
-            self.after(x*1000+1000, lambda: self.end_of_explanation())
+            self.after(int(x*1000+1000), lambda: self.end_of_explanation())
 
     def end_of_explanation(self):
         if not s.explanation_over:
@@ -4920,7 +4995,7 @@ class ClappingPage(tk.Frame):
         tk.Label(self, image=self.photo_image).pack()
         random_number_2 = random.randint(1, 8)
         say(f'clap {random_number_2}')
-        self.after(get_wav_duration(f'clap {random_number_2}')*1000+500, lambda: s.screen.switch_frame(GoodbyePage))
+        self.after(int(get_wav_duration(f'clap {random_number_2}')*1000+500), lambda: s.screen.switch_frame(GoodbyePage))
 
 
 
@@ -5127,7 +5202,7 @@ if __name__ == "__main__":
     # s.finished_effort= False
     # s.ex_in_training=["bend_elbows_ball", "arms_up_and_down_stick"]
     # s.list_effort_each_exercise= {}
-    s.chosen_patient_ID='314808981'
+    s.chosen_patient_ID='3333'
     s.ball_exercises_number = 4
     s.band_exercises_number = 5
     s.stick_exercises_number = 5
@@ -5162,7 +5237,7 @@ if __name__ == "__main__":
     s.zed_camera.start()
     # Initialize Tkinter-based GUI system
     # s.screen.switch_frame(ExercisePageNew, exercise_type="shoulders_distance_y", real_distance=140)
-    s.screen.switch_frame(ChooseBallExercisesPage)
+    s.screen.switch_frame(ChooseTrainingOrExerciseInformation)
 
     # When needed, switch to the ExercisePage with the camera
     # s.screen.switch_frame(ExercisePage, camera_thread=s.camera)

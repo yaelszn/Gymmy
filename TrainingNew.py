@@ -25,6 +25,7 @@ class Training(threading.Thread):
 
     def run(self):
 
+        self.selected_exercises = []
         while not s.finish_program:
             s.exercise_name_repeated_explanation = None
 
@@ -36,7 +37,7 @@ class Training(threading.Thread):
 
         print("Training Done")
 
-    def select_exercises(self, options_for_ex_in_training, exercise_pairs, max_exercises=5, max_per_category=4):
+    def select_exercises(self, options_for_ex_in_training, exercise_pairs, max_exercises= 10,  max_per_category=4):
 
         if len(options_for_ex_in_training) <= max_exercises:
             return options_for_ex_in_training  # If 10 or fewer exercises exist, use all
@@ -200,21 +201,19 @@ class Training(threading.Thread):
             if not s.is_second_repetition_or_more and not s.finish_program:
 
                 selected_exercises_before_shuffle = self.select_exercises(s.ex_in_training, exercise_pairs)
-                selected_exercises = self.shuffle_exercises(selected_exercises_before_shuffle)
+                self.selected_exercises = self.shuffle_exercises(selected_exercises_before_shuffle)
 
                     # שמירת התרגילים שנבחרו
-                s.ex_in_training = selected_exercises
+                s.ex_in_training = self.selected_exercises
 
                 # הדפסת התרגילים שנבחרו
-                for item in selected_exercises:
+                for item in self.selected_exercises:
                     print(item)
 
                 while not s.explanation_over:
                     time.sleep(0.5)
 
-
-
-            s.starts_and_ends_of_stops.append(datetime.now())
+            s.starts_and_ends_of_stops.append(time.time())
 
             categories = ["ball", "stick", "notool", "band", "weights"]
             random.shuffle(categories)
@@ -241,7 +240,6 @@ class Training(threading.Thread):
                     break
 
                 self.exercises_in_category = [category for category in s.ex_in_training if i in category] #search for the exercises that are in the specific category
-                random.shuffle(self.exercises_in_category)
                 s.waved_has_tool= False
                 if self.exercises_in_category!=[]:
                     self.show_screen_category(i)
@@ -252,6 +250,7 @@ class Training(threading.Thread):
                     j=0
 
                     while j < len(self.exercises_in_category):
+                        s.can_comment_robot= False
                         s.skipped_exercise = False
                         s.last_entry_angles = None
                         s.hand_not_good = False
@@ -295,7 +294,9 @@ class Training(threading.Thread):
 
                         # if not (exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side") or not self.first_coordination_ex:
                         #     self.end_exercise()
-                        if exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side":
+
+
+                        if (exercise == "notool_right_bend_left_up_from_side" or exercise == "notool_left_bend_right_up_from_side") and (not s.try_again_calibration and not s.repeat_explanation):
                             if self.first_coordination_ex == True:
                                     self.first_coordination_ex = False
                             else:
@@ -311,8 +312,8 @@ class Training(threading.Thread):
                             self.end_exercise()
 
                         elif s.try_again_calibration:
-                            say("try_again_calibration")
-                            time.sleep(get_wav_duration("try_again_calibration"))
+                            say("start_not_first_time_calibration")
+                            time.sleep(get_wav_duration("start_not_first_time_calibration"))
                             s.asked_for_measurement = True
                             s.screen_finished_counting = False
                             s.screen.switch_frame(CalibrationScreen)
@@ -322,7 +323,7 @@ class Training(threading.Thread):
                             while not s.finished_calibration:
                                 time.sleep(0.0001)
 
-                            time.sleep(get_wav_duration("end_calibration"))
+                            time.sleep(get_wav_duration("end_not_first_time_calibration"))
 
                         elif s.repeat_explanation:
                             s.req_exercise = ""
@@ -333,8 +334,6 @@ class Training(threading.Thread):
 
                         while not s.gymmy_done or not s.camera_done:
                             time.sleep(0.001)
-
-
 
 
                 if s.stop_requested or s.finish_program:
@@ -385,7 +384,7 @@ class Training(threading.Thread):
 
     def finish_training(self):
         #time.sleep(3)
-        s.starts_and_ends_of_stops.append(datetime.now())
+        s.starts_and_ends_of_stops.append(time.time())
 
         s.finish_workout= True
         s.finished_effort= False
@@ -465,6 +464,7 @@ class Training(threading.Thread):
             s.last_entry_angles = None
             s.skipped_exercise = False
             s.shoulders_not_good = False
+            s.can_comment_robot= False
 
         else:
             Excel.find_and_add_training_to_patient()
@@ -479,13 +479,15 @@ class Training(threading.Thread):
 
     def end_exercise(self):
         s.screen.switch_frame(Number_of_good_repetitions_page)
+        time.sleep(0.5)
         say(f'{s.patient_repetitions_counting_in_exercise}_successful_rep')
-        time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep")+0.5)
+        time.sleep(get_wav_duration(f"{s.patient_repetitions_counting_in_exercise}_successful_rep")+0.1)
 
-        continue_files = Excel.get_files_names_by_start_word("continue")
-        chosen_continue = random.choice(continue_files)
-        say(chosen_continue)
-        time.sleep(get_wav_duration(chosen_continue))
+        if self.selected_exercises and not s.num_exercises_started ==  len(self.selected_exercises) and self.first_coordination_ex:
+            continue_files = Excel.get_files_names_by_start_word("continue")
+            chosen_continue = random.choice(continue_files)
+            say(chosen_continue)
+            time.sleep(get_wav_duration(chosen_continue) + 1)
 
 
     def run_exercise(self, name):
@@ -589,7 +591,7 @@ class Training(threading.Thread):
         s.additional_audio_playing = False
         s.volume = 0.3
         s.play_song = False
-        s.asked_for_measurement = True
+        s.asked_for_measurement = False
         s.screen_finished_counting = False
         s.finished_calibration = False
         s.len_left_arm = None
@@ -616,6 +618,7 @@ class Training(threading.Thread):
         s.last_entry_angles = None
         s.skipped_exercise = False
         s.shoulders_not_good = False
+        s.can_comment_robot = False
 
     def which_exercise_page(self):
 
@@ -662,10 +665,10 @@ if __name__ == "__main__":
     s.finish_workout = False
     s.finish_program= False
     s.asked_for_measurement= False
-    s.rep = 10
+    s.rep = 5
     s.time_of_change_position = None
-
-    s.ex_in_training = ["notool_raising_hands_diagonally"]
+    s.fps = 0
+    s.ex_in_training = ["ball_bend_elbows"]
     s.skipped_exercise = False
 
         #,"ball_switch" ,"ball_open_arms_and_forward" , "ball_open_arms_above_head"] "ball_bend_elbows" ,
@@ -715,9 +718,8 @@ if __name__ == "__main__":
     s.shoulders_not_good = False
     s.robot_counter = 0
     s.last_saying_time = time.time()
-    s.rate= "slow"
+    s.rate= "medium"
     s.num_exercises_started = 0
-    s.asked_for_measurement = True
     pygame.mixer.init()
     s.full_name = "יעל שניידמן"
     s.play_song = False

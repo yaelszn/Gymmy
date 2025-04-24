@@ -165,7 +165,6 @@ def wf_joints(ex_name, list_joints):
 
 
 def create_graphs_and_tables(exercise, list_joints):
-
     try:
         if get_number_of_angles_in_exercise(exercise) == 1:
             one_angle_graph_and_table(exercise, list_joints)
@@ -365,7 +364,8 @@ def create_and_save_graph(data, exercise):
         # Check if all values in y_series are NaN or empty
         if y_series.isnull().all() or y_series.count() < 10:
             # Save a "null graph"
-            start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+            timestamp = s.starts_and_ends_of_stops[0]
+            start_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
             create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}')
             plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}/{plot_name}.jpeg'
 
@@ -402,7 +402,8 @@ def create_and_save_graph(data, exercise):
         plt.title(plot_name[:-2], fontsize=16, weight="bold", y=1)
 
         # Save the plot as an image file
-        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+        timestamp = s.starts_and_ends_of_stops[0]
+        start_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
         create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}')
         plot_filename = f'Patients/{s.chosen_patient_ID}/Graphs/{exercise}/{start_dt}/{plot_name}.jpeg'
         plt.savefig(plot_filename, dpi=100)
@@ -463,22 +464,18 @@ def find_and_change_values_exercises(new_values_dict, headers_row=1):
 
 
 def calculate_training_length():
-
-    if len(s.starts_and_ends_of_stops) % 2 != 0: # if after the removal of the last one there is an odd number of cells in the array
+    if len(s.starts_and_ends_of_stops) % 2 != 0:
         s.starts_and_ends_of_stops.pop(-2)
 
-    training_length = timedelta(0)  # Initialize training length as zero timedelta
+    training_length = 0.0  # total in seconds
 
-    # Iterate through the array in steps of 2 (each pair)
     for i in range(0, len(s.starts_and_ends_of_stops), 2):
-        start_time = s.starts_and_ends_of_stops[i]  # The start time in the pair
-        end_time = s.starts_and_ends_of_stops[i + 1]  # The end time in the pair
-        print(str(start_time))
-        print(str(end_time))
-        training_length += (end_time - start_time)  # Add the difference to the total training length
+        start_time = s.starts_and_ends_of_stops[i]
+        end_time = s.starts_and_ends_of_stops[i + 1]
+        print(f"Start: {start_time}, End: {end_time}")
+        training_length += (end_time - start_time)
 
-    # Return the total time in seconds
-    return training_length.total_seconds()
+    return training_length  # float seconds
 
 
 def find_and_change_values_patients(new_values_dict, headers_row=1):
@@ -530,14 +527,14 @@ def find_and_add_training_to_patient(headers_row=1):
                 if sheet.cell(row=cell.row, column=col).value is not None:
                     next_column = col + 1
 
-            start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+            timestamp = s.starts_and_ends_of_stops[0]
+            start_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
             # Write the new value to the next available column in the found row
             sheet.cell(row=cell.row, column=next_column, value=start_dt)  # training dt, in the first place of the array there is the start time
             sheet.cell(row=cell.row, column=next_column + 1, value=(s.number_of_repetitions_in_training / s.max_repetitions_in_training))  # percent of the training that the patient managed to do
             sheet.cell(row=cell.row, column=next_column + 2, value=s.effort)  # percent of the training that the patient managed to do
             sheet.cell(row=cell.row, column=next_column + 3, value=calculate_training_length())  # percent of the training that the patient managed to do
 
-            break  # Stop searching after finding the value
             break  # Stop searching after finding the value
 
     workbook.save(file_path)
@@ -591,7 +588,8 @@ def count_number_of_exercises_in_training_by_ID():
 
 def create_and_save_table_with_calculations(data, exercise):
     # Define the name of the file for saving the table image
-    start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+    timestamp = s.starts_and_ends_of_stops[0]
+    start_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
 
     # Create and open the folder to save the tables
     create_and_open_folder(f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}')
@@ -664,7 +662,8 @@ def create_and_save_table_with_calculations(data, exercise):
 
             cell.set_facecolor('#ffffff')  # White background for header cells
 
-        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+        timestamp = s.starts_and_ends_of_stops[0]
+        start_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
 
         # Save the table as an image with the background color and no transparency
         table_filename = f'Patients/{s.chosen_patient_ID}/Tables/{exercise}/{start_dt}/{table_name}.png'

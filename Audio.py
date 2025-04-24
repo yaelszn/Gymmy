@@ -2,9 +2,13 @@ import threading
 import time
 import pygame.mixer
 import wave
+
+from pygame.mixer_music import stop
+
 import Settings as s
 import random
 import queue
+import uuid
 
 
 class ContinuousAudio(threading.Thread):
@@ -85,38 +89,54 @@ class AdditionalAudio(threading.Thread):
         super().__init__()
         self.queue = queue.Queue()
         self.daemon = True
+        pygame.mixer.init()
+        self.current_chanel = None
+        self.something_added_to_queue = False
+        self.time_added = None
         self.start()
 
     def run(self):
         while not s.finish_program:
             try:
-                file_name, is_explanation, is_effort = self.queue.get(timeout=0.5)
-                self.play_audio(file_name, is_explanation, is_effort)
+                file_name, is_explanation, is_effort , is_popping_screen= self.queue.get(timeout=0.5)
+                self.play_audio(file_name, is_explanation, is_effort, is_popping_screen)
+
             except queue.Empty:
                 continue
 
-    def play_audio(self, file_name, is_explanation, is_effort):
+    def play_audio(self, file_name, is_explanation, is_effort, is_popping_screen):
         s.additional_audio_playing = True
-        channel = pygame.mixer.find_channel()
+        channel= pygame.mixer.find_channel()
 
-        if channel:
-            sound = pygame.mixer.Sound(s.audio_path + file_name + '.wav')
-            channel.play(sound)
-            while channel.get_busy() and not s.finish_program:
-                if (is_explanation and s.explanation_over) or (is_effort and s.finished_effort):
-                    channel.stop()
-                pygame.time.Clock().tick(10)
+        sound = pygame.mixer.Sound(s.audio_path + file_name + '.wav')
+        channel.play(sound)
+        self.current_chanel = channel
+
+        while channel.get_busy() and not s.finish_program:
+            if (is_explanation and s.explanation_over) or (is_effort and s.finished_effort) or self.something_added_to_queue and self.time_added and (time.time() - self.time_added >=2) \
+                   or (is_popping_screen and not s.suggest_repeat_explanation):
+                channel.stop()
+                self.something_added_to_queue = False
+
+            pygame.time.Clock().tick(10)
+
+        self.something_added_to_queue = False
+        self.time_added = None
 
         s.additional_audio_playing = False
-        time.sleep(0.5)  # Optional small delay between clips
+        time.sleep(0.2)  # Optional small delay between clips
 
-    def add_to_queue(self, file_name, is_explanation=False, is_effort=False):
-        self.queue.put((file_name, is_explanation, is_effort))
+    def add_to_queue(self, file_name, is_explanation=False, is_effort=False, is_popping_screen= False):
+        if self.current_chanel and self.current_chanel.get_busy():
+            self.time_added = time.time()
+            self.something_added_to_queue = True
+
+        self.queue.put((file_name, is_explanation, is_effort, is_popping_screen))
 
 
-def say(str_to_say, is_explanation=False, is_effort=False):
+def say(str_to_say, is_explanation=False, is_effort=False, is_popping_screen= False):
     if not s.finish_program:
-        s.audio_manager.add_to_queue(str_to_say, is_explanation, is_effort)
+        s.audio_manager.add_to_queue(str_to_say, is_explanation, is_effort, is_popping_screen)
 
 
 def get_wav_duration(str_to_say):
@@ -125,7 +145,7 @@ def get_wav_duration(str_to_say):
         num_frames = wav_file.getnframes()
         frame_rate = wav_file.getframerate()
         duration = num_frames / float(frame_rate)
-        return int(duration)
+        return round(duration, 3)
 
 
 if __name__ == '__main__':

@@ -149,6 +149,7 @@ class PyZedWrapper(threading.Thread):
                 elapsed_time = time.time() - self.start_time
                 if elapsed_time >= 1:
                     fps = self.frame_count / elapsed_time
+                    s.fps = fps
                     print(f"FPS: {fps:.2f}")
                     self.frame_count = 0
                     self.start_time = time.time()

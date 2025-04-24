@@ -18,8 +18,7 @@ if __name__ == '__main__':
     s.exercises_skipped = {}
     s.skip = False
     s.additional_audio_playing = False
-    s.volume = 0
-    # Training variables initialization
+    s.volume = 0 # Training variables initialization
     s.ball_exercises_number = 4
     s.band_exercises_number = 5
     s.stick_exercises_number = 5
@@ -35,7 +34,6 @@ if __name__ == '__main__':
     s.finished_calibration = False
     s.skipped_exercise = False
     s.time_of_change_position = None
-    s.asked_for_measurement = True
     s.average_dist = None
     s.rep = 5
     s.req_exercise = ""
@@ -56,6 +54,7 @@ if __name__ == '__main__':
     s.waved_has_tool= True # True just in order to go through the loop in Gymmy
     # s.finished_training_adding_to_excel= False
     s.side = None
+    s.asked_for_measurement = False
     s.ex_list = {}
     s.reached_max_limit = False
     s.latest_keypoints = {}
@@ -73,6 +72,7 @@ if __name__ == '__main__':
     s.exercise_name_repeated_explanation = None
     s.suggest_repeat_explanation = False
     s.last_entry_angles = None
+    s.can_comment_robot = False
 
     s.last_saying_time = time.time()
     s.robot_counter = 0
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     s.name_of_exercise_repeated_explanation = None
     s.shoulder_problem_calibration = False
     s.all_rules_ok = False
-
+    s.fps = 0
 
     # Create all components
     s.camera = Camera()
@@ -93,7 +93,6 @@ if __name__ == '__main__':
     s.robot = Gymmy()
 
 
-    pygame.mixer.init()
     s.play_song = False
 
     s.audio_manager = AdditionalAudio()

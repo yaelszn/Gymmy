@@ -42,7 +42,9 @@ def create_table_for_patients_email():
 
     if table_data:
         # Define the name of the file for saving the table image
-        start_dt = s.starts_and_ends_of_stops[0].strftime("%d-%m-%Y %H-%M-%S")
+        timestamp = s.starts_and_ends_of_stops[0]
+        formatted_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
+
 
         # Create and open the folder to save the tables
         folder_path = f'Patients/{s.chosen_patient_ID}/Table_to_Patient_Email'
@@ -201,7 +203,7 @@ def create_pdf():
     ordered for specific layouts depending on the number of images in each section.
     """
 
-    pdf_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4, global_header_line5, global_header_line6, global_header_line7= data_creation_to_create_pdf()
+    pdf_path, image_groups, section_headers, global_header_line2, global_header_line3, global_header_line4, global_header_line5, global_header_line6, global_header_line7= data_creation_to_create_pdf()
 
     # Register the Hebrew-compatible font
     pdfmetrics.registerFont(TTFont('Hebrew', "arial.ttf-master/arial.ttf"))
@@ -223,47 +225,44 @@ def create_pdf():
     # Set the font for the global header
     pdf_canvas.setFont("Hebrew", 24)
 
-    # Line 1
-    text_width_line1 = pdf_canvas.stringWidth(global_header_line1, "Hebrew", 24)
-    x_position_line1 = (width - text_width_line1) / 2  # Center the first line horizontally
-    pdf_canvas.drawString(x_position_line1, start_y_position, global_header_line1)
+
 
     # Line 2 (with interval)
     text_width_line2 = pdf_canvas.stringWidth(global_header_line2, "Hebrew", 24)
     x_position_line2 = (width - text_width_line2) / 2  # Center the second line horizontally
-    pdf_canvas.drawString(x_position_line2, start_y_position - 1.5 * line_height, global_header_line2)
+    pdf_canvas.drawString(x_position_line2, start_y_position  * line_height, global_header_line2)
 
     # Line 3 (with interval)
     text_width_line3 = pdf_canvas.stringWidth(global_header_line3, "Hebrew", 24)
     x_position_line3 = (width - text_width_line3) / 2  # Center the third line horizontally
-    pdf_canvas.drawString(x_position_line3, start_y_position - 3 * line_height, global_header_line3)
+    pdf_canvas.drawString(x_position_line3, start_y_position - 1.5 * line_height, global_header_line3)
 
     # Line 4 (with interval)
     text_width_line4 = pdf_canvas.stringWidth(global_header_line4, "Hebrew", 24)
     x_position_line4 = (width - text_width_line4) / 2  # Center the third line horizontally
-    pdf_canvas.drawString(x_position_line4, start_y_position - 4.5 * line_height, global_header_line4)
+    pdf_canvas.drawString(x_position_line4, start_y_position - 3 * line_height, global_header_line4)
 
     pdf_canvas.setFont("Hebrew", 18)
 
     text_width_line5 = pdf_canvas.stringWidth(global_header_line5, "Hebrew", 18)
     x_position_line5 = (width - text_width_line5) / 2  # Center the third line horizontally
-    pdf_canvas.drawString(x_position_line5, start_y_position - 6 * line_height, global_header_line5)
+    pdf_canvas.drawString(x_position_line5, start_y_position - 4.5 * line_height, global_header_line5)
 
     if global_header_line6:
         number_of_headers+=1
 
         text_width_line6 = pdf_canvas.stringWidth(global_header_line6, "Hebrew", 18)
         x_position_line6 = (width - text_width_line6) / 2  # Center the third line horizontally
-        pdf_canvas.drawString(x_position_line6, start_y_position - 7.5 * line_height, global_header_line6)
+        pdf_canvas.drawString(x_position_line6, start_y_position - 6 * line_height, global_header_line6)
 
         text_width_line7 = pdf_canvas.stringWidth(global_header_line7, "Hebrew", 18)
         x_position_line7 = (width - text_width_line7) / 2  # Center the third line horizontally
-        pdf_canvas.drawString(x_position_line7, start_y_position - 9 * line_height, global_header_line7)
+        pdf_canvas.drawString(x_position_line7, start_y_position - 7.5 * line_height, global_header_line7)
 
     else:
         text_width_line7 = pdf_canvas.stringWidth(global_header_line7, "Hebrew", 18)
         x_position_line7 = (width - text_width_line7) / 2  # Center the third line horizontally
-        pdf_canvas.drawString(x_position_line7, start_y_position - 7.5 * line_height, global_header_line7)
+        pdf_canvas.drawString(x_position_line7, start_y_position - 6 * line_height, global_header_line7)
 
     # Start placing content after the header
     current_y_position = start_y_position - number_of_headers * line_height - inch  # Adjust Y position after the header
@@ -390,18 +389,11 @@ def data_creation_to_create_pdf():
 
 
     patient_workbook_path = "Patients.xlsx"
-    first_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", s.chosen_patient_ID,
-                                                        "first name")
-    last_name = Excel.find_value_by_colName_and_userID(patient_workbook_path, "patients_details", s.chosen_patient_ID,
-                                                       "last name")
 
-    start_time = s.starts_and_ends_of_stops[0]
-
-    # Convert datetime object to a formatted string
-    formatted_dt = start_time.strftime('%d/%m/%Y %H:%M:%S')
+    timestamp = s.starts_and_ends_of_stops[0]
+    formatted_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
 
     # Global header with 3 lines
-    global_header_line1 = f' סיכום אימון של המטופל: {first_name} {last_name}'[::-1]
     global_header_line2 = f'מספר מטופל: {s.chosen_patient_ID[::-1]}'[::-1]
     global_header_line3 = f'זמן האימון: {formatted_dt[::-1]}'[::-1]
     global_header_line4= f'דירוג קושי של האימון: {str(s.effort)[::-1]}'[::-1]
@@ -454,7 +446,7 @@ def data_creation_to_create_pdf():
     output_path = os.path.join(output_directory, f'{ start_time.strftime("%d-%m-%Y %H-%M-%S")}.pdf')
 
     # Create the PDF with images, headers, and a global title
-    return output_path, image_groups, section_headers, global_header_line1, global_header_line2, global_header_line3, global_header_line4, global_header_line5, global_header_line6, global_header_line7
+    return output_path, image_groups, section_headers, global_header_line2, global_header_line3, global_header_line4, global_header_line5, global_header_line6, global_header_line7
 
 
 def create_pdf_preview(pdf_path):
