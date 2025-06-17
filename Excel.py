@@ -1,8 +1,6 @@
 import pandas as pd
-import xlsxwriter
 from datetime import datetime
 
-import ScreenNew
 from Joint_zed import Joint
 import openpyxl
 import Settings as s
@@ -12,10 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import subprocess
-import platform
-import re
-from datetime import timedelta
+
 
 
 
@@ -475,7 +470,8 @@ def calculate_training_length():
         print(f"Start: {start_time}, End: {end_time}")
         training_length += (end_time - start_time)
 
-    return training_length  # float seconds
+    training_length= training_length/60.0
+    return training_length # float seconds
 
 
 def find_and_change_values_patients(new_values_dict, headers_row=1):
@@ -531,8 +527,8 @@ def find_and_add_training_to_patient(headers_row=1):
             start_dt = datetime.fromtimestamp(timestamp).strftime("%d-%m-%Y %H-%M-%S")
             # Write the new value to the next available column in the found row
             sheet.cell(row=cell.row, column=next_column, value=start_dt)  # training dt, in the first place of the array there is the start time
-            sheet.cell(row=cell.row, column=next_column + 1, value=(s.number_of_repetitions_in_training / s.max_repetitions_in_training))  # percent of the training that the patient managed to do
-            sheet.cell(row=cell.row, column=next_column + 2, value=s.effort)  # percent of the training that the patient managed to do
+            sheet.cell(row=cell.row, column=next_column + 1, value=(float(s.number_of_repetitions_in_training) / s.max_repetitions_in_training))  # percent of the training that the patient managed to do
+            sheet.cell(row=cell.row, column=next_column + 2, value=s.effort)  # effort rate the patient signed
             sheet.cell(row=cell.row, column=next_column + 3, value=calculate_training_length())  # percent of the training that the patient managed to do
 
             break  # Stop searching after finding the value

@@ -1,37 +1,7 @@
-# -*- coding: utf-8 -*-
-import queue
-import subprocess
-import sys
-import tkinter as tk
-import webbrowser
-from datetime import datetime
-from statistics import mean, stdev
-from tkinter import ttk
-import random
-from datetime import datetime
-
-import numpy as np
-import openpyxl
-import matplotlib
-from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import QVBoxLayout, QLabel
-from matplotlib import pyplot as plt
-
-
-from PyZedWrapper import PyZedWrapper
-
-
-matplotlib.use('TkAgg')  # Use the TkAgg backend
-import cv2
-import pandas as pd
-import pygame
-from PIL import Image, ImageTk, ImageSequence
-from email_validator import validate_email, EmailNotValidError
-import Settings as s
-from Audio import say, get_wav_duration, ContinuousAudio
-from gtts import gTTS
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+
 import Excel
 import re
 import cv2
@@ -41,6 +11,22 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import pandas as pd
+import queue
+import subprocess
+import sys
+import webbrowser
+import random
+from datetime import datetime
+import numpy as np
+import openpyxl
+import matplotlib
+matplotlib.use('TkAgg')  # Use the TkAgg backend
+import pygame
+from PIL import ImageSequence
+
+from PyZedWrapper import PyZedWrapper
+import Settings as s
+from Audio import say, get_wav_duration, ContinuousAudio
 
 
 s.exercise_name_repeated_explanation = None
@@ -2034,13 +2020,11 @@ class ExercisePage(tk.Frame):
     def update_bar(self, keypoints):
         """Updates the bar based on the selected exercise type."""
         if self.exercise_type == "wrist_distance_x":  # פתיחת ידיים לצדדים
-            self.update_wrist_distance_x(keypoints)
+            self.update_wrist_distance_x()
         elif self.exercise_type == "shoulders_distance_x":  # כל ה-switch
             self.update_shoulders_distance_x(keypoints)
-        elif self.exercise_type == "single_wrist_x":
-            self.update_single_wrist_x(keypoints)  # Right wrist & shoulder
         elif self.exercise_type == "wrist_height_y":
-            self.update_wrist_height_y(keypoints)
+            self.update_wrist_height_y()
         elif self.exercise_type == "wrist_height_y_distance_x":
             self.update_wrist_height_y_distance_x(keypoints)
 
@@ -2159,18 +2143,23 @@ class ExercisePage(tk.Frame):
                     time_limit_hands_not_good = 7
 
                 else:
-                    time_limit_hands_not_good = 1
+                    time_limit_hands_not_good = 4
 
                 if not s.did_training_paused:
 
-                    if s.req_exercise != "" and s.can_comment_robot and\
-                        ((s.reached_max_limit and not s.all_rules_ok  and self.can_comment and s.was_in_first_condition) or \
+                    if s.req_exercise != "" and s.can_comment_robot and \
+                        ((s.reached_max_limit and not s.all_rules_ok  and self.can_comment and s.was_in_first_condition and s.req_exercise not in ["ball_switch", "stick_switch", "band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean"]) or \
                          ((s.all_rules_ok and self.percent_of_bar < 0.2 and self.can_comment) or (not s.all_rules_ok and self.percent_of_bar < 0.2 and not s.was_in_first_condition) and\
                          ((s.req_exercise in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"]) or not self.exercise_type == "shoulders_distance_x")) or \
-                         (s.time_of_change_position and time.time() - s.time_of_change_position >= time_limit_change_position) or \
-                         (s.not_reached_max_limit_rest_rules_ok and time.time() - self.start_of_time_count_all_rules_not_limit >= time_limit_all_rules_not_limit) or \
-                         (s.hand_not_good and time.time() - self.start_of_time_count_hands_not_good >= time_limit_hands_not_good) or \
-                            not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4)):
+                         (s.time_of_change_position and float(time.time() - s.time_of_change_position) >= time_limit_change_position) or \
+                         (s.not_reached_max_limit_rest_rules_ok and float(time.time() - self.start_of_time_count_all_rules_not_limit) >= time_limit_all_rules_not_limit) or\
+                         (s.hand_not_good and self.start_of_time_count_hands_not_good and float(time.time() - self.start_of_time_count_hands_not_good) >= time_limit_hands_not_good)):
+                            # not s.reached_max_limit and (time.time() - self.time_of_exercise_start >= 6 or (s.time_of_change_position is None and time.time()- s.time_of_change_position >= 4))):
+                        #any(s.change_in_trend):
+                            print(
+                                "time.time() - s.time_of_change_position: " + str(float(time.time() - s.time_of_change_position)))
+
+
                             self.check_are_there_comments()
 
                     else:
@@ -2273,7 +2262,7 @@ class ExercisePage(tk.Frame):
             "fg": "white",  # a calm deep blue
             "activebackground": "#e1f5fe",
             "activeforeground": "#0d47a1",
-            "width": 15,
+            "width": 13,
             "height": 3,
             "relief": "raised",
             "bd": 3,
@@ -2292,13 +2281,13 @@ class ExercisePage(tk.Frame):
             s.did_training_paused = True
 
             # Create overlay
-            self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="#d3f1f1")
+            self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="white")
             self.overlay_frame.place(x=0, y=0)
             self.overlay_frame.tkraise()
 
             # Label
             label = tk.Label(self.overlay_frame, text="?תרצה לראות שוב את ההסבר על התרגיל",
-                             font=("Arial", 35), bg="#d3f1f1")
+                             font=("Arial", 35), bg="white")
             label.place(relx=0.5, rely=0.2, anchor="center")
 
             # YES Button
@@ -2316,7 +2305,7 @@ class ExercisePage(tk.Frame):
                                     command=self.skip_exercise, **button_style)
             skip_button.place(relx=0.2, rely=0.5, anchor="center")
 
-            self.timer_canvas = tk.Canvas(self.overlay_frame, width=150, height=150, bg="#d3f1f1", highlightthickness=0)
+            self.timer_canvas = tk.Canvas(self.overlay_frame, width=150, height=150, bg="white", highlightthickness=0)
             self.timer_canvas.place_forget()  # Hide initially
 
             self.timer_canvas.create_oval(10, 10, 140, 140, outline="gray", width=6)  # Static full circle
@@ -2331,7 +2320,7 @@ class ExercisePage(tk.Frame):
         else:
 
             # Create overlay
-            self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="#d3f1f1")
+            self.overlay_frame = tk.Frame(self, width=1024, height=576, bg="white")
             self.overlay_frame.place(x=0, y=0)
             self.overlay_frame.tkraise()
 
@@ -2354,7 +2343,7 @@ class ExercisePage(tk.Frame):
 
 
             label = tk.Label(self.overlay_frame, text="אי לחיצה על אף כפתור תמשיך את השהיית האימון *",
-                             font=("Arial", 30, "bold"), bg="#d3f1f1", fg= "red")
+                             font=("Arial", 30, "bold"), bg="white", fg= "red")
             label.place(relx=0.5, rely=0.8, anchor="center")
 
 
@@ -2385,6 +2374,8 @@ class ExercisePage(tk.Frame):
             self.repeat_explanation_no()
 
     def skip_exercise(self):
+        if not s.suggest_repeat_explanation:
+            s.starts_and_ends_of_stops.append(time.time())
         self.cancel_repeat_overlay_timers()
         s.skipped_exercise = True
         s.did_training_paused = False
@@ -2392,6 +2383,8 @@ class ExercisePage(tk.Frame):
         self.hide_overlay()
 
     def repeat_explanation_yes(self):
+        if not s.suggest_repeat_explanation:
+            s.starts_and_ends_of_stops.append(time.time())
         self.cancel_repeat_overlay_timers()
         s.repeat_explanation = True
         s.did_training_paused = False
@@ -2399,6 +2392,9 @@ class ExercisePage(tk.Frame):
         self.hide_overlay()
 
     def repeat_explanation_no(self):
+        if not s.suggest_repeat_explanation:
+            s.starts_and_ends_of_stops.append(time.time())
+
         self.cancel_repeat_overlay_timers()
         print("User skipped explanation.")
         self.hide_overlay()
@@ -2423,11 +2419,13 @@ class ExercisePage(tk.Frame):
         s.req_exercise = ""
         s.stop_requested=True
         # s.finish_workout= True
-        self.after_cancel(self.after_id)  # Cancel any pending after() calls
+        # self.after_cancel(self.after_id)  # Cancel any pending after() calls
 
         print("Stop training button clicked")
 
     def another_calibration_button_click(self):
+        if not s.suggest_repeat_explanation:
+            s.starts_and_ends_of_stops.append(time.time())
         # s.stop_requested = True
         # s.finish_workout= True
         # self.after_cancel(self.after_id)  # Cancel any pending after() calls
@@ -2441,6 +2439,7 @@ class ExercisePage(tk.Frame):
 
         self.show_repeat_explanation_overlay()
         s.did_training_paused = True
+        s.number_of_pauses +=1
 
         # if s.did_training_paused:
         #     # Define what happens when the button is clicked
@@ -2479,56 +2478,49 @@ class ExercisePage(tk.Frame):
 
 
     #########################################
-    def update_wrist_height_y(self, keypoints):
-
-        # Get wrist and shoulder positions
-        right_wrist = keypoints["R_wrist"]  # Right wrist
-        left_wrist = keypoints["L_wrist"]  # Left wrist
-        right_shoulder = keypoints["R_shoulder"]  # Right shoulder
-        left_shoulder = keypoints["L_shoulder"]  # Left shoulder
+    def update_wrist_height_y(self):
 
         # Ensure all keypoints are detected
-        if any(np.all(kp == -1) for kp in [right_wrist, left_wrist, right_shoulder, left_shoulder]):
+        if any(angle is None for angle in s.last_entry_angles):
             return  # Skip if any keypoint is missing
 
         if self.which_side == "both":
-            # Compute average heights
-            wrist_heights = (right_wrist.y + left_wrist.y) / 2
-            shoulder_heights = (right_shoulder.y + left_shoulder.y) / 2
+            if s.req_exercise == "notool_raising_hands_diagonally":
+                distance = s.last_entry_angles[0] + s.last_entry_angles[1]
+
+                if s.all_rules_ok is True and self.percent_of_bar < 0.5:
+                    s.all_rules_ok = False
+
+            else:
+                distance = min(s.last_entry_angles[0], s.last_entry_angles[1])
 
         elif self.which_side == "left":
-            # Compute average heights
-            wrist_heights = left_wrist.y
-            shoulder_heights = left_shoulder.y
+            distance = s.last_entry_angles[0] + s.last_entry_angles[3]
 
         else:
-            # Compute average heights
-            wrist_heights = right_wrist.y
-            shoulder_heights = right_shoulder.y
-
-
-        # Compute wrist-to-shoulder height difference (preserving sign)
-        wrist_height_avg = wrist_heights - shoulder_heights
+            distance = s.last_entry_angles[1] + s.last_entry_angles[2]
 
         # Maximum bar length
         max_bar_length = self.background_image.width // 2
 
         # Scale the bar length
-        if wrist_height_avg >= self.max_distance:
+        if distance >= self.max_distance:
             scaled_length = 0 if not self.reverse_bar else max_bar_length  # Default: Smallest bar when far below shoulders
-        elif wrist_height_avg <= self.min_distance:
+        elif distance <= self.min_distance:
             scaled_length = max_bar_length if not self.reverse_bar else 0  # Default: Full bar when above shoulders
         else:
             # Interpolate smoothly between min and max distances
             scaled_length = max_bar_length * (
-                        1 - (wrist_height_avg - self.min_distance) / (self.max_distance - self.min_distance))
+                        1 - (distance - self.min_distance) / (self.max_distance - self.min_distance))
 
             # If reversed, flip the scaling effect
             if self.reverse_bar:
                 scaled_length = max_bar_length - scaled_length
 
+
+
         # Set color: Green when close, transitioning to red when far
-        self.bar_color = self.get_color_gradient(wrist_height_avg, self.min_distance, self.max_distance,
+        self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance,
                                                  reverse=self.reverse_color)
 
         # print("Height Difference:", wrist_height_avg, "| Scaled Length:", scaled_length)
@@ -2536,30 +2528,36 @@ class ExercisePage(tk.Frame):
         # Update the bar display
         self.update_bar_display(scaled_length)
 
-    import numpy as np
 
     def update_wrist_height_y_distance_x(self, keypoints):
-        # Get wrist and shoulder positions
+        # # Get wrist and shoulder positions
         right_wrist = keypoints["R_wrist"]
         left_wrist = keypoints["L_wrist"]
         right_shoulder = keypoints["R_shoulder"]
         left_shoulder = keypoints["L_shoulder"]
 
         # Ensure all keypoints are detected
-        if any(np.all(kp == -1) for kp in [right_wrist, left_wrist, right_shoulder, left_shoulder]):
+        if any(angle is None for angle in s.last_entry_angles):
             return  # Skip if any keypoint is missing
 
-        # Compute wrist-to-wrist distance (x-axis)
-        wrist_distance_x = abs(right_wrist.x - left_wrist.x)
-
-        # Compute wrist-to-shoulder height difference (y-axis)
+        if any(np.all(kp == -1) for kp in [right_wrist, left_wrist, right_shoulder, left_shoulder]):
+            return  # Skip if any shoulder is missing
+        # # Compute wrist-to-wrist distance (x-axis)
+        # wrist_distance_x = abs(right_wrist.x - left_wrist.x)
+        #
+        # # Compute wrist-to-shoulder height difference (y-axis)
         wrist_heights = (right_wrist.y + left_wrist.y) / 2
         shoulder_heights = (right_shoulder.y + left_shoulder.y) / 2
-        wrist_height_y = wrist_heights - shoulder_heights  # Preserve sign
+        # wrist_height_y = wrist_heights - shoulder_heights  # Preserve sign
 
-        # Maximum bar length
+        # # Maximum bar length
         max_bar_length = self.background_image.width // 2
         half_bar_length = max_bar_length / 2  # First 50% comes from x-distance
+
+        wrist_distance_x = min(s.last_entry_angles[4], s.last_entry_angles[5])
+        wrist_height_y = min(s.last_entry_angles[2], s.last_entry_angles[3])
+
+        scaled_length= 0
 
         if s.req_exercise == "band_open_arms_and_up":
             # Normalize x-distance to the first half of the bar
@@ -2577,12 +2575,12 @@ class ExercisePage(tk.Frame):
             else:
                 # Normalize y-distance to the second half of the bar
                 if wrist_height_y <= self.min_distance:
-                    scaled_length_y = half_bar_length
-                elif wrist_height_y >= self.max_distance:
                     scaled_length_y = 0
+                elif wrist_height_y >= self.max_distance:
+                    scaled_length_y = half_bar_length
                 else:
-                    scaled_length_y = ((self.max_distance - wrist_height_y) / (
-                                self.max_distance - self.min_distance)) * half_bar_length
+                    scaled_length_y = min(((wrist_height_y - self.min_distance) / (
+                                self.max_distance - self.min_distance)) * half_bar_length, half_bar_length)
 
                 # Final bar length: X contribution + Y contribution
                 scaled_length = half_bar_length + max(0, scaled_length_y)
@@ -2611,24 +2609,28 @@ class ExercisePage(tk.Frame):
         self.update_bar_display(scaled_length)
 
 
-    def update_wrist_distance_x(self, keypoints):
-        right_wrist = keypoints["R_wrist"]  # Right wrist
-        left_wrist = keypoints["L_wrist"]  # Left wrist
+    def update_wrist_distance_x(self):
 
-        if np.all(right_wrist == -1) or np.all(left_wrist == -1):
-            return  # Skip if any wrist is missing
+        # Ensure all keypoints are detected
+        if any(angle is None for angle in s.last_entry_angles):
+            return  # Skip if any keypoint is missing
 
         # Compute hand distance
-        distance = abs(right_wrist.x - left_wrist.x)
+        if s.req_exercise not in ["band_straighten_left_arm_elbows_bend_to_sides", "band_straighten_right_arm_elbows_bend_to_sides"]:
+            if s.last_entry_angles:
+                distance = min(s.last_entry_angles[-1], s.last_entry_angles[-2])
 
-        # # Define key distances
-        # min_distance = self.real_distance   # The closest distance (smallest bar, most red)
-        # max_distance = self.real_distance + 1000  # The farthest distance (largest bar, greenest)
+            else:
+                distance = 0
 
-        # if distance <= self.min_distance + 100:
-        #     s.was_in_opposite_limit = True
+        elif s.req_exercise == "band_straighten_left_arm_elbows_bend_to_sides":
+            distance = s.last_entry_angles[1]
 
-        # Maximum bar length
+        else:
+            distance = s.last_entry_angles[0]
+
+
+               # Maximum bar length
         max_bar_length = self.background_image.width // 2
 
         # Scale the bar length (opposite logic from shoulders)
@@ -2647,6 +2649,7 @@ class ExercisePage(tk.Frame):
         # Update the bar display
         self.update_bar_display(scaled_length)
 
+
     def update_shoulders_distance_x(self, keypoints):
         right_shoulder = keypoints["R_shoulder"]  # Right shoulder
         left_shoulder = keypoints["L_shoulder"]  # Left shoulder
@@ -2661,7 +2664,7 @@ class ExercisePage(tk.Frame):
         if distance >= s.dist_between_shoulders - 30 and abs(right_shoulder.y - left_shoulder.y) <= 10 and\
                 s.req_exercise not in ["notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and s.all_rules_ok:
             s.all_rules_ok = False
-            s.time_of_change_position = time.time()
+            s.time_of_change_position = time.time() + 2
 
         # Scale the bar length
         if distance >= self.max_distance:
@@ -2679,50 +2682,6 @@ class ExercisePage(tk.Frame):
 
         # Update the bar display
         self.update_bar_display(scaled_length)
-
-        # reverse_color=False, reverse_bar=True
-
-    # def update_shoulders_distance_y(self, keypoints):
-    #     # Get shoulder positions
-    #     right_shoulder = keypoints["R_shoulder"]  # Right shoulder
-    #     left_shoulder = keypoints["L_shoulder"]  # Left shoulder
-    #
-    #     # Ensure all keypoints are detected
-    #     if np.all(right_shoulder == -1) or np.all(left_shoulder == -1):
-    #         return  # Skip if any keypoint is missing
-    #
-    #     # Compute absolute **vertical** distance between shoulders (ignoring direction)
-    #     distance = abs(right_shoulder.y - left_shoulder.y)
-    #
-    #     if distance <= 30 and abs(right_shoulder.y - left_shoulder.y) <= 10:
-    #         s.all_rules_ok = False
-    #         s.was_in_opposite_limit = True
-    #
-    #     # Maximum bar length
-    #     max_bar_length = self.background_image.width // 2
-    #
-    #     # Scale the bar length
-    #     if distance >= self.max_distance:
-    #         scaled_length = 0 if not self.reverse_bar else max_bar_length  # Default: Shortest bar when far apart
-    #     elif distance <= self.min_distance:
-    #         scaled_length = max_bar_length if not self.reverse_bar else 0  # Default: Longest bar when shoulders aligned
-    #     else:
-    #         # Interpolate smoothly
-    #         scaled_length = max_bar_length * (
-    #                     1 - (distance - self.min_distance) / (self.max_distance - self.min_distance))
-    #
-    #         # If reversed, flip the scaling effect
-    #         if self.reverse_bar:
-    #             scaled_length = max_bar_length - scaled_length
-    #
-    #     # Set color based on `reverse_color`
-    #     self.bar_color = self.get_color_gradient(distance, self.min_distance, self.max_distance,
-    #                                              reverse=self.reverse_color)
-    #
-    #     # print("Shoulder Height Difference:", distance, "| Scaled Length:", scaled_length)
-    #
-    #     # Update the bar display
-    #     self.update_bar_display(scaled_length)
 
 
     def get_color_gradient(self, distance, min_distance, max_distance, reverse=False):
@@ -2748,7 +2707,7 @@ class ExercisePage(tk.Frame):
             r = max(0, min(255, int(255 * (1 - step / 8))))
             g = max(0, min(255, int(max_green * (step / 8))))
 
-            # If all_rules_ok is True and max limit is reached, return fully green
+        # If all_rules_ok is True and max limit is reached, return fully green
         if s.all_rules_ok and s.reached_max_limit:
             return "#00FF00"
 
@@ -2816,10 +2775,10 @@ class ExercisePage(tk.Frame):
         # if s.req_exercise == "notool_raising_hands_diagonally":
 
 
-        if s.hand_not_good and self.start_of_time_count_hands_not_good is not None and time.time()- self.start_of_time_count_hands_not_good >= 1 or\
-            not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4):
+        if s.hand_not_good and self.start_of_time_count_hands_not_good and float(time.time()- self.start_of_time_count_hands_not_good) >= 4:
+               # or not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4)):
 
-            if s.req_exercise == "notool_raising_hands_diagonally" and self.start_of_time_count_hands_not_good and time.time()- self.start_of_time_count_hands_not_good >= 7:
+            if s.req_exercise == "notool_raising_hands_diagonally" and self.start_of_time_count_hands_not_good and float(time.time()- self.start_of_time_count_hands_not_good) >= 7:
                 if s.direction is not None:
                     if s.direction == "left_diagonal":
                         if s.gender == "Male":
@@ -2877,8 +2836,8 @@ class ExercisePage(tk.Frame):
                                 self.comments.append("התיישרי יותר לצד שמאל והביאי \n את יד שמאל מעל כתף שמאל")
 
 
-        if s.not_reached_max_limit_rest_rules_ok and self.start_of_time_count_all_rules_not_limit is not None and time.time() - self.start_of_time_count_all_rules_not_limit>= 1 or\
-            not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4):
+        if s.not_reached_max_limit_rest_rules_ok and self.start_of_time_count_all_rules_not_limit is not None and float(time.time() - self.start_of_time_count_all_rules_not_limit)>= 1 or\
+            not s.reached_max_limit and (s.time_of_change_position is None and float(time.time() - self.time_of_exercise_start >= 6) or float(time.time()- s.time_of_change_position) >= 4):
             if s.req_exercise in ["ball_switch", "stick_switch"]:
                     if s.direction is not None:
                         if s.direction == "left":
@@ -2897,7 +2856,7 @@ class ExercisePage(tk.Frame):
 
 
             if s.req_exercise in  ["band_up_and_lean", "stick_up_and_lean", "notool_hands_behind_and_lean", "notool_right_hand_up_and_bend", "notool_left_hand_up_and_bend"] and (not s.reached_max_limit or \
-                    not s.reached_max_limit and (s.time_of_change_position is None and time.time() - self.time_of_exercise_start >= 6 or time.time()- s.time_of_change_position >= 4)):
+                    not s.reached_max_limit and (s.time_of_change_position is None and float(time.time() - self.time_of_exercise_start) >= 6 or float(time.time()- s.time_of_change_position) >= 4)):
 
                 if s.direction is not None:
                     if s.direction == "left" and s.req_exercise != "notool_left_hand_up_and_bend":
@@ -2916,7 +2875,7 @@ class ExercisePage(tk.Frame):
 
 
 
-        if (self.end_of_comment_recording is None or self.end_of_comment_recording < time.time()) and (self.time_of_comment == 0 or (time.time() - self.last_loop_time) >= 1) and s.robot_counter < s.rep -1:
+        if (self.end_of_comment_recording is None or self.end_of_comment_recording < time.time()) and (self.time_of_comment == 0 or (float(time.time() - self.last_loop_time)) >= 1) and s.robot_counter < s.rep -1:
             self.last_loop_time = time.time()
             if self.comments:
                 print("comments: ", self.comments)
@@ -2968,30 +2927,31 @@ class ExercisePage(tk.Frame):
                             time.time() - self.time_of_comment >= 2) and s.robot_counter < s.rep - 1 and s.patient_repetitions_counting_in_exercise < s.rep - 1:
 
                         if os.path.exists(audio_path):
-                            if random_num == 1: #Add something about recognition issues
-                                dont_recognize_files= Excel.get_files_names_by_start_word("dont_recognize_")
-                                chosen_dont_recognize = random.choice(dont_recognize_files)
-                                self.end_of_comment_recording = time.time() + get_wav_duration(comment_no_signs)
+                            # if random_num == 1: #Add something about recognition issues
+                            #     dont_recognize_files= Excel.get_files_names_by_start_word("dont_recognize_")
+                            #     chosen_dont_recognize = random.choice(dont_recognize_files)
+                            #     self.end_of_comment_recording = time.time() + get_wav_duration(comment_no_signs)
+                            #
+                            #
+                            #     if chosen_dont_recognize:
+                            #         say(chosen_dont_recognize)
+                            #         self.after(int(get_wav_duration(chosen_dont_recognize)*1000), lambda: say(comment_no_signs))
+                            #
+                            #         self.end_of_comment_recording += get_wav_duration(chosen_dont_recognize)
+                            #
+                            #     else:
+                            #         say(comment_no_signs)
+                            #
+                            #
+                            #     s.last_saying_time = time.time()
+                            #     self.comments_audio[comment_no_signs] = time.time()
+                            #
+                            # else:
+                            say(comment_no_signs)
+                            self.end_of_comment_recording = time.time() + get_wav_duration(comment_no_signs)
+                            s.last_saying_time = time.time()
+                            self.comments_audio[comment_no_signs] = time.time()
 
-
-                                if chosen_dont_recognize:
-                                    say(chosen_dont_recognize)
-                                    self.after(int(get_wav_duration(chosen_dont_recognize)*1000), lambda: say(comment_no_signs))
-
-                                    self.end_of_comment_recording += get_wav_duration(chosen_dont_recognize)
-
-                                else:
-                                    say(comment_no_signs)
-
-
-                                s.last_saying_time = time.time()
-                                self.comments_audio[comment_no_signs] = time.time()
-
-                            else:
-                                say(comment_no_signs)
-                                self.end_of_comment_recording = time.time() + get_wav_duration(comment_no_signs)
-                                s.last_saying_time = time.time()
-                                self.comments_audio[comment_no_signs] = time.time()
                         else:
                             print(f"Audio file not found: {audio_path}")
 
@@ -3234,7 +3194,8 @@ class ExercisePage(tk.Frame):
 
 
         if ((cleaned_joint_1 == "hip" and cleaned_joint_3 == "elbow") or (
-                cleaned_joint_3 == "hip" and cleaned_joint_1 == "elbow")) and cleaned_joint_2 == "shoulder":
+                cleaned_joint_3 == "hip" and cleaned_joint_1 == "elbow") or
+            (cleaned_joint_1 == "knee" and cleaned_joint_3 == "wrist")) and cleaned_joint_2 == "shoulder":
             if s.req_exercise in ["ball_bend_elbows", "stick_bend_elbows"]:
                 if biggerORsmaller == "smaller":
                     if s.gender == "Male":
@@ -3393,7 +3354,8 @@ class ExercisePage(tk.Frame):
 
 
 
-        if (cleaned_joint_1 == "wrist" or cleaned_joint_1 == "elbow") and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder":
+        if ((cleaned_joint_1 == "wrist" or cleaned_joint_1 == "elbow") and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "shoulder") or \
+                (cleaned_joint_1 == "wrist" and cleaned_joint_2 == "shoulder" and cleaned_joint_3 == "wrist"):
             if s.req_exercise in ["band_open_arms", "band_open_arms_and_up"]:
                 if biggerORsmaller == "smaller":
                     if s.gender == "Male":
@@ -3785,6 +3747,7 @@ class TablesPage(tk.Frame):
         self.label1 = None
         self.label2 = None
         self.background_color = "#deeaf7"  # Set the background color to light blue
+        self.PDF_path = None
 
         # Set the background color for the Frame
         self.configure(bg=self.background_color)
@@ -3805,7 +3768,7 @@ class TablesPage(tk.Frame):
             previous_page = ChooseStickExercisesPage
         elif previous == "weights":
             previous_page = ChooseWeightsExercisesPage
-        elif previous == "no_tool":
+        elif previous == "notool":
             previous_page = ChooseNoToolExercisesPage
 
         # Load the previous page button image and set background
@@ -3818,6 +3781,7 @@ class TablesPage(tk.Frame):
                                            highlightthickness=0, bg=self.background_color)
         previous_page_category.image = previous_page_button_photo
         previous_page_category.place(x=30, y=30)
+
 
         # Load the previous page button image and set background
         PDF_button_img = Image.open("Pictures//see_PDF_button.jpg")
@@ -3854,39 +3818,50 @@ class TablesPage(tk.Frame):
             self.didnt_do_before_label.place(x=270, y=75)
             print(f"Error: The path 'Patients/{s.chosen_patient_ID}/Tables/{exercise}' does not exist.")
 
-    def open_pdf(self):
-        """Opens the PDF related to the selected exercise and date."""
+
+    def search_for_PDF(self):
         try:
             # Get absolute path to the 'Patients' directory
             base_dir = os.path.abspath("Patients")
 
             # Construct the full PDF path
-            pdf_path = os.path.join(base_dir, str(s.chosen_patient_ID), "PDF_to_Therapist_Email",
+            self.PDF_path = os.path.join(base_dir, str(s.chosen_patient_ID), "PDF_to_Therapist_Email",
                                     f"{self.sorted_folder[self.place]}.pdf")
 
             # Debugging: Print the absolute path
-            print(f"Checking file path: {pdf_path}")
+            print(f"Checking file path: {self.PDF_path}")
 
             # Check if the file exists
-            if not os.path.exists(pdf_path):
-                print(f"Error: PDF file not found at {pdf_path}")
+            if not os.path.exists(self.PDF_path):
+                print(f"Error: PDF file not found at {self.PDF_path}")
+                self.PDF_path = None
                 return
 
-            # Open PDF with the default viewer based on OS
+
+        except Exception as e:
+            print(f"Error opening PDF: {e}")
+            self.PDF_path = None
+
+
+    def open_pdf(self):
+        """Opens the PDF related to the selected exercise and date."""
+        try:
+             # Open PDF with the default viewer based on OS
             if sys.platform.startswith('win'):
-                os.startfile(pdf_path)  # Windows
+                os.startfile(self.PDF_path)  # Windows
             elif sys.platform.startswith('darwin'):  # macOS
-                subprocess.run(['open', pdf_path], check=True)
+                subprocess.run(['open', self.PDF_path], check=True)
             elif sys.platform.startswith('linux'):
-                subprocess.run(['xdg-open', pdf_path], check=True)
+                subprocess.run(['xdg-open', self.PDF_path], check=True)
             else:
-                webbrowser.open(pdf_path)  # Fallback (if other methods fail)
+                webbrowser.open(self.PDF_path)  # Fallback (if other methods fail)
 
         except Exception as e:
             print(f"Error opening PDF: {e}")
 
 
     def show_tables(self, sorted_folder, place, num_of_angles, exercise):
+        self.PDF_path = None
         self.sorted_folder = sorted_folder
         self.place = place
 
@@ -3920,9 +3895,6 @@ class TablesPage(tk.Frame):
         print(directory)
 
         # Fetch success numbers
-
-
-
         self.label1 = tk.Label(self, text=f'{str(s.chosen_patient_ID)}', image=background_img, compound=tk.CENTER,
                                font=("Thaoma", 16, 'bold'), width=350, height=15, bg=self.background_color)
         self.label1.place(x=160, y=5)
@@ -3953,7 +3925,13 @@ class TablesPage(tk.Frame):
         self.label2.place(x=160, y=30)
         self.label2.image = background_img
 
-        self.PDF_button.lift()
+        self.search_for_PDF()
+        if self.PDF_path is not None:
+            self.PDF_button.place(x=392, y=525)
+            self.PDF_button.lift()
+
+        else:
+            self.PDF_button.place_forget()
 
     def help_function(self, sorted_folder, place_to_put, num_of_angles, exercise):
         # Clean up previous labels and buttons

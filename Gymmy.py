@@ -14,8 +14,8 @@ class Gymmy(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
-        self.gymmy = PoppyTorso(camera="dummy", port= "COM4")  # for real robot
-        #self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
+        #self.gymmy = PoppyTorso(camera="dummy", port= "COM4")  # for real robot
+        self.gymmy = PoppyTorso(simulator='vrep')  # for simulator
         print("ROBOT INITIALIZATION")
         #self.gymmy.abs_z.goto_position(0, 1, wait=True)
 
@@ -136,7 +136,7 @@ class Gymmy(threading.Thread):
                                 self.i += 1
 
 
-                    if self.i - s.patient_repetitions_counting_in_exercise >=3 and not self.i + 1 >= s.rep:
+                    if self.i - s.patient_repetitions_counting_in_exercise >=4 and not self.i + 1 >= s.rep:
                         if s.exercise_name_repeated_explanation is None or not s.exercise_name_repeated_explanation == s.req_exercise and \
                                 (s.last_time_suggestion_screen_popped_up is None or s.num_exercises_started - s.last_time_suggestion_screen_popped_up > 3):
                             s.suggest_repeat_explanation = True

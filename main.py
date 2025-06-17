@@ -73,7 +73,8 @@ if __name__ == '__main__':
     s.suggest_repeat_explanation = False
     s.last_entry_angles = None
     s.can_comment_robot = False
-
+    s.number_of_repetitions_in_training = 0
+    s.max_repetitions_in_training = 0
     s.last_saying_time = time.time()
     s.robot_counter = 0
     s.general_sayings = []
@@ -86,6 +87,7 @@ if __name__ == '__main__':
     s.shoulder_problem_calibration = False
     s.all_rules_ok = False
     s.fps = 0
+    s.change_in_trend = [False]
 
     # Create all components
     s.camera = Camera()
